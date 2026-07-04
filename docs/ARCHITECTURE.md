@@ -23,12 +23,17 @@ via `Assets/_Project/Config/Secrets.asset` (gitignored).
 | 2 | Card/troop/spell data layer | `RoyaleClash.Cards` | done |
 | 3 | Battle system (sim core) | `RoyaleClash.Battle` | done |
 | 4 | Networking (Photon Fusion 2) | `RoyaleClash.Networking` | done* |
-| 5 | Backend (PlayFab) | `RoyaleClash.Backend` | pending |
+| 5 | Backend (PlayFab) | `RoyaleClash.Backend` | done* |
 | 6 | Economy & progression | `RoyaleClash.Economy`, `RoyaleClash.Progression` | pending |
 | 7 | UI system | `RoyaleClash.UI` | pending |
 | 8 | Arenas / audio / optimization / security / publishing | `RoyaleClash.Audio`, `RoyaleClash.Optimization` | pending |
 
-\* Networking's Fusion-specific layer is written but gated behind `ROYALECLASH_PHOTON_FUSION` and unverified against a real compile — see `docs/NETWORKING.md`. The non-Fusion parts (`IMatchHost`, `PracticeMatchHost`, `SimpleAiOpponent`) are real and tested.
+\* Networking's Fusion-specific layer and Backend's PlayFab-specific layer are written
+but gated behind compile symbols (`ROYALECLASH_PHOTON_FUSION`, `ROYALECLASH_PLAYFAB`)
+and unverified against a real compile — see `docs/NETWORKING.md` and
+`docs/BACKEND.md`. The non-gated parts of each (`IMatchHost`/`PracticeMatchHost`/
+`SimpleAiOpponent`; every `Backend/Runtime/Local/*Service`) are real, tested, and
+what Practice mode actually runs on today.
 
 ## Folder layout
 
