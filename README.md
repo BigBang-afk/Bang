@@ -7,8 +7,8 @@ A jewelry shop management system built with **C# Windows Forms (.NET 8)** and
 
 ### Version 1 — MVP (building now)
 1. Project setup + Database connection + Login ✅
-2. **Dashboard** ← you are here
-3. Customer form
+2. Dashboard ✅
+3. **Customer form** ← you are here
 4. Stock form
 5. Sales billing
 6. Repair form
@@ -150,3 +150,59 @@ If all 6 checks behave as described, Module 2 is working correctly.
 
 ### Next
 Once you confirm Module 2 works, we'll build **Module 3: Customer form** — full CRUD (save/update/delete/search/clear) backed by a new `customers` table, with `txtCustomerName`-style controls and a `dgvCustomers` grid.
+
+---
+
+## Module 3: Customer form
+
+### What's new in this module
+- A new `customers` table.
+- A full CRUD **Customer Management** screen: save, update, delete, search, and clear, backed by a `DataGridView` (`dgvCustomers`).
+- The Dashboard's **Customers** button now opens this form instead of showing "Coming Soon".
+
+### Files added
+
+| File | Purpose |
+|---|---|
+| `Database/02_schema_customers.sql` | Creates the `customers` table. Run this in phpMyAdmin (same database, `zarghoon_jewelry`). |
+| `ZarghoonJewelryPro/Forms/frmCustomer.Designer.cs` | **Design code** — `txtCustomerName`, `txtPhone`, `txtAddress`, `txtEmail`, `txtSearch`, `btnSearch`, `btnSave`, `btnUpdate`, `btnDelete`, `btnClear`, `btnClose`, and `dgvCustomers`. |
+| `ZarghoonJewelryPro/Forms/frmCustomer.cs` | **Program code** — loads/searches customers, save/update/delete with parameterized queries, clicking a grid row fills the form fields for editing. |
+
+`ZarghoonJewelryPro/Forms/frmDashboard.cs` was updated: `btnCustomers_Click` now opens `frmCustomer` with `ShowDialog()` instead of showing the "Coming Soon" message.
+
+### Setup
+
+1. Open phpMyAdmin → select the `zarghoon_jewelry` database → **SQL** tab.
+2. Paste the contents of `Database/02_schema_customers.sql` and click **Go**.
+   - This adds one new table, `customers`, with no rows yet.
+3. Pull the latest code in Visual Studio and rebuild (F5). No changes needed in `DbConfig.cs`.
+
+### How it works
+- **Save**: type a name (required) + optional phone/address/email, click **Save** → inserts a new row and refreshes the grid.
+- **Click a row in the grid**: the customer's details load into the text boxes above (their `CustomerID` is remembered internally — there's no visible ID box).
+- **Update**: after selecting a row and editing the fields, click **Update** → saves changes to that customer. Clicking Update with nothing selected shows a warning instead of updating the wrong row.
+- **Delete**: select a row, click **Delete**, confirm Yes/No.
+- **Search**: type a name or phone number fragment into `txtSearch`, click **Search** → filters the grid. Search box shows partial matches (SQL `LIKE`) via a parameterized query, so it's injection-safe.
+- **Clear**: empties the form fields, clears the grid selection, and reloads the full list.
+- **Close**: returns to the Dashboard.
+
+### How to test Module 3
+
+1. From the Dashboard, click **Customers** → the Customer Management window opens (empty grid, since the table has no rows yet).
+2. Leave the name blank and click **Save** → expect the warning "Customer name is required."
+3. Fill in Name = `Ali Khan`, Phone = `03001234567`, Address = `Main Bazaar`, Email = `ali@example.com`, click **Save** → expect "Customer saved successfully." and the row appears in the grid.
+4. Add a second customer, e.g. `Sara Ahmed` / `03111234567`.
+5. Click the `Ali Khan` row in the grid → expect the text boxes to fill in with his details.
+6. Change his phone number and click **Update** → expect "Customer updated successfully." and the grid shows the new phone number.
+7. Click **Clear** → expect all fields empty and the grid still shows both customers.
+8. Type `sara` into the search box and click **Search** → expect only Sara's row to show.
+9. Click **Search** with an empty search box (after Clear) → expect both customers to show again.
+10. Select a row and click **Delete** → confirm **Yes** → expect "Customer deleted successfully." and the row disappears from the grid.
+11. Click **Delete** or **Update** with no row selected → expect a warning message instead of an error or crash.
+12. Stop MySQL and click **Save** → expect a "Database error" message box, not a crash.
+13. Click **Close** → returns to the Dashboard.
+
+If all checks behave as described, Module 3 is working correctly.
+
+### Next
+Once you confirm Module 3 works, we'll build **Module 4: Stock / Inventory form** — categories, karat settings, and full CRUD for jewelry items.

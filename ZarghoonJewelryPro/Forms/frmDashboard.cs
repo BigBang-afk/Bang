@@ -36,7 +36,13 @@ namespace ZarghoonJewelryPro.Forms
                 MessageBoxIcon.Information);
         }
 
-        private void btnCustomers_Click(object sender, EventArgs e) => ShowNotBuiltYet("Customers", 3);
+        private void btnCustomers_Click(object sender, EventArgs e)
+        {
+            using (frmCustomer customerForm = new frmCustomer())
+            {
+                customerForm.ShowDialog();
+            }
+        }
 
         private void btnStock_Click(object sender, EventArgs e) => ShowNotBuiltYet("Stock / Inventory", 4);
 
