@@ -6,8 +6,8 @@ A jewelry shop management system built with **C# Windows Forms (.NET 8)** and
 ## Roadmap
 
 ### Version 1 — MVP (building now)
-1. **Project setup + Database connection + Login** ← you are here
-2. Dashboard
+1. Project setup + Database connection + Login ✅
+2. **Dashboard** ← you are here
 3. Customer form
 4. Stock form
 5. Sales billing
@@ -107,3 +107,46 @@ If all 6 checks behave as described, Module 1 is working correctly.
 
 ### Next
 Once you confirm Module 1 works on your machine, we'll build **Module 2: Dashboard** — the main menu screen that opens after a successful login and will link to every other module.
+
+---
+
+## Module 2: Dashboard
+
+### What's new in this module
+- Login now opens a **Dashboard** window on success instead of a message box.
+- The Dashboard shows the shop name, who is logged in, a live clock, and a
+  grid of navigation buttons for every MVP module.
+- Buttons for modules that don't exist yet (everything except Dashboard)
+  show a "Coming Soon" message telling you which module number will add it.
+  As each module is built, its button will be wired to open the real form.
+
+### Files added
+
+| File | Purpose |
+|---|---|
+| `ZarghoonJewelryPro/Forms/frmDashboard.Designer.cs` | **Design code** — header panel (shop name, logged-in user, clock), menu panel with 8 navigation buttons, footer with Logout. |
+| `ZarghoonJewelryPro/Forms/frmDashboard.cs` | **Program code** — starts the live clock, shows "Coming Soon" for unbuilt modules, confirms and handles Logout. |
+
+`ZarghoonJewelryPro/Forms/frmLogin.cs` was also updated: on a successful login it now hides the Login window and opens `frmDashboard` (passing the user's full name and role) instead of showing a message box. Logging out closes the Dashboard and brings the Login window back.
+
+### Where everything is
+- No new files to create by hand — everything is already in the repo at the paths above.
+- Nothing to change in `DbConfig.cs` for this module (Dashboard doesn't touch the database yet).
+
+### How to test Module 2
+
+1. Pull the latest code and rebuild (F5).
+2. Log in with `admin` / `admin123`.
+   - Expected: the Login window disappears and a **Dashboard** window opens, showing "Zarghoon Jewelry Pro" in the header, "Logged in as: Shop Administrator (Admin)", and a live clock that updates every second.
+3. Click each of the 8 buttons (Customers, Stock / Inventory, Sales Billing, Repairs, Cash In / Out, Reports, Settings, Backup & Restore).
+   - Expected: each shows a "Coming Soon" message box naming the module that will replace it.
+4. Click **Logout** → confirm **Yes**.
+   - Expected: the Dashboard closes and the Login window reappears with empty fields.
+5. Click Logout again but choose **No** on the confirmation.
+   - Expected: the Dashboard stays open.
+6. Close the app entirely from the Login screen's **Exit** button.
+
+If all 6 checks behave as described, Module 2 is working correctly.
+
+### Next
+Once you confirm Module 2 works, we'll build **Module 3: Customer form** — full CRUD (save/update/delete/search/clear) backed by a new `customers` table, with `txtCustomerName`-style controls and a `dgvCustomers` grid.

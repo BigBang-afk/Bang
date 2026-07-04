@@ -18,6 +18,9 @@
     <Compile Update="Forms\frmLogin.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="Forms\frmDashboard.cs">
+      <SubType>Form</SubType>
+    </Compile>
   </ItemGroup>
 
 </Project>

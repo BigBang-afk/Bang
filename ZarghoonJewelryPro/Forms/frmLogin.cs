@@ -25,6 +25,11 @@ namespace ZarghoonJewelryPro.Forms
                 return;
             }
 
+            bool loginOk = false;
+            bool hadError = false;
+            string fullName = "";
+            string role = "";
+
             try
             {
                 using (MySqlConnection conn = DatabaseHelper.GetConnection())
@@ -43,30 +48,11 @@ namespace ZarghoonJewelryPro.Forms
                             if (reader.Read())
                             {
                                 string storedHash = reader["PasswordHash"].ToString();
-                                string fullName = reader["FullName"].ToString();
-                                string role = reader["Role"].ToString();
+                                fullName = reader["FullName"].ToString();
+                                role = reader["Role"].ToString();
 
                                 string enteredHash = PasswordHelper.HashPassword(password);
-
-                                if (enteredHash == storedHash)
-                                {
-                                    MessageBox.Show(
-                                        $"Welcome, {fullName} ({role})!\n\nModule 2 (Dashboard) will open here next.",
-                                        "Login Successful",
-                                        MessageBoxButtons.OK,
-                                        MessageBoxIcon.Information);
-
-                                    txtUsername.Clear();
-                                    txtPassword.Clear();
-                                }
-                                else
-                                {
-                                    lblMessage.Text = "Invalid username or password.";
-                                }
-                            }
-                            else
-                            {
-                                lblMessage.Text = "Invalid username or password.";
+                                loginOk = (enteredHash == storedHash);
                             }
                         }
                     }
@@ -74,13 +60,37 @@ namespace ZarghoonJewelryPro.Forms
             }
             catch (MySqlException ex)
             {
+                hadError = true;
                 MessageBox.Show("Database error: " + ex.Message, "Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             catch (Exception ex)
             {
+                hadError = true;
                 MessageBox.Show("Unexpected error: " + ex.Message, "Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+
+            if (hadError)
+            {
+                return;
+            }
+
+            if (loginOk)
+            {
+                txtUsername.Clear();
+                txtPassword.Clear();
+
+                this.Hide();
+                using (frmDashboard dashboard = new frmDashboard(fullName, role))
+                {
+                    dashboard.ShowDialog();
+                }
+                this.Show();
+            }
+            else
+            {
+                lblMessage.Text = "Invalid username or password.";
             }
         }
 
