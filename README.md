@@ -8,7 +8,8 @@ A jewelry shop management system built with **C# Windows Forms (.NET 8)** and
 ### Version 1 — MVP (building now)
 1. Project setup + Database connection + Login ✅
 2. Dashboard ✅
-3. **Customer form** ← you are here
+3. Customer form ✅
+4. **Stock form** ← you are here
 4. Stock form
 5. Sales billing
 6. Repair form
@@ -206,3 +207,58 @@ If all checks behave as described, Module 3 is working correctly.
 
 ### Next
 Once you confirm Module 3 works, we'll build **Module 4: Stock / Inventory form** — categories, karat settings, and full CRUD for jewelry items.
+
+---
+
+## Module 4: Stock / Inventory form
+
+### What's new in this module
+- Two lookup tables — `categories` and `karats` — pre-filled with common jewelry categories (Ring, Necklace, Bangle, Earring, Chain, Bracelet, Set, Other) and standard karats/purities (24K, 22K, 21K, 18K, 14K). These are simple starter values; a future **Settings** module (Module 15) will let you manage them from the UI. For now, add/edit them directly in phpMyAdmin if needed.
+- A `stock` table for jewelry items, linked to `categories` and `karats`.
+- A full CRUD **Stock / Inventory Management** screen: save, update, delete, search, and clear, backed by `dgvStock`.
+- The Dashboard's **Stock / Inventory** button now opens this form instead of "Coming Soon".
+
+### Files added
+
+| File | Purpose |
+|---|---|
+| `Database/03_schema_stock.sql` | Creates `categories`, `karats`, and `stock` tables with starter data. Run this in phpMyAdmin (same `zarghoon_jewelry` database). |
+| `ZarghoonJewelryPro/Forms/frmStock.Designer.cs` | **Design code** — `txtItemCode`, `txtItemName`, `cboCategory`, `cboKarat`, `txtWeight`, `txtMakingCharges`, `txtQuantity`, `txtSearch`/`btnSearch`, `btnSave`/`btnUpdate`/`btnDelete`/`btnClear`/`btnClose`, and `dgvStock`. |
+| `ZarghoonJewelryPro/Forms/frmStock.cs` | **Program code** — loads categories/karats into the dropdowns, loads/searches stock (joined with category and karat names), save/update/delete with parameterized queries and numeric validation, duplicate item-code detection. |
+
+`ZarghoonJewelryPro/Forms/frmDashboard.cs` was updated: `btnStock_Click` now opens `frmStock` with `ShowDialog()`.
+
+### Setup
+
+1. Open phpMyAdmin → select the `zarghoon_jewelry` database → **SQL** tab.
+2. Paste the contents of `Database/03_schema_stock.sql` and click **Go**.
+   - This adds `categories` (8 rows), `karats` (5 rows), and an empty `stock` table.
+3. Pull the latest code in Visual Studio and rebuild (F5).
+
+### How it works
+- **Category** and **Karat** are dropdowns (`ComboBox`, locked to list values) populated from the database — you can't mistype them.
+- **Weight**, **Making Charges**, and **Quantity** must be valid numbers; invalid input shows a warning instead of crashing or saving garbage data.
+- **Item Code** must be unique (e.g. `RING-001`). Trying to save/update with a code that already exists shows "This Item Code already exists" instead of a raw database error.
+- **Save / Update / Delete / Search / Clear** behave the same way as the Customer form: click a grid row to load it for editing, Clear resets the form and grid.
+
+### How to test Module 4
+
+1. From the Dashboard, click **Stock / Inventory** → the window opens with an empty grid, and the Category/Karat dropdowns already show your seeded values.
+2. Leave everything blank and click **Save** → expect "Item Code and Item Name are required."
+3. Fill in Item Code = `RING-001`, Item Name = `Gold Ring`, Category = `Ring`, Karat = `22K`, Weight = `5.5`, Making Charges = `500`, Quantity = `2`, click **Save** → expect "Item saved successfully." and the row appears in the grid with Category/Karat shown as text.
+4. Try saving another item with the same Item Code `RING-001` → expect "This Item Code already exists."
+5. Type letters into Weight (e.g. `abc`) and click **Save** → expect "Please enter valid numeric values..."
+6. Add a second item, e.g. `NECK-001` / `Gold Necklace` / Necklace / 21K / weight 12 / making charges 800 / qty 1.
+7. Click the `RING-001` row → fields populate, including the correct Category and Karat selected in the dropdowns.
+8. Change its Quantity to `5` and click **Update** → expect "Item updated successfully." and the grid reflects the new quantity.
+9. Click **Clear** → all fields reset, dropdowns return to their first item, grid still shows both items.
+10. Type `neck` in search and click **Search** → expect only the necklace row.
+11. Click **Search** with an empty box → expect both items again.
+12. Select a row, click **Delete**, confirm **Yes** → expect "Item deleted successfully." and the row disappears.
+13. Click **Update** or **Delete** with nothing selected → expect a warning, not a crash.
+14. Click **Close** → returns to the Dashboard.
+
+If all checks behave as described, Module 4 is working correctly.
+
+### Next
+Once you confirm Module 4 works, we'll build **Module 5: Sales Billing form** — the item grid, totals, and stock deduction backed by new `sales` and `sales_items` tables.

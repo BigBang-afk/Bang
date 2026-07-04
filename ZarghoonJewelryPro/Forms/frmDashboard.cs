@@ -44,7 +44,13 @@ namespace ZarghoonJewelryPro.Forms
             }
         }
 
-        private void btnStock_Click(object sender, EventArgs e) => ShowNotBuiltYet("Stock / Inventory", 4);
+        private void btnStock_Click(object sender, EventArgs e)
+        {
+            using (frmStock stockForm = new frmStock())
+            {
+                stockForm.ShowDialog();
+            }
+        }
 
         private void btnSales_Click(object sender, EventArgs e) => ShowNotBuiltYet("Sales Billing", 5);
 
