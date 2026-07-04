@@ -52,7 +52,13 @@ namespace ZarghoonJewelryPro.Forms
             }
         }
 
-        private void btnSales_Click(object sender, EventArgs e) => ShowNotBuiltYet("Sales Billing", 5);
+        private void btnSales_Click(object sender, EventArgs e)
+        {
+            using (frmSales salesForm = new frmSales())
+            {
+                salesForm.ShowDialog();
+            }
+        }
 
         private void btnRepairs_Click(object sender, EventArgs e) => ShowNotBuiltYet("Repairs", 6);
 

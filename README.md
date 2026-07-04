@@ -9,7 +9,8 @@ A jewelry shop management system built with **C# Windows Forms (.NET 8)** and
 1. Project setup + Database connection + Login ✅
 2. Dashboard ✅
 3. Customer form ✅
-4. **Stock form** ← you are here
+4. Stock form ✅
+5. **Sales billing** ← you are here
 4. Stock form
 5. Sales billing
 6. Repair form
@@ -262,3 +263,64 @@ If all checks behave as described, Module 4 is working correctly.
 
 ### Next
 Once you confirm Module 4 works, we'll build **Module 5: Sales Billing form** — the item grid, totals, and stock deduction backed by new `sales` and `sales_items` tables.
+
+---
+
+## Module 5: Sales Billing form
+
+### What's new in this module
+- `sales` (invoice header) and `sales_items` (invoice lines) tables.
+- A **Sales Billing** screen: pick a customer (or "Walk-in Customer"), add jewelry items to an on-screen invoice cart with a live-calculated total, enter the amount received, and see the balance due (or change) update as you type.
+- Saving a sale is wrapped in a **database transaction**: the invoice header, every line item, and the stock quantity deductions all succeed together or all roll back together — a mid-save crash or database error can never leave half a sale recorded.
+- The Dashboard's **Sales Billing** button now opens this form instead of "Coming Soon". A **Print Receipt** button is on the form already but just shows "Coming in Module 9" for now — it'll be wired up when we build printing.
+
+### Files added
+
+| File | Purpose |
+|---|---|
+| `Database/04_schema_sales.sql` | Creates `sales` and `sales_items`. Run this in phpMyAdmin (same `zarghoon_jewelry` database). |
+| `ZarghoonJewelryPro/Forms/frmSales.Designer.cs` | **Design code** — invoice header (`lblInvoiceNumber`, `lblSaleDate`, `cboCustomer`), item-entry row (`cboItem`, `txtKarat`, `txtWeight`, `txtRatePerGram`, `txtMakingCharges`, `txtQuantity`, `btnAddItem`), the cart grid (`dgvSaleItems`), and totals/actions (`btnRemoveItem`, `lblTotalAmount`, `txtReceivedAmount`, `lblBalanceAmount`, `btnSaveSale`, `btnPrint`, `btnClear`, `btnClose`). |
+| `ZarghoonJewelryPro/Forms/frmSales.cs` | **Program code** — builds an in-memory cart (`DataTable`), calculates line totals and running totals live, validates input, and saves everything in one transaction on `btnSaveSale_Click`. |
+
+`ZarghoonJewelryPro/Forms/frmDashboard.cs` was updated: `btnSales_Click` now opens `frmSales` with `ShowDialog()`.
+
+### Setup
+
+1. Open phpMyAdmin → select the `zarghoon_jewelry` database → **SQL** tab.
+2. Paste the contents of `Database/04_schema_sales.sql` and click **Go**.
+3. Make sure you have at least one item in **Stock** with `Quantity > 0` (from Module 4) — the item dropdown only shows in-stock items.
+4. Pull the latest code in Visual Studio and rebuild (F5).
+
+### How it works
+- **Invoice # / Date**: shown automatically. The invoice number is a preview (`INV-000001`) based on what the *next* sale ID will be; the real number is finalized from the actual database ID at save time, so it's always correct even if something else changes the count in between.
+- **Customer**: dropdown of all customers plus "Walk-in Customer" (no customer record required for a cash sale).
+- **Add an item**: pick it from **Item**, its Karat and Weight auto-fill (read-only, taken from Stock). Type today's **Rate/Gram** (gold price changes daily, so this isn't stored) and the **Making Charges** (pre-filled from Stock but editable per sale), set **Qty**, click **Add Item**. It's checked against how many are actually in stock.
+- **Line total formula**: `(Weight × Rate/Gram + Making Charges) × Quantity`.
+- **Remove Selected Item**: removes a row from the invoice cart (before saving — nothing is written to the database until you click Save Sale).
+- **Received / Balance**: type what the customer actually paid; Balance updates live — shown in red as "Due: X" if they owe more, green as "Change: X" if they overpaid.
+- **Save Sale**: writes the invoice header, every line item, and reduces `stock.Quantity` for each item sold — all inside one transaction.
+- **Clear**: discards the current invoice and starts a fresh one (does not touch anything already saved).
+
+### How to test Module 5
+
+1. Make sure Stock (Module 4) has at least 2 items with quantity > 0, e.g. `RING-001` (qty 2) and `NECK-001` (qty 1) from the Module 4 test.
+2. From the Dashboard, click **Sales Billing** → window opens showing an invoice number preview, today's date, and Walk-in Customer selected.
+3. Click **Add Item** with nothing selected → expect "Please select an item."
+4. Select `RING-001 - Gold Ring` → Karat and Weight auto-fill. Leave Rate/Gram blank and click **Add Item** → expect a validation warning.
+5. Enter Rate/Gram = `20000`, Quantity = `1`, click **Add Item** → the item appears in the invoice grid and **Total Amount** updates.
+6. Try to add the same item again with Quantity = `5` (more than remaining stock) → expect "Only X in stock for this item."
+7. Add the necklace item too (its own rate/making charges), confirm the total updates to include both lines.
+8. Type an amount less than the total into **Received** → expect **Balance** to show in red as "Due: ...".
+9. Type an amount greater than the total → expect **Balance** to show in green as "Change: ...".
+10. Select a row in the invoice grid and click **Remove Selected Item** → row disappears, total recalculates.
+11. Click **Print Receipt** → expect "Receipt printing will be added in Module 9."
+12. Add at least one item back, set a Received amount, click **Save Sale** → expect a confirmation with the real invoice number, total, received, and balance.
+13. Go back to **Stock** (Dashboard → Stock/Inventory) and confirm the quantity for the sold item(s) decreased by the amount sold.
+14. Reopen **Sales Billing** and confirm the invoice number preview has advanced, and the sold-out item (if quantity hit 0) no longer appears in the item dropdown.
+15. Click **Save Sale** with an empty cart → expect "Please add at least one item to the invoice."
+16. Click **Close** → returns to the Dashboard.
+
+If all checks behave as described, Module 5 is working correctly.
+
+### Next
+Once you confirm Module 5 works, we'll build **Module 6: Repair form** — intake and status tracking for repair jobs, backed by a new `repairs` table.
