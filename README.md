@@ -5,19 +5,21 @@ A jewelry shop management system built with **C# Windows Forms (.NET 8)** and
 
 ## Roadmap
 
-### Version 1 — MVP (building now)
+### Version 1 — MVP
 1. Project setup + Database connection + Login ✅
 2. Dashboard ✅
 3. Customer form ✅
 4. Stock form ✅
-5. **Sales billing** ← you are here
-4. Stock form
-5. Sales billing
-6. Repair form
-7. Cash in/out
-8. Reports
-9. Print receipt
-10. Backup
+5. Sales billing ✅
+6. Repair form ✅
+7. Cash in/out ✅
+8. Reports ✅
+9. Print receipt ✅
+10. Backup ✅
+
+The full MVP is done. Settings (a later "Module 15" in the original feature
+list) is not part of the MVP list above, so its Dashboard button still shows
+"Coming Soon".
 
 ### Version 2 — Added after MVP works
 - Old gold exchange
@@ -341,5 +343,149 @@ Once you confirm Module 4 works, we'll build **Module 5: Sales Billing form** �
 
 If all checks behave as described, Module 5 is working correctly.
 
-### Next
-Once you confirm Module 5 works, we'll build **Module 6: Repair form** — intake and status tracking for repair jobs, backed by a new `repairs` table.
+---
+
+## Module 6: Repair form
+
+### What's new
+- A `repairs` table and a **Repair Management** screen: log an item brought in for repair, track its status through Pending → In Progress → Completed → Delivered (or Cancelled), and record an estimated cost / advance payment.
+- Each ticket gets an auto-generated receipt number (`REP-000001`, ...) using the same guaranteed-correct pattern as Sales invoice numbers (placeholder insert → real ID → update).
+- Search by customer name, phone, or receipt number.
+- The Dashboard's **Repairs** button now opens this form.
+
+### Files added
+| File | Purpose |
+|---|---|
+| `Database/05_schema_repairs.sql` | Creates the `repairs` table. Run in phpMyAdmin. |
+| `ZarghoonJewelryPro/Forms/frmRepair.Designer.cs` | Design code — `txtCustomerName`, `txtCustomerPhone`, `txtItemDescription`, `txtWeight`, `txtEstimatedCost`, `txtAdvancePaid`, `cboStatus`, `dtpDeliveryDate`, search box, CRUD buttons, `dgvRepairs`. |
+| `ZarghoonJewelryPro/Forms/frmRepair.cs` | Program code — receipt numbering, CRUD, search, status tracking. |
+
+### How to test
+1. Dashboard → **Repairs**. Leave Customer Name blank, click **Save** → expect a validation warning.
+2. Fill in a customer name, phone, item description (e.g. "Gold ring — resize"), weight, estimated cost, advance paid, pick a status, click **Save** → expect a success message and a new row with a real `REP-` receipt number.
+3. Click the row → fields populate. Change Status to "In Progress" and click **Update** → grid reflects the change.
+4. Search by phone number → only matching tickets show.
+5. Select a row, click **Delete**, confirm → row disappears.
+6. Click **Update**/**Delete** with nothing selected → warning, not a crash.
+
+---
+
+## Module 7: Cash In/Out form
+
+### What's new
+- A `cash_transactions` table and a **Cash In / Out** screen for logging money in (sales income, etc.) and money out (expenses, withdrawals, ...).
+- **Category** is a free-typeable combo box pre-loaded with common suggestions (Sales Income, Expense, Rent, Salary, Owner Withdrawal, ...) — pick one or type your own.
+- Running **Total In**, **Total Out**, and **Net Balance** are shown live, computed from every transaction in the database (not just what's on screen).
+- The Dashboard's **Cash In / Out** button now opens this form.
+
+### Files added
+| File | Purpose |
+|---|---|
+| `Database/06_schema_cash.sql` | Creates `cash_transactions`. Run in phpMyAdmin. |
+| `ZarghoonJewelryPro/Forms/frmCashInOut.Designer.cs` | Design code — `cboType`, `cboCategory`, `txtAmount`, `txtDescription`, search box, CRUD buttons, `dgvCashTransactions`, and the totals row. |
+| `ZarghoonJewelryPro/Forms/frmCashInOut.cs` | Program code — CRUD, search, and the running In/Out/Net totals. |
+
+### How to test
+1. Dashboard → **Cash In / Out**. Type `0` or leave Amount blank and click **Save** → expect a validation warning.
+2. Set Type = `In`, Category = `Sales Income`, Amount = `5000`, click **Save** → row appears, **Total In** and **Net Balance** update.
+3. Add an `Out` transaction, e.g. Category = `Rent`, Amount = `2000` → **Total Out** updates, **Net Balance** = In − Out.
+4. Click a row, change the amount, click **Update** → totals recalculate.
+5. Search by category text → filters the grid (totals stay based on everything, not just the filtered view).
+6. Delete a transaction with confirmation → totals adjust.
+
+---
+
+## Module 8: Reports form
+
+### What's new
+- A **Reports** screen with four report types: **Sales**, **Cash In / Out**, **Repairs**, and **Customer Ledger** (a specific customer's full invoice history and outstanding balance — this covers the "customer ledger print" requirement).
+- Date range filter (defaults to today, so leaving it as-is gives you a same-day "daily report").
+- **Export CSV** — writes the current on-screen report to a `.csv` file, which opens directly in Excel (no extra library needed for that).
+- **Print / Export PDF** — opens the standard Windows print dialog; choosing the built-in **"Microsoft Print to PDF"** printer there gives you a real PDF without any extra code or NuGet package.
+- The Dashboard's **Reports** button now opens this form.
+
+### Files added
+| File | Purpose |
+|---|---|
+| `ZarghoonJewelryPro/Forms/frmReports.Designer.cs` | Design code — `cboReportType`, `dtpFromDate`/`dtpToDate`, `cboCustomer` (shown only for Customer Ledger), `dgvReport`, `lblSummary`, export/print buttons. |
+| `ZarghoonJewelryPro/Forms/frmReports.cs` | Program code — one query per report type, CSV export, and a generic `PrintDocument` that prints whatever's in the grid. |
+
+**Note on scope:** CSV *import* (for bulk-loading stock/customers) is not included in this pass — it's a reasonable future addition but was out of scope for the MVP reporting screen itself.
+
+### How to test
+1. Dashboard → **Reports**. Report Type defaults to **Sales**, From/To default to today.
+2. Click **Generate** → shows today's sales (empty if none yet) with a summary line ("N sale(s) — Total: ...").
+3. Switch Report Type to **Cash In / Out**, **Generate** → shows today's cash transactions with In/Out/Net summary.
+4. Switch to **Customer Ledger** → a Customer dropdown appears. Pick a customer with past sales, widen the date range if needed, **Generate** → shows their invoices and total outstanding balance.
+5. Click **Export CSV**, save the file, open it in Excel — confirm the data matches the grid.
+6. Click **Print / Export PDF**, choose "Microsoft Print to PDF" (or any printer) in the dialog → confirm the printed page shows the shop name, report title, and rows.
+7. Click **Generate**/**Export**/**Print** with no data → expect warnings, not crashes.
+
+---
+
+## Module 9: Print Receipt
+
+### What's new
+- The **Print Receipt** button on the Sales Billing form (previously a "Coming in Module 9" stub) now actually prints, via `PrintDocument` and a `PrintPreviewDialog` so you can see the receipt before committing it to paper.
+- Layout includes: shop name, address, phone (from the new `Data/ShopInfo.cs`), invoice number, date, customer, an item table (name, karat, weight, qty, rate, making charges, line total), totals, and a signature line — matching the full receipt requirements.
+- Printing is only available for the **last sale you saved** in the current session (you can't print an unsaved/in-progress invoice, since its numbers aren't final yet).
+
+### Files added/changed
+| File | Purpose |
+|---|---|
+| `ZarghoonJewelryPro/Data/ShopInfo.cs` | Shop name/address/phone shown on receipts. Edit these constants for your shop — a future Settings module will make them editable from the UI. |
+| `ZarghoonJewelryPro/Forms/frmSales.Designer.cs` | Added a `PrintDocument` component (`printDocumentReceipt`). |
+| `ZarghoonJewelryPro/Forms/frmSales.cs` | Snapshots the invoice (items, total, received, balance, customer, invoice #) right after a successful save; `btnPrint_Click` now opens a print preview instead of a stub message. |
+
+### How to test
+1. Edit `Data/ShopInfo.cs` with your real shop name/address/phone (optional but recommended).
+2. Dashboard → **Sales Billing** → click **Print Receipt** *before* saving anything → expect "Please save the sale first before printing."
+3. Add an item, save the sale, then click **Print Receipt** → a print preview window opens showing the shop header, invoice number, date, customer, item table, totals, and a signature line.
+4. From the print preview, click the print icon to send it to your default printer (or "Microsoft Print to PDF" to get a PDF) and confirm the layout looks correct.
+5. Save a second sale and print again → confirm the new invoice's details show (not the previous one).
+
+---
+
+## Module 10: Backup & Restore
+
+### What's new
+- A **Backup & Restore** screen using `mysqldump.exe`/`mysql.exe` (the same tools phpMyAdmin uses internally) via `System.Diagnostics.Process` — no extra NuGet package needed.
+- **Backup Now**: choose where to save a `.sql` file containing your entire database.
+- **Restore from File**: pick a previously saved `.sql` file and load it back in, after a confirmation (this **overwrites all current data**).
+- **Daily Backup Reminder**: the Dashboard now checks on login whether a backup has happened today (tracked in a small `lastbackup.txt` file next to the exe) and reminds you if not.
+- The Dashboard's **Backup & Restore** button now opens this form.
+
+### Files added
+| File | Purpose |
+|---|---|
+| `ZarghoonJewelryPro/Data/BackupTracker.cs` | Records/reads the last-backup timestamp for the daily reminder. |
+| `ZarghoonJewelryPro/Forms/frmBackup.Designer.cs` | Design code — `btnBackupNow`, `btnRestore`, `txtLog` (shows what happened), `btnClose`. |
+| `ZarghoonJewelryPro/Forms/frmBackup.cs` | Runs `mysqldump`/`mysql` as child processes, using `ArgumentList` (not a raw command string) to avoid any shell-injection risk, and the `MYSQL_PWD` environment variable instead of a `-p` flag so the password never appears in the process list. |
+
+`ZarghoonJewelryPro/Data/DbConfig.cs` gained one more setting:
+```csharp
+public const string MySqlBinPath = @"C:\xampp\mysql\bin\";
+```
+**Edit this** to match where your MySQL is installed if it's not a default XAMPP setup (e.g. WAMP is typically `C:\wamp64\bin\mysql\mysql8.0.x\bin\`).
+
+### How to test
+1. Confirm `DbConfig.MySqlBinPath` points to the folder containing `mysqldump.exe` and `mysql.exe` (for XAMPP, check `C:\xampp\mysql\bin\` exists with those two files).
+2. Dashboard → **Backup & Restore** → **Backup Now** → choose a save location → expect "Backup completed successfully" and a `.sql` file at that location with real content (open it in Notepad to confirm it has `CREATE TABLE`/`INSERT` statements).
+3. Log out and back in → the "Daily Backup Reminder" should **not** appear again today (since you just backed up).
+4. In Stock, add a throwaway test item so you can see it disappear after restore.
+5. Click **Restore from File**, confirm the warning, pick the `.sql` file from step 2 → expect "Restore completed successfully," and the throwaway item from step 4 (added *after* the backup) should now be gone, since the backup didn't include it.
+6. Temporarily rename `DbConfig.MySqlBinPath` to a wrong path and try **Backup Now** again → expect a clear "Could not find mysqldump.exe" message rather than a crash. Change it back afterward.
+
+---
+
+## What's next (Version 2, after MVP)
+
+The MVP (Modules 1–10) is complete. Natural next steps, in roughly the order they build on what exists:
+- **Settings module** — make `DbConfig`-style constants (shop info, gold rate, receipt size, currency, backup path, categories, karats, payment methods, expense categories) editable from the UI and persisted in the database instead of hardcoded.
+- **Old gold exchange** — a variant of Sales Billing that takes old gold in as partial payment.
+- **Supplier ledger** — mirrors the Customer Ledger report, but for what you owe suppliers.
+- **Barcode** — print/scan barcodes for stock items instead of typing Item Codes.
+- **Charts** — visual dashboards over the Reports data.
+- **Staff permissions** — restrict which modules/actions each `Role` in `users` can access.
+- **CSV import** — bulk-load stock/customers from a spreadsheet.
+- **Multi-branch** — scope stock/sales/reports to a specific shop location.

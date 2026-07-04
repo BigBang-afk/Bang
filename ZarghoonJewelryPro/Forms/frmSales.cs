@@ -1,6 +1,7 @@
 using System;
 using System.Data;
 using System.Drawing;
+using System.Drawing.Printing;
 using System.Globalization;
 using System.Windows.Forms;
 using MySql.Data.MySqlClient;
@@ -12,6 +13,14 @@ namespace ZarghoonJewelryPro.Forms
     {
         private DataTable _cartTable;
         private decimal _cartTotal = 0m;
+
+        private DataTable _lastCartSnapshot;
+        private string _lastInvoiceNumber;
+        private string _lastCustomerName;
+        private DateTime _lastSaleDate;
+        private decimal _lastTotal;
+        private decimal _lastReceived;
+        private decimal _lastBalance;
 
         public frmSales()
         {
@@ -362,6 +371,14 @@ namespace ZarghoonJewelryPro.Forms
 
                             transaction.Commit();
 
+                            _lastCartSnapshot = _cartTable.Copy();
+                            _lastInvoiceNumber = invoiceNumber;
+                            _lastCustomerName = cboCustomer.Text;
+                            _lastSaleDate = DateTime.Now;
+                            _lastTotal = _cartTotal;
+                            _lastReceived = received;
+                            _lastBalance = balance;
+
                             MessageBox.Show(
                                 $"Sale saved successfully.\n\nInvoice: {invoiceNumber}\n" +
                                 $"Total: {_cartTotal:N2}\nReceived: {received:N2}\nBalance: {balance:N2}",
@@ -415,8 +432,101 @@ namespace ZarghoonJewelryPro.Forms
 
         private void btnPrint_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("Receipt printing will be added in Module 9.", "Coming Soon",
-                MessageBoxButtons.OK, MessageBoxIcon.Information);
+            if (_lastInvoiceNumber == null)
+            {
+                MessageBox.Show("Please save the sale first before printing.", "Validation",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            try
+            {
+                using (PrintPreviewDialog preview = new PrintPreviewDialog())
+                {
+                    preview.Document = printDocumentReceipt;
+                    preview.Width = 850;
+                    preview.Height = 650;
+                    preview.ShowDialog();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Printing failed: " + ex.Message, "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void printDocumentReceipt_PrintPage(object sender, PrintPageEventArgs e)
+        {
+            Graphics g = e.Graphics;
+            Font titleFont = new Font("Segoe UI", 16F, FontStyle.Bold);
+            Font boldFont = new Font("Segoe UI", 10F, FontStyle.Bold);
+            Font normalFont = new Font("Segoe UI", 10F);
+
+            int x = e.MarginBounds.Left;
+            int y = e.MarginBounds.Top;
+            int width = e.MarginBounds.Width;
+
+            g.DrawString(ShopInfo.ShopName, titleFont, Brushes.Black, x, y);
+            y += 28;
+            g.DrawString(ShopInfo.Address, normalFont, Brushes.Black, x, y);
+            y += 18;
+            g.DrawString("Phone: " + ShopInfo.PhoneNumber, normalFont, Brushes.Black, x, y);
+            y += 25;
+            g.DrawLine(Pens.Black, x, y, x + width, y);
+            y += 15;
+
+            g.DrawString("INVOICE", boldFont, Brushes.Black, x, y);
+            g.DrawString("Invoice #: " + _lastInvoiceNumber, normalFont, Brushes.Black, x + width - 220, y);
+            y += 20;
+            g.DrawString("Date: " + _lastSaleDate.ToString("dd MMM yyyy  hh:mm tt", CultureInfo.InvariantCulture),
+                normalFont, Brushes.Black, x, y);
+            g.DrawString("Customer: " + _lastCustomerName, normalFont, Brushes.Black, x + width - 220, y);
+            y += 25;
+            g.DrawLine(Pens.Black, x, y, x + width, y);
+            y += 10;
+
+            int col1 = x, col2 = x + 150, col3 = x + 210, col4 = x + 270, col5 = x + 320, col6 = x + 390, col7 = x + 460;
+            y += 5;
+            g.DrawString("Item", boldFont, Brushes.Black, col1, y);
+            g.DrawString("Karat", boldFont, Brushes.Black, col2, y);
+            g.DrawString("Weight", boldFont, Brushes.Black, col3, y);
+            g.DrawString("Qty", boldFont, Brushes.Black, col4, y);
+            g.DrawString("Rate", boldFont, Brushes.Black, col5, y);
+            g.DrawString("Making", boldFont, Brushes.Black, col6, y);
+            g.DrawString("Total", boldFont, Brushes.Black, col7, y);
+            y += 20;
+            g.DrawLine(Pens.Black, x, y, x + width, y);
+
+            if (_lastCartSnapshot != null)
+            {
+                foreach (DataRow row in _lastCartSnapshot.Rows)
+                {
+                    y += 18;
+                    g.DrawString(row["ItemName"].ToString(), normalFont, Brushes.Black, col1, y);
+                    g.DrawString(row["Karat"].ToString(), normalFont, Brushes.Black, col2, y);
+                    g.DrawString(Convert.ToDecimal(row["Weight"]).ToString("0.000", CultureInfo.InvariantCulture), normalFont, Brushes.Black, col3, y);
+                    g.DrawString(row["Quantity"].ToString(), normalFont, Brushes.Black, col4, y);
+                    g.DrawString(Convert.ToDecimal(row["RatePerGram"]).ToString("N2", CultureInfo.InvariantCulture), normalFont, Brushes.Black, col5, y);
+                    g.DrawString(Convert.ToDecimal(row["MakingCharges"]).ToString("N2", CultureInfo.InvariantCulture), normalFont, Brushes.Black, col6, y);
+                    g.DrawString(Convert.ToDecimal(row["LineTotal"]).ToString("N2", CultureInfo.InvariantCulture), normalFont, Brushes.Black, col7, y);
+                }
+            }
+
+            y += 30;
+            g.DrawLine(Pens.Black, x, y, x + width, y);
+            y += 15;
+
+            g.DrawString("Total Amount: " + _lastTotal.ToString("N2", CultureInfo.InvariantCulture), boldFont, Brushes.Black, x + width - 220, y);
+            y += 20;
+            g.DrawString("Received: " + _lastReceived.ToString("N2", CultureInfo.InvariantCulture), normalFont, Brushes.Black, x + width - 220, y);
+            y += 20;
+            g.DrawString("Balance: " + _lastBalance.ToString("N2", CultureInfo.InvariantCulture), normalFont, Brushes.Black, x + width - 220, y);
+            y += 45;
+
+            g.DrawString("Signature: ______________________", normalFont, Brushes.Black, x, y);
+
+            e.HasMorePages = false;
         }
 
         private void btnClose_Click(object sender, EventArgs e)

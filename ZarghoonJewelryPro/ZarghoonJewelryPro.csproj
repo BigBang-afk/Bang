@@ -30,6 +30,18 @@
     <Compile Update="Forms\frmSales.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="Forms\frmRepair.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\frmCashInOut.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\frmReports.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\frmBackup.cs">
+      <SubType>Form</SubType>
+    </Compile>
   </ItemGroup>
 
 </Project>

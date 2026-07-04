@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Drawing.Printing;
 using System.Windows.Forms;
 
 namespace ZarghoonJewelryPro.Forms
@@ -55,8 +56,14 @@ namespace ZarghoonJewelryPro.Forms
         private Button btnClear;
         private Button btnClose;
 
+        private PrintDocument printDocumentReceipt;
+
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
+            this.printDocumentReceipt = new PrintDocument();
+            this.printDocumentReceipt.PrintPage += new PrintPageEventHandler(this.printDocumentReceipt_PrintPage);
+
             this.pnlTop = new Panel();
             this.lblFormTitle = new Label();
             this.lblInvoiceCaption = new Label();

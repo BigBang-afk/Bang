@@ -1,5 +1,6 @@
 using System;
 using System.Windows.Forms;
+using ZarghoonJewelryPro.Data;
 
 namespace ZarghoonJewelryPro.Forms
 {
@@ -20,6 +21,14 @@ namespace ZarghoonJewelryPro.Forms
             lblWelcomeUser.Text = $"Logged in as: {_fullName} ({_role})";
             lblDateTime.Text = DateTime.Now.ToString("dddd, dd MMMM yyyy   hh:mm:ss tt");
             timerClock.Start();
+
+            if (!BackupTracker.WasBackedUpToday())
+            {
+                MessageBox.Show(
+                    "You haven't backed up your database today.\n\n" +
+                    "It's recommended to back up daily — go to Backup & Restore from the menu.",
+                    "Daily Backup Reminder", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
         }
 
         private void timerClock_Tick(object sender, EventArgs e)
@@ -60,15 +69,39 @@ namespace ZarghoonJewelryPro.Forms
             }
         }
 
-        private void btnRepairs_Click(object sender, EventArgs e) => ShowNotBuiltYet("Repairs", 6);
+        private void btnRepairs_Click(object sender, EventArgs e)
+        {
+            using (frmRepair repairForm = new frmRepair())
+            {
+                repairForm.ShowDialog();
+            }
+        }
 
-        private void btnCashInOut_Click(object sender, EventArgs e) => ShowNotBuiltYet("Cash In / Out", 7);
+        private void btnCashInOut_Click(object sender, EventArgs e)
+        {
+            using (frmCashInOut cashForm = new frmCashInOut())
+            {
+                cashForm.ShowDialog();
+            }
+        }
 
-        private void btnReports_Click(object sender, EventArgs e) => ShowNotBuiltYet("Reports", 8);
+        private void btnReports_Click(object sender, EventArgs e)
+        {
+            using (frmReports reportsForm = new frmReports())
+            {
+                reportsForm.ShowDialog();
+            }
+        }
 
         private void btnSettings_Click(object sender, EventArgs e) => ShowNotBuiltYet("Settings", 15);
 
-        private void btnBackup_Click(object sender, EventArgs e) => ShowNotBuiltYet("Backup & Restore", 10);
+        private void btnBackup_Click(object sender, EventArgs e)
+        {
+            using (frmBackup backupForm = new frmBackup())
+            {
+                backupForm.ShowDialog();
+            }
+        }
 
         private void btnLogout_Click(object sender, EventArgs e)
         {
