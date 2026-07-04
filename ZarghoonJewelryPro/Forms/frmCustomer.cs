@@ -58,7 +58,7 @@ namespace ZarghoonJewelryPro.Forms
             }
             catch (MySqlException ex)
             {
-                MessageBox.Show("Database error: " + ex.Message, "Error",
+                MessageBox.Show(DatabaseHelper.GetFriendlyErrorMessage(ex), "Database Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             catch (Exception ex)
@@ -120,7 +120,7 @@ namespace ZarghoonJewelryPro.Forms
             }
             catch (MySqlException ex)
             {
-                MessageBox.Show("Database error: " + ex.Message, "Error",
+                MessageBox.Show(DatabaseHelper.GetFriendlyErrorMessage(ex), "Database Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             catch (Exception ex)
@@ -174,7 +174,7 @@ namespace ZarghoonJewelryPro.Forms
             }
             catch (MySqlException ex)
             {
-                MessageBox.Show("Database error: " + ex.Message, "Error",
+                MessageBox.Show(DatabaseHelper.GetFriendlyErrorMessage(ex), "Database Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             catch (Exception ex)
@@ -227,7 +227,7 @@ namespace ZarghoonJewelryPro.Forms
             }
             catch (MySqlException ex)
             {
-                MessageBox.Show("Database error: " + ex.Message, "Error",
+                MessageBox.Show(DatabaseHelper.GetFriendlyErrorMessage(ex), "Database Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             catch (Exception ex)

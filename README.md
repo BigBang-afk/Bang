@@ -41,6 +41,25 @@ A jewelry shop management system built with **C# Windows Forms (.NET 8)** and
 
 ---
 
+## Troubleshooting: "Database error" / "unable to connect"
+
+Every form shows a specific, actionable message for this now (via
+`DatabaseHelper.GetFriendlyErrorMessage` in `Data/DatabaseHelper.cs`) instead of
+a raw driver error. What it means and how to fix it:
+
+| Message says | Cause | Fix |
+|---|---|---|
+| "Cannot reach the MySQL server at ..." | MySQL isn't running, or `Server`/`Port` in `DbConfig.cs` is wrong | Start MySQL (e.g. in the XAMPP/WAMP control panel, click Start next to MySQL until it's green). Confirm the port — default is `3306`. |
+| "MySQL rejected the login" | Wrong `UserId`/`Password` in `DbConfig.cs` | Match whatever you use to log into phpMyAdmin. Fresh XAMPP installs use `root` with an empty password (`""`). |
+| "The database 'zarghoon_jewelry' does not exist yet" | You haven't run the SQL scripts | Open phpMyAdmin → SQL tab → run `Database/01_schema_users.sql`, then `02`, `03`, `04`, in order. |
+| "A required table is missing" | Only some SQL scripts were run | Re-run the remaining scripts in `Database/`, in numeric order. |
+
+If you still see a generic "Database error: ..." message, the exact text after
+"Raw error:" tells you precisely what MySQL said — copy that if you need to ask
+for help.
+
+---
+
 ## Module 1: Project Setup + Database Connection + Login Form
 
 ### What's in this module

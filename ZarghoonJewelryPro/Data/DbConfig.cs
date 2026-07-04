@@ -13,6 +13,7 @@ namespace ZarghoonJewelryPro.Data
         public const string Password = "";
 
         public static string ConnectionString =>
-            $"Server={Server};Port={Port};Database={DatabaseName};Uid={UserId};Pwd={Password};";
+            $"Server={Server};Port={Port};Database={DatabaseName};Uid={UserId};Pwd={Password};" +
+            "Connection Timeout=5;";
     }
 }
