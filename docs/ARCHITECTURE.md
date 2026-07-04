@@ -21,7 +21,7 @@ via `Assets/_Project/Config/Secrets.asset` (gitignored).
 |---|--------|----------|--------|
 | 1 | Project foundation & architecture | — | done |
 | 2 | Card/troop/spell data layer | `RoyaleClash.Cards` | done |
-| 3 | Battle system (sim core) | `RoyaleClash.Battle` | pending |
+| 3 | Battle system (sim core) | `RoyaleClash.Battle` | done |
 | 4 | Networking (Photon Fusion 2) | `RoyaleClash.Networking` | pending |
 | 5 | Backend (PlayFab) | `RoyaleClash.Backend` | pending |
 | 6 | Economy & progression | `RoyaleClash.Economy`, `RoyaleClash.Progression` | pending |
