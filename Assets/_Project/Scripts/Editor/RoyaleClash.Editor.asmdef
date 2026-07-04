@@ -1,0 +1,20 @@
+{
+    "name": "RoyaleClash.Editor",
+    "rootNamespace": "RoyaleClash.EditorTools",
+    "references": [
+        "RoyaleClash.Core",
+        "RoyaleClash.Cards",
+        "RoyaleClash.Battle",
+        "RoyaleClash.Economy",
+        "RoyaleClash.Progression"
+    ],
+    "includePlatforms": ["Editor"],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

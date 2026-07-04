@@ -1,0 +1,20 @@
+{
+    "name": "RoyaleClash.UI",
+    "rootNamespace": "RoyaleClash.UI",
+    "references": ["RoyaleClash.Core",
+        "RoyaleClash.Cards",
+        "RoyaleClash.Battle",
+        "RoyaleClash.Economy",
+        "RoyaleClash.Progression",
+        "RoyaleClash.Backend",
+        "RoyaleClash.Networking"],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

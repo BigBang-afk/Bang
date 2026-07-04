@@ -1,0 +1,16 @@
+{
+    "name": "RoyaleClash.Economy",
+    "rootNamespace": "RoyaleClash.Economy",
+    "references": ["RoyaleClash.Core",
+        "RoyaleClash.Cards",
+        "RoyaleClash.Backend"],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

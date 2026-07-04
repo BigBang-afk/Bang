@@ -1,0 +1,14 @@
+{
+    "name": "RoyaleClash.Optimization",
+    "rootNamespace": "RoyaleClash.Optimization",
+    "references": ["RoyaleClash.Core"],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

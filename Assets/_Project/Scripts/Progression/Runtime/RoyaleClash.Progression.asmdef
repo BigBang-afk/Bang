@@ -1,0 +1,16 @@
+{
+    "name": "RoyaleClash.Progression",
+    "rootNamespace": "RoyaleClash.Progression",
+    "references": ["RoyaleClash.Core",
+        "RoyaleClash.Backend",
+        "RoyaleClash.Economy"],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

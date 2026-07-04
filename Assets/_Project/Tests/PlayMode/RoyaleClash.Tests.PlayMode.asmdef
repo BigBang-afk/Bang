@@ -1,0 +1,23 @@
+{
+    "name": "RoyaleClash.Tests.PlayMode",
+    "rootNamespace": "RoyaleClash.Tests.PlayMode",
+    "references": [
+        "RoyaleClash.Core",
+        "RoyaleClash.Cards",
+        "RoyaleClash.Battle",
+        "RoyaleClash.Networking",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": ["UNITY_INCLUDE_TESTS"],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

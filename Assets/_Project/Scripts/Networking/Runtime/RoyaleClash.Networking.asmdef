@@ -1,0 +1,16 @@
+{
+    "name": "RoyaleClash.Networking",
+    "rootNamespace": "RoyaleClash.Networking",
+    "references": ["RoyaleClash.Core",
+        "RoyaleClash.Cards",
+        "RoyaleClash.Battle"],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

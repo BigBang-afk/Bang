@@ -1,0 +1,15 @@
+{
+    "name": "RoyaleClash.Battle",
+    "rootNamespace": "RoyaleClash.Battle",
+    "references": ["RoyaleClash.Core",
+        "RoyaleClash.Cards"],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
