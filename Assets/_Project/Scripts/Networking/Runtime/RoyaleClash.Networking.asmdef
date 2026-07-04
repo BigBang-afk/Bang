@@ -11,6 +11,12 @@
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [],
-    "versionDefines": [],
+    "versionDefines": [
+        {
+            "name": "com.photonengine.fusion",
+            "expression": "",
+            "define": "ROYALECLASH_PHOTON_FUSION"
+        }
+    ],
     "noEngineReferences": false
 }

@@ -5,6 +5,7 @@
         "RoyaleClash.Core",
         "RoyaleClash.Cards",
         "RoyaleClash.Battle",
+        "RoyaleClash.Networking",
         "RoyaleClash.Economy",
         "RoyaleClash.Progression",
         "UnityEngine.TestRunner",

@@ -22,11 +22,13 @@ via `Assets/_Project/Config/Secrets.asset` (gitignored).
 | 1 | Project foundation & architecture | — | done |
 | 2 | Card/troop/spell data layer | `RoyaleClash.Cards` | done |
 | 3 | Battle system (sim core) | `RoyaleClash.Battle` | done |
-| 4 | Networking (Photon Fusion 2) | `RoyaleClash.Networking` | pending |
+| 4 | Networking (Photon Fusion 2) | `RoyaleClash.Networking` | done* |
 | 5 | Backend (PlayFab) | `RoyaleClash.Backend` | pending |
 | 6 | Economy & progression | `RoyaleClash.Economy`, `RoyaleClash.Progression` | pending |
 | 7 | UI system | `RoyaleClash.UI` | pending |
 | 8 | Arenas / audio / optimization / security / publishing | `RoyaleClash.Audio`, `RoyaleClash.Optimization` | pending |
+
+\* Networking's Fusion-specific layer is written but gated behind `ROYALECLASH_PHOTON_FUSION` and unverified against a real compile — see `docs/NETWORKING.md`. The non-Fusion parts (`IMatchHost`, `PracticeMatchHost`, `SimpleAiOpponent`) are real and tested.
 
 ## Folder layout
 

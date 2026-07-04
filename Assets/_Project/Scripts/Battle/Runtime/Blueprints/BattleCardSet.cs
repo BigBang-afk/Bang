@@ -27,6 +27,11 @@ namespace RoyaleClash.Battle
         public bool TryGetSpell(CardId id, out SpellBlueprint blueprint) => _spells.TryGetValue(id, out blueprint);
         public bool TryGetChampion(CardId id, out ChampionBlueprint blueprint) => _champions.TryGetValue(id, out blueprint);
 
+        public IReadOnlyCollection<TroopBlueprint> AllTroops => _troops.Values;
+        public IReadOnlyCollection<BuildingBlueprint> AllBuildings => _buildings.Values;
+        public IReadOnlyCollection<SpellBlueprint> AllSpells => _spells.Values;
+        public IReadOnlyCollection<ChampionBlueprint> AllChampions => _champions.Values;
+
         /// <summary>Builds a card set from every card in a database at level 1, for local practice/tests.</summary>
         public static BattleCardSet BuildFromDatabase(CardDatabase database, CardLevelCurve curve)
         {

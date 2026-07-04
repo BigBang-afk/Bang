@@ -50,19 +50,25 @@ namespace RoyaleClash.Battle
             _crowns[playerB] = 0;
             _towerDamageDealt[playerA] = Fix64.Zero;
             _towerDamageDealt[playerB] = Fix64.Zero;
-
-            SpawnTower(playerA, TowerTier.King, Lane.Left);
-            SpawnTower(playerA, TowerTier.Princess, Lane.Left);
-            SpawnTower(playerA, TowerTier.Princess, Lane.Right);
-            SpawnTower(playerB, TowerTier.King, Lane.Left);
-            SpawnTower(playerB, TowerTier.Princess, Lane.Left);
-            SpawnTower(playerB, TowerTier.Princess, Lane.Right);
         }
 
+        /// <summary>
+        /// Spawns the towers and moves to the Battle phase. Deliberately not done in the
+        /// constructor: callers are expected to construct, subscribe to <see cref="EntitySpawned"/>
+        /// etc., and only then call Start() — so the initial tower-spawn events are never
+        /// missed by a subscriber that (necessarily) can't attach until after construction.
+        /// </summary>
         public void Start()
         {
             if (Phase != MatchPhase.PreMatch) return;
             Phase = MatchPhase.Battle;
+
+            SpawnTower(_playerA, TowerTier.King, Lane.Left);
+            SpawnTower(_playerA, TowerTier.Princess, Lane.Left);
+            SpawnTower(_playerA, TowerTier.Princess, Lane.Right);
+            SpawnTower(_playerB, TowerTier.King, Lane.Left);
+            SpawnTower(_playerB, TowerTier.Princess, Lane.Left);
+            SpawnTower(_playerB, TowerTier.Princess, Lane.Right);
         }
 
         public ElixirPool GetElixir(PlayerSlot slot) => _elixir[slot];
