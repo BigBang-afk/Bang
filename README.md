@@ -14,8 +14,8 @@ design docs as they land.
 | Module | Status |
 |---|---|
 | 1. Project foundation & architecture | ✅ done |
-| 2. Card/troop/spell data layer | ⏳ next |
-| 3. Battle system | pending |
+| 2. Card/troop/spell data layer | ✅ done |
+| 3. Battle system | ⏳ next |
 | 4. Networking (Photon Fusion 2) | pending |
 | 5. Backend (PlayFab) | pending |
 | 6. Economy & progression | pending |

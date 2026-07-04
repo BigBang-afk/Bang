@@ -20,7 +20,7 @@ via `Assets/_Project/Config/Secrets.asset` (gitignored).
 | # | Module | Assembly | Status |
 |---|--------|----------|--------|
 | 1 | Project foundation & architecture | — | done |
-| 2 | Card/troop/spell data layer | `RoyaleClash.Cards` | pending |
+| 2 | Card/troop/spell data layer | `RoyaleClash.Cards` | done |
 | 3 | Battle system (sim core) | `RoyaleClash.Battle` | pending |
 | 4 | Networking (Photon Fusion 2) | `RoyaleClash.Networking` | pending |
 | 5 | Backend (PlayFab) | `RoyaleClash.Backend` | pending |
