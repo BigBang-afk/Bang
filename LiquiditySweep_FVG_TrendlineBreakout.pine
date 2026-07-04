@@ -1,0 +1,197 @@
+//@version=5
+indicator("Liquidity Sweep + FVG + Trendline Breakout (5m)", shorttitle="LiqSweep-FVG-TL", overlay=true, max_lines_count=500, max_labels_count=500, max_boxes_count=500)
+
+// ───────────────────────────── Inputs ─────────────────────────────
+grpSwing = "Swing Structure"
+swingLen        = input.int(3, "Swing Pivot Length (bars each side)", minval=1, group=grpSwing, tooltip="Lower = more sensitive, tuned for 5m. Try 3-5.")
+maxSwings       = input.int(15, "Max Swing Points Stored (per side)", minval=2, maxval=50, group=grpSwing)
+
+grpSweep = "Liquidity Sweep"
+sweepLookback   = input.int(50, "Swing Point Eligible Window (bars)", minval=5, group=grpSweep, tooltip="How far back a swing high/low can still be swept.")
+
+grpFVG = "Fair Value Gap (FVG)"
+minGapPct       = input.float(0.02, "Min Gap Size (% of price)", minval=0.0, step=0.01, group=grpFVG) / 100
+maxFvgAge       = input.int(150, "FVG Max Age (bars)", minval=10, group=grpFVG)
+showFVGBoxes    = input.bool(true, "Show FVG Boxes", group=grpFVG)
+bullFVGColor    = input.color(color.new(color.aqua, 82), "Bullish FVG Color", group=grpFVG)
+bearFVGColor    = input.color(color.new(color.orange, 82), "Bearish FVG Color", group=grpFVG)
+
+grpTrend = "Trendline Breakout"
+requireDescRes  = input.bool(true, "Resistance Line Must Be Descending", group=grpTrend)
+requireAscSup   = input.bool(true, "Support Line Must Be Ascending", group=grpTrend)
+showTrendlines  = input.bool(true, "Show Trendlines", group=grpTrend)
+resColor        = input.color(color.red, "Resistance Line Color", group=grpTrend)
+supColor        = input.color(color.green, "Support Line Color", group=grpTrend)
+
+grpSignal = "Signal / Confluence"
+reqSweep        = input.bool(true, "Require Liquidity Sweep", group=grpSignal)
+reqFVG          = input.bool(true, "Require Active FVG", group=grpSignal)
+confluenceWindow = input.int(15, "Sweep Validity Window (bars before breakout)", minval=1, group=grpSignal)
+showTable       = input.bool(true, "Show Status Table", group=grpSignal)
+showSweepMarks  = input.bool(true, "Show Sweep Markers", group=grpSignal)
+
+// ───────────────────────────── Types ─────────────────────────────
+type Swing
+    float price
+    int   bar
+    bool  swept
+
+type FVG
+    float top
+    float bottom
+    bool  bullish
+    bool  filled
+    int   startBar
+    box   id
+
+var array<Swing> swingHighs = array.new<Swing>()
+var array<Swing> swingLows  = array.new<Swing>()
+var array<FVG>   fvgs       = array.new<FVG>()
+
+// ───────────────────────────── Swing pivots ─────────────────────────────
+ph = ta.pivothigh(swingLen, swingLen)
+pl = ta.pivotlow(swingLen, swingLen)
+
+if not na(ph)
+    array.unshift(swingHighs, Swing.new(ph, bar_index - swingLen, false))
+    if array.size(swingHighs) > maxSwings
+        array.pop(swingHighs)
+if not na(pl)
+    array.unshift(swingLows, Swing.new(pl, bar_index - swingLen, false))
+    if array.size(swingLows) > maxSwings
+        array.pop(swingLows)
+
+// ───────────────────────────── Liquidity sweeps ─────────────────────────────
+var int lastBearSweepBar = na
+var int lastBullSweepBar = na
+
+if array.size(swingHighs) > 0
+    for i = 0 to array.size(swingHighs) - 1
+        sw = array.get(swingHighs, i)
+        if not sw.swept and (bar_index - sw.bar) <= sweepLookback and high > sw.price and close < sw.price
+            sw.swept := true
+            lastBearSweepBar := bar_index
+            if showSweepMarks
+                label.new(bar_index, high, "SWEEP", xloc.bar_index, yloc.price, color=color.new(color.red, 30), textcolor=color.white, style=label.style_label_down, size=size.tiny)
+
+if array.size(swingLows) > 0
+    for i = 0 to array.size(swingLows) - 1
+        sw = array.get(swingLows, i)
+        if not sw.swept and (bar_index - sw.bar) <= sweepLookback and low < sw.price and close > sw.price
+            sw.swept := true
+            lastBullSweepBar := bar_index
+            if showSweepMarks
+                label.new(bar_index, low, "SWEEP", xloc.bar_index, yloc.price, color=color.new(color.green, 30), textcolor=color.white, style=label.style_label_up, size=size.tiny)
+
+bullSweepRecent = not na(lastBullSweepBar) and (bar_index - lastBullSweepBar) <= confluenceWindow
+bearSweepRecent = not na(lastBearSweepBar) and (bar_index - lastBearSweepBar) <= confluenceWindow
+
+// ───────────────────────────── Fair Value Gaps ─────────────────────────────
+if bar_index > 2
+    if low > high[2] and (low - high[2]) >= close * minGapPct
+        newBox = showFVGBoxes ? box.new(left=bar_index - 2, top=low, right=bar_index, bottom=high[2], border_color=bullFVGColor, bgcolor=bullFVGColor, extend=extend.none) : na
+        array.push(fvgs, FVG.new(low, high[2], true, false, bar_index, newBox))
+    if high < low[2] and (low[2] - high) >= close * minGapPct
+        newBox2 = showFVGBoxes ? box.new(left=bar_index - 2, top=low[2], right=bar_index, bottom=high, border_color=bearFVGColor, bgcolor=bearFVGColor, extend=extend.none) : na
+        array.push(fvgs, FVG.new(low[2], high, false, false, bar_index, newBox2))
+
+bool bullFVGActive = false
+bool bearFVGActive = false
+if array.size(fvgs) > 0
+    for i = array.size(fvgs) - 1 to 0
+        f = array.get(fvgs, i)
+        if f.bullish and not f.filled and low <= f.bottom
+            f.filled := true
+        if not f.bullish and not f.filled and high >= f.top
+            f.filled := true
+        if f.filled or (bar_index - f.startBar > maxFvgAge)
+            if not na(f.id)
+                box.delete(f.id)
+            array.remove(fvgs, i)
+        else
+            if not na(f.id)
+                box.set_right(f.id, bar_index)
+            if f.bullish
+                bullFVGActive := true
+            else
+                bearFVGActive := true
+
+// ───────────────────────────── Trendlines ─────────────────────────────
+var float resSlope = na
+var float resAnchorPrice = na
+var int   resAnchorBar = na
+var float supSlope = na
+var float supAnchorPrice = na
+var int   supAnchorBar = na
+var line  resLine = na
+var line  supLine = na
+
+if not na(ph) and array.size(swingHighs) >= 2
+    p1 = array.get(swingHighs, 0)
+    p2 = array.get(swingHighs, 1)
+    if p1.bar != p2.bar
+        resSlope := (p1.price - p2.price) / (p1.bar - p2.bar)
+        resAnchorPrice := p1.price
+        resAnchorBar := p1.bar
+
+if not na(pl) and array.size(swingLows) >= 2
+    q1 = array.get(swingLows, 0)
+    q2 = array.get(swingLows, 1)
+    if q1.bar != q2.bar
+        supSlope := (q1.price - q2.price) / (q1.bar - q2.bar)
+        supAnchorPrice := q1.price
+        supAnchorBar := q1.bar
+
+resValueNow = na(resAnchorBar) ? na : resAnchorPrice + resSlope * (bar_index - resAnchorBar)
+supValueNow = na(supAnchorBar) ? na : supAnchorPrice + supSlope * (bar_index - supAnchorBar)
+
+if showTrendlines and not na(resValueNow)
+    if na(resLine)
+        resLine := line.new(resAnchorBar, resAnchorPrice, bar_index, resValueNow, color=resColor, width=2)
+    else
+        line.set_xy1(resLine, resAnchorBar, resAnchorPrice)
+        line.set_xy2(resLine, bar_index, resValueNow)
+
+if showTrendlines and not na(supValueNow)
+    if na(supLine)
+        supLine := line.new(supAnchorBar, supAnchorPrice, bar_index, supValueNow, color=supColor, width=2)
+    else
+        line.set_xy1(supLine, supAnchorBar, supAnchorPrice)
+        line.set_xy2(supLine, bar_index, supValueNow)
+
+resSlopeOk = not requireDescRes or (not na(resSlope) and resSlope <= 0)
+supSlopeOk = not requireAscSup or (not na(supSlope) and supSlope >= 0)
+
+resBreakout  = not na(resValueNow) and resSlopeOk and ta.crossover(close, resValueNow)
+supBreakdown = not na(supValueNow) and supSlopeOk and ta.crossunder(close, supValueNow)
+
+// ───────────────────────────── Confluence signal ─────────────────────────────
+bullishSignal = resBreakout and (not reqSweep or bullSweepRecent) and (not reqFVG or bullFVGActive)
+bearishSignal = supBreakdown and (not reqSweep or bearSweepRecent) and (not reqFVG or bearFVGActive)
+
+plotshape(bullishSignal, title="Bullish Signal", style=shape.triangleup, location=location.belowbar, color=color.lime, size=size.small, text="LONG")
+plotshape(bearishSignal, title="Bearish Signal", style=shape.triangledown, location=location.abovebar, color=color.red, size=size.small, text="SHORT")
+
+alertcondition(bullishSignal, title="Bullish Confluence Signal", message="{{ticker}} {{interval}}: liquidity sweep + FVG + resistance trendline breakout — bullish signal at {{close}}")
+alertcondition(bearishSignal, title="Bearish Confluence Signal", message="{{ticker}} {{interval}}: liquidity sweep + FVG + support trendline breakdown — bearish signal at {{close}}")
+
+// ───────────────────────────── Status table ─────────────────────────────
+var table infoTable = na
+if showTable and barstate.islast
+    if na(infoTable)
+        infoTable := table.new(position.top_right, 3, 4, bgcolor=color.new(color.black, 70), border_width=1, border_color=color.gray)
+    table.cell(infoTable, 0, 0, "Confluence", text_color=color.white, bgcolor=color.new(color.gray, 50), text_size=size.small)
+    table.cell(infoTable, 1, 0, "Bull", text_color=color.white, bgcolor=color.new(color.gray, 50), text_size=size.small)
+    table.cell(infoTable, 2, 0, "Bear", text_color=color.white, bgcolor=color.new(color.gray, 50), text_size=size.small)
+
+    table.cell(infoTable, 0, 1, "Sweep", text_color=color.white, text_size=size.small)
+    table.cell(infoTable, 1, 1, bullSweepRecent ? "OK" : "-", text_color=bullSweepRecent ? color.lime : color.gray, text_size=size.small)
+    table.cell(infoTable, 2, 1, bearSweepRecent ? "OK" : "-", text_color=bearSweepRecent ? color.red : color.gray, text_size=size.small)
+
+    table.cell(infoTable, 0, 2, "FVG", text_color=color.white, text_size=size.small)
+    table.cell(infoTable, 1, 2, bullFVGActive ? "OK" : "-", text_color=bullFVGActive ? color.lime : color.gray, text_size=size.small)
+    table.cell(infoTable, 2, 2, bearFVGActive ? "OK" : "-", text_color=bearFVGActive ? color.red : color.gray, text_size=size.small)
+
+    table.cell(infoTable, 0, 3, "Trendline", text_color=color.white, text_size=size.small)
+    table.cell(infoTable, 1, 3, resBreakout ? "BREAK" : "-", text_color=resBreakout ? color.lime : color.gray, text_size=size.small)
+    table.cell(infoTable, 2, 3, supBreakdown ? "BREAK" : "-", text_color=supBreakdown ? color.red : color.gray, text_size=size.small)
