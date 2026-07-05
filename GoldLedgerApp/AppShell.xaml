@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+       xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+       xmlns:views="clr-namespace:GoldLedgerApp.Views"
+       x:Class="GoldLedgerApp.AppShell"
+       Title="24K Gold Ledger"
+       FlyoutBackgroundColor="{StaticResource SurfaceDark}"
+       BackgroundColor="{StaticResource SurfaceDark}">
+
+	<Shell.FlyoutHeader>
+		<Grid Padding="24,48,24,24" BackgroundColor="{StaticResource SurfaceDark}" ColumnDefinitions="Auto,*">
+			<Border Grid.Column="0"
+			        Stroke="{StaticResource Gold}"
+			        StrokeThickness="2"
+			        WidthRequest="52" HeightRequest="52"
+			        StrokeShape="RoundRectangle 26">
+				<Label Text="24K" TextColor="{StaticResource Gold}" FontAttributes="Bold"
+				       FontSize="16" HorizontalOptions="Center" VerticalOptions="Center" />
+			</Border>
+			<VerticalStackLayout Grid.Column="1" Margin="14,0,0,0" VerticalOptions="Center">
+				<Label Text="24K Gold Ledger" TextColor="White" FontSize="18" FontAttributes="Bold" />
+				<Label Text="Pure Gold Trading" TextColor="{StaticResource TextMuted}" FontSize="12" />
+			</VerticalStackLayout>
+		</Grid>
+	</Shell.FlyoutHeader>
+
+	<FlyoutItem Title="Dashboard">
+		<ShellContent Route="dashboard" ContentTemplate="{DataTemplate views:DashboardPage}" />
+	</FlyoutItem>
+
+	<FlyoutItem Title="Customer Ledger">
+		<ShellContent Route="ledger" ContentTemplate="{DataTemplate views:CustomerLedgerPage}" />
+	</FlyoutItem>
+
+	<FlyoutItem Title="Buy Gold">
+		<ShellContent Route="buygold" ContentTemplate="{DataTemplate views:BuyGoldPage}" />
+	</FlyoutItem>
+
+	<FlyoutItem Title="Sell Gold">
+		<ShellContent Route="sellgold" ContentTemplate="{DataTemplate views:SellGoldPage}" />
+	</FlyoutItem>
+
+	<FlyoutItem Title="Reports">
+		<ShellContent Route="reports" ContentTemplate="{DataTemplate views:ReportsPage}" />
+	</FlyoutItem>
+
+	<FlyoutItem Title="Settings">
+		<ShellContent Route="settings" ContentTemplate="{DataTemplate views:SettingsPage}" />
+	</FlyoutItem>
+
+</Shell>

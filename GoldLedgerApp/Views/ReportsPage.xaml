@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:GoldLedgerApp.ViewModels"
+             xmlns:models="clr-namespace:GoldLedgerApp.Models"
+             xmlns:conv="clr-namespace:GoldLedgerApp.Converters"
+             x:Class="GoldLedgerApp.Views.ReportsPage"
+             x:DataType="vm:ReportsViewModel"
+             Title="Reports">
+
+	<ContentPage.Resources>
+		<conv:TransactionTypeColorConverter x:Key="TypeColorConverter" />
+		<conv:TransactionTypeLabelConverter x:Key="TypeLabelConverter" />
+		<conv:InvertedBoolConverter x:Key="InvertedBool" />
+	</ContentPage.Resources>
+
+	<ContentPage.ToolbarItems>
+		<ToolbarItem Text="Export" Command="{Binding ExportCsvCommand}" />
+	</ContentPage.ToolbarItems>
+
+	<RefreshView Command="{Binding LoadCommand}" IsRefreshing="{Binding IsBusy}">
+		<ScrollView>
+			<VerticalStackLayout Padding="20" Spacing="16">
+
+				<Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+					<Border Grid.Column="0" Style="{StaticResource FieldBorder}">
+						<DatePicker Date="{Binding FromDate}" Format="dd MMM yyyy" />
+					</Border>
+					<Border Grid.Column="1" Style="{StaticResource FieldBorder}">
+						<DatePicker Date="{Binding ToDate}" Format="dd MMM yyyy" />
+					</Border>
+				</Grid>
+
+				<HorizontalStackLayout Spacing="10">
+					<Button Text="Today" Style="{StaticResource SecondaryButton}" HeightRequest="38" FontSize="12"
+					        Command="{Binding SetPresetTodayCommand}" />
+					<Button Text="This Week" Style="{StaticResource SecondaryButton}" HeightRequest="38" FontSize="12"
+					        Command="{Binding SetPresetWeekCommand}" />
+					<Button Text="This Month" Style="{StaticResource SecondaryButton}" HeightRequest="38" FontSize="12"
+					        Command="{Binding SetPresetMonthCommand}" />
+					<Button Text="All Time" Style="{StaticResource SecondaryButton}" HeightRequest="38" FontSize="12"
+					        Command="{Binding SetPresetAllCommand}" />
+				</HorizontalStackLayout>
+
+				<HorizontalStackLayout Spacing="10">
+					<Button Text="All" Style="{StaticResource SecondaryButton}" HeightRequest="38" FontSize="12"
+					        Command="{Binding SetFilterCommand}" CommandParameter="All" />
+					<Button Text="Buy" Style="{StaticResource ChipButtonBuy}" HeightRequest="38" FontSize="12"
+					        Command="{Binding SetFilterCommand}" CommandParameter="Buy" />
+					<Button Text="Sell" Style="{StaticResource ChipButtonSell}" HeightRequest="38" FontSize="12"
+					        Command="{Binding SetFilterCommand}" CommandParameter="Sell" />
+				</HorizontalStackLayout>
+
+				<Border Style="{StaticResource CardBorder}">
+					<Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto">
+						<Label Grid.Row="0" Grid.Column="0" Text="BOUGHT" Style="{StaticResource SectionHeaderLabel}" />
+						<Label Grid.Row="0" Grid.Column="1" Text="SOLD" Style="{StaticResource SectionHeaderLabel}" HorizontalTextAlignment="Center" />
+						<Label Grid.Row="0" Grid.Column="2" Text="NET" Style="{StaticResource SectionHeaderLabel}" HorizontalTextAlignment="End" />
+						<Label Grid.Row="1" Grid.Column="0" Text="{Binding TotalBuyText}" FontAttributes="Bold" TextColor="{StaticResource Success}" />
+						<Label Grid.Row="1" Grid.Column="1" Text="{Binding TotalSellText}" FontAttributes="Bold" TextColor="{StaticResource Danger}" HorizontalTextAlignment="Center" />
+						<Label Grid.Row="1" Grid.Column="2" Text="{Binding NetText}" FontAttributes="Bold" TextColor="{Binding NetColor}" HorizontalTextAlignment="End" />
+					</Grid>
+				</Border>
+
+				<Label Text="No transactions in this range." Style="{StaticResource MutedLabel}"
+				       HorizontalTextAlignment="Center" Margin="0,20" IsVisible="{Binding HasNoTransactions}" />
+
+				<CollectionView ItemsSource="{Binding Transactions}" IsVisible="{Binding HasNoTransactions, Converter={StaticResource InvertedBool}}">
+					<CollectionView.ItemsLayout>
+						<LinearItemsLayout Orientation="Vertical" ItemSpacing="10" />
+					</CollectionView.ItemsLayout>
+					<CollectionView.ItemTemplate>
+						<DataTemplate x:DataType="models:GoldTransaction">
+							<Border Style="{StaticResource CardBorder}" Padding="14">
+								<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+									<Border Grid.Column="0" BackgroundColor="{Binding Type, Converter={StaticResource TypeColorConverter}}"
+									        StrokeShape="RoundRectangle 8" Padding="8,4" VerticalOptions="Center">
+										<Label Text="{Binding Type, Converter={StaticResource TypeLabelConverter}}"
+										       TextColor="White" FontSize="11" FontAttributes="Bold" />
+									</Border>
+									<VerticalStackLayout Grid.Column="1" Spacing="2">
+										<Label Text="{Binding CustomerName}" FontAttributes="Bold" FontSize="15" />
+										<Label Text="{Binding NetWeightGrams, StringFormat='{0:N3} g · 24K equiv.'}" Style="{StaticResource MutedLabel}" />
+									</VerticalStackLayout>
+									<VerticalStackLayout Grid.Column="2" Spacing="2" HorizontalOptions="End">
+										<Label Text="{Binding TotalAmount, StringFormat='{0:N2}'}" FontAttributes="Bold" TextColor="{StaticResource Gold}" HorizontalTextAlignment="End" />
+										<Label Text="{Binding Date, StringFormat='{0:dd MMM, hh:mm tt}'}" Style="{StaticResource MutedLabel}" HorizontalTextAlignment="End" />
+									</VerticalStackLayout>
+								</Grid>
+							</Border>
+						</DataTemplate>
+					</CollectionView.ItemTemplate>
+				</CollectionView>
+
+			</VerticalStackLayout>
+		</ScrollView>
+	</RefreshView>
+
+</ContentPage>

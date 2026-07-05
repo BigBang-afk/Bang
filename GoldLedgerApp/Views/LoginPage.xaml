@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:GoldLedgerApp.ViewModels"
+             xmlns:conv="clr-namespace:GoldLedgerApp.Converters"
+             x:Class="GoldLedgerApp.Views.LoginPage"
+             x:DataType="vm:LoginViewModel"
+             NavigationPage.HasNavigationBar="False"
+             BackgroundColor="{StaticResource SurfaceDark}">
+
+	<ContentPage.Resources>
+		<conv:PinDotFillConverter x:Key="PinDotFillConverter" />
+	</ContentPage.Resources>
+
+	<Grid RowDefinitions="*,Auto,*" Padding="32">
+
+		<VerticalStackLayout Grid.Row="1" Spacing="10" HorizontalOptions="Center">
+
+			<Border Stroke="{StaticResource Gold}"
+			        StrokeThickness="2"
+			        WidthRequest="84" HeightRequest="84"
+			        StrokeShape="RoundRectangle 42"
+			        HorizontalOptions="Center"
+			        Margin="0,0,0,12">
+				<Label Text="24K" TextColor="{StaticResource Gold}" FontAttributes="Bold"
+				       FontSize="26" HorizontalOptions="Center" VerticalOptions="Center" />
+			</Border>
+
+			<Label Text="{Binding Headline}" Style="{StaticResource TitleLabel}" HorizontalOptions="Center" />
+			<Label Text="{Binding Subtext}" Style="{StaticResource MutedLabel}"
+			       HorizontalOptions="Center" HorizontalTextAlignment="Center" />
+
+			<HorizontalStackLayout Spacing="18" Margin="0,20,0,0" HorizontalOptions="Center">
+				<Ellipse WidthRequest="16" HeightRequest="16" Stroke="{StaticResource Gold}" StrokeThickness="1.5"
+				         Fill="{Binding EnteredPin, Converter={StaticResource PinDotFillConverter}, ConverterParameter='1'}" />
+				<Ellipse WidthRequest="16" HeightRequest="16" Stroke="{StaticResource Gold}" StrokeThickness="1.5"
+				         Fill="{Binding EnteredPin, Converter={StaticResource PinDotFillConverter}, ConverterParameter='2'}" />
+				<Ellipse WidthRequest="16" HeightRequest="16" Stroke="{StaticResource Gold}" StrokeThickness="1.5"
+				         Fill="{Binding EnteredPin, Converter={StaticResource PinDotFillConverter}, ConverterParameter='3'}" />
+				<Ellipse WidthRequest="16" HeightRequest="16" Stroke="{StaticResource Gold}" StrokeThickness="1.5"
+				         Fill="{Binding EnteredPin, Converter={StaticResource PinDotFillConverter}, ConverterParameter='4'}" />
+			</HorizontalStackLayout>
+
+			<Label Text="{Binding ErrorMessage}" TextColor="{StaticResource Danger}" FontSize="13"
+			       HorizontalOptions="Center" Margin="0,8,0,0" />
+
+			<Grid Margin="0,28,0,0" RowSpacing="14" ColumnSpacing="22"
+			      RowDefinitions="Auto,Auto,Auto,Auto"
+			      ColumnDefinitions="Auto,Auto,Auto"
+			      WidthRequest="260">
+
+				<Button Grid.Row="0" Grid.Column="0" Text="1" Style="{StaticResource SecondaryButton}"
+				        WidthRequest="72" HeightRequest="72" CornerRadius="36"
+				        Command="{Binding AppendDigitCommand}" CommandParameter="1" />
+				<Button Grid.Row="0" Grid.Column="1" Text="2" Style="{StaticResource SecondaryButton}"
+				        WidthRequest="72" HeightRequest="72" CornerRadius="36"
+				        Command="{Binding AppendDigitCommand}" CommandParameter="2" />
+				<Button Grid.Row="0" Grid.Column="2" Text="3" Style="{StaticResource SecondaryButton}"
+				        WidthRequest="72" HeightRequest="72" CornerRadius="36"
+				        Command="{Binding AppendDigitCommand}" CommandParameter="3" />
+
+				<Button Grid.Row="1" Grid.Column="0" Text="4" Style="{StaticResource SecondaryButton}"
+				        WidthRequest="72" HeightRequest="72" CornerRadius="36"
+				        Command="{Binding AppendDigitCommand}" CommandParameter="4" />
+				<Button Grid.Row="1" Grid.Column="1" Text="5" Style="{StaticResource SecondaryButton}"
+				        WidthRequest="72" HeightRequest="72" CornerRadius="36"
+				        Command="{Binding AppendDigitCommand}" CommandParameter="5" />
+				<Button Grid.Row="1" Grid.Column="2" Text="6" Style="{StaticResource SecondaryButton}"
+				        WidthRequest="72" HeightRequest="72" CornerRadius="36"
+				        Command="{Binding AppendDigitCommand}" CommandParameter="6" />
+
+				<Button Grid.Row="2" Grid.Column="0" Text="7" Style="{StaticResource SecondaryButton}"
+				        WidthRequest="72" HeightRequest="72" CornerRadius="36"
+				        Command="{Binding AppendDigitCommand}" CommandParameter="7" />
+				<Button Grid.Row="2" Grid.Column="1" Text="8" Style="{StaticResource SecondaryButton}"
+				        WidthRequest="72" HeightRequest="72" CornerRadius="36"
+				        Command="{Binding AppendDigitCommand}" CommandParameter="8" />
+				<Button Grid.Row="2" Grid.Column="2" Text="9" Style="{StaticResource SecondaryButton}"
+				        WidthRequest="72" HeightRequest="72" CornerRadius="36"
+				        Command="{Binding AppendDigitCommand}" CommandParameter="9" />
+
+				<Button Grid.Row="3" Grid.Column="1" Text="0" Style="{StaticResource SecondaryButton}"
+				        WidthRequest="72" HeightRequest="72" CornerRadius="36"
+				        Command="{Binding AppendDigitCommand}" CommandParameter="0" />
+				<Button Grid.Row="3" Grid.Column="2" Text="⌫" Style="{StaticResource SecondaryButton}"
+				        WidthRequest="72" HeightRequest="72" CornerRadius="36"
+				        BackgroundColor="Transparent" TextColor="{StaticResource TextMuted}"
+				        Command="{Binding BackspaceCommand}" />
+			</Grid>
+
+		</VerticalStackLayout>
+
+		<ActivityIndicator Grid.Row="0" Grid.RowSpan="3" IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}"
+		                    VerticalOptions="Center" HorizontalOptions="Center" />
+
+	</Grid>
+
+</ContentPage>

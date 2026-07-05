@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ResourceDictionary xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+                     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+
+	<Style TargetType="Page" ApplyToDerivedTypes="True">
+		<Setter Property="BackgroundColor" Value="{StaticResource SurfaceDark}" />
+	</Style>
+
+	<Style TargetType="Shell" ApplyToDerivedTypes="True">
+		<Setter Property="Shell.BackgroundColor" Value="{StaticResource SurfaceDark}" />
+		<Setter Property="Shell.ForegroundColor" Value="{StaticResource Gold}" />
+		<Setter Property="Shell.TitleColor" Value="White" />
+		<Setter Property="Shell.DisabledColor" Value="{StaticResource TextMutedLight}" />
+		<Setter Property="Shell.UnselectedColor" Value="{StaticResource TextMuted}" />
+		<Setter Property="Shell.TabBarBackgroundColor" Value="{StaticResource CardDark}" />
+		<Setter Property="Shell.FlyoutBackgroundColor" Value="{StaticResource SurfaceDark}" />
+	</Style>
+
+	<Style TargetType="Label">
+		<Setter Property="TextColor" Value="White" />
+		<Setter Property="FontSize" Value="15" />
+	</Style>
+
+	<Style x:Key="TitleLabel" TargetType="Label">
+		<Setter Property="FontSize" Value="26" />
+		<Setter Property="FontAttributes" Value="Bold" />
+		<Setter Property="TextColor" Value="White" />
+	</Style>
+
+	<Style x:Key="SectionHeaderLabel" TargetType="Label">
+		<Setter Property="FontSize" Value="14" />
+		<Setter Property="FontAttributes" Value="Bold" />
+		<Setter Property="TextColor" Value="{StaticResource TextMuted}" />
+		<Setter Property="CharacterSpacing" Value="0.6" />
+	</Style>
+
+	<Style x:Key="MutedLabel" TargetType="Label">
+		<Setter Property="FontSize" Value="13" />
+		<Setter Property="TextColor" Value="{StaticResource TextMuted}" />
+	</Style>
+
+	<Style x:Key="AmountLabel" TargetType="Label">
+		<Setter Property="FontSize" Value="22" />
+		<Setter Property="FontAttributes" Value="Bold" />
+		<Setter Property="TextColor" Value="{StaticResource Gold}" />
+	</Style>
+
+	<Style x:Key="CardBorder" TargetType="Border">
+		<Setter Property="BackgroundColor" Value="{StaticResource CardDark}" />
+		<Setter Property="Stroke" Value="{StaticResource CardDarkAlt}" />
+		<Setter Property="StrokeThickness" Value="1" />
+		<Setter Property="StrokeShape" Value="RoundRectangle 18" />
+		<Setter Property="Padding" Value="18" />
+		<Setter Property="Shadow">
+			<Shadow Brush="Black" Opacity="0.35" Radius="18" Offset="0,6" />
+		</Setter>
+	</Style>
+
+	<Style TargetType="Entry">
+		<Setter Property="TextColor" Value="White" />
+		<Setter Property="PlaceholderColor" Value="{StaticResource TextMutedLight}" />
+		<Setter Property="BackgroundColor" Value="Transparent" />
+		<Setter Property="FontSize" Value="16" />
+	</Style>
+
+	<Style TargetType="Editor">
+		<Setter Property="TextColor" Value="White" />
+		<Setter Property="PlaceholderColor" Value="{StaticResource TextMutedLight}" />
+		<Setter Property="BackgroundColor" Value="Transparent" />
+		<Setter Property="FontSize" Value="16" />
+	</Style>
+
+	<Style TargetType="Picker">
+		<Setter Property="TextColor" Value="White" />
+		<Setter Property="TitleColor" Value="{StaticResource TextMutedLight}" />
+		<Setter Property="BackgroundColor" Value="Transparent" />
+		<Setter Property="FontSize" Value="16" />
+	</Style>
+
+	<Style TargetType="DatePicker">
+		<Setter Property="TextColor" Value="White" />
+		<Setter Property="BackgroundColor" Value="Transparent" />
+		<Setter Property="FontSize" Value="16" />
+	</Style>
+
+	<Style x:Key="FieldBorder" TargetType="Border">
+		<Setter Property="BackgroundColor" Value="{StaticResource CardDarkAlt}" />
+		<Setter Property="Stroke" Value="{StaticResource CardDarkAlt}" />
+		<Setter Property="StrokeThickness" Value="1" />
+		<Setter Property="StrokeShape" Value="RoundRectangle 12" />
+		<Setter Property="Padding" Value="14,4" />
+	</Style>
+
+	<Style TargetType="Button">
+		<Setter Property="BackgroundColor" Value="{StaticResource Gold}" />
+		<Setter Property="TextColor" Value="{StaticResource Ink}" />
+		<Setter Property="FontAttributes" Value="Bold" />
+		<Setter Property="FontSize" Value="16" />
+		<Setter Property="CornerRadius" Value="14" />
+		<Setter Property="HeightRequest" Value="52" />
+		<Setter Property="Padding" Value="16,0" />
+	</Style>
+
+	<Style x:Key="SecondaryButton" TargetType="Button">
+		<Setter Property="BackgroundColor" Value="{StaticResource CardDarkAlt}" />
+		<Setter Property="TextColor" Value="White" />
+		<Setter Property="FontAttributes" Value="Bold" />
+		<Setter Property="FontSize" Value="16" />
+		<Setter Property="CornerRadius" Value="14" />
+		<Setter Property="HeightRequest" Value="52" />
+	</Style>
+
+	<Style x:Key="ChipButtonSell" TargetType="Button">
+		<Setter Property="BackgroundColor" Value="{StaticResource Danger}" />
+		<Setter Property="TextColor" Value="White" />
+		<Setter Property="FontAttributes" Value="Bold" />
+		<Setter Property="CornerRadius" Value="14" />
+		<Setter Property="HeightRequest" Value="52" />
+	</Style>
+
+	<Style x:Key="ChipButtonBuy" TargetType="Button">
+		<Setter Property="BackgroundColor" Value="{StaticResource Success}" />
+		<Setter Property="TextColor" Value="White" />
+		<Setter Property="FontAttributes" Value="Bold" />
+		<Setter Property="CornerRadius" Value="14" />
+		<Setter Property="HeightRequest" Value="52" />
+	</Style>
+
+	<Style TargetType="CollectionView">
+		<Setter Property="BackgroundColor" Value="Transparent" />
+	</Style>
+
+	<Style TargetType="RefreshView">
+		<Setter Property="RefreshColor" Value="{StaticResource Gold}" />
+	</Style>
+
+	<Style TargetType="ActivityIndicator">
+		<Setter Property="Color" Value="{StaticResource Gold}" />
+	</Style>
+
+	<Style TargetType="SearchBar">
+		<Setter Property="TextColor" Value="White" />
+		<Setter Property="PlaceholderColor" Value="{StaticResource TextMutedLight}" />
+		<Setter Property="BackgroundColor" Value="{StaticResource CardDarkAlt}" />
+		<Setter Property="CancelButtonColor" Value="{StaticResource Gold}" />
+	</Style>
+
+</ResourceDictionary>

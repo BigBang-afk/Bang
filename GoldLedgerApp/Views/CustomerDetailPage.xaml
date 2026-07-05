@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:GoldLedgerApp.ViewModels"
+             xmlns:models="clr-namespace:GoldLedgerApp.Models"
+             xmlns:conv="clr-namespace:GoldLedgerApp.Converters"
+             x:Class="GoldLedgerApp.Views.CustomerDetailPage"
+             x:DataType="vm:CustomerDetailViewModel"
+             Title="{Binding Title}">
+
+	<ContentPage.Resources>
+		<conv:InvertedBoolConverter x:Key="NotBool" />
+		<conv:LedgerEntryTypeColorConverter x:Key="EntryColorConverter" />
+		<conv:LedgerEntryTypeLabelConverter x:Key="EntryLabelConverter" />
+	</ContentPage.Resources>
+
+	<ContentPage.ToolbarItems>
+		<ToolbarItem Text="Delete" Command="{Binding DeleteCustomerCommand}" IsEnabled="{Binding IsNewCustomer, Converter={StaticResource NotBool}}" />
+	</ContentPage.ToolbarItems>
+
+	<ScrollView>
+		<VerticalStackLayout Padding="20" Spacing="16">
+
+			<Border Style="{StaticResource CardBorder}" IsVisible="{Binding IsNewCustomer, Converter={StaticResource NotBool}}">
+				<Grid ColumnDefinitions="*,Auto">
+					<VerticalStackLayout Grid.Column="0" Spacing="4">
+						<Label Text="{Binding BalanceCaption}" Style="{StaticResource SectionHeaderLabel}" />
+						<Label Text="{Binding BalanceText}" Style="{StaticResource AmountLabel}" TextColor="{Binding BalanceColor}" />
+					</VerticalStackLayout>
+					<Button Grid.Column="1" Text="＋ Payment" Style="{StaticResource SecondaryButton}"
+					        HeightRequest="40" FontSize="13" VerticalOptions="Center"
+					        Command="{Binding AddPaymentCommand}" />
+				</Grid>
+			</Border>
+
+			<Border Style="{StaticResource CardBorder}">
+				<VerticalStackLayout Spacing="12">
+					<Label Text="CUSTOMER DETAILS" Style="{StaticResource SectionHeaderLabel}" />
+
+					<Border Style="{StaticResource FieldBorder}">
+						<Entry Placeholder="Full name" Text="{Binding Name}" />
+					</Border>
+					<Border Style="{StaticResource FieldBorder}">
+						<Entry Placeholder="Phone number" Text="{Binding Phone}" Keyboard="Telephone" />
+					</Border>
+					<Border Style="{StaticResource FieldBorder}">
+						<Entry Placeholder="Address" Text="{Binding Address}" />
+					</Border>
+					<Border Style="{StaticResource FieldBorder}" IsVisible="{Binding IsNewCustomer}">
+						<Entry Placeholder="Opening balance (0 if none)" Text="{Binding OpeningBalanceText}" Keyboard="Numeric" />
+					</Border>
+
+					<Button Text="Save Customer" Command="{Binding SaveCommand}" Margin="0,6,0,0" />
+				</VerticalStackLayout>
+			</Border>
+
+			<Label Text="LEDGER HISTORY" Style="{StaticResource SectionHeaderLabel}" Margin="4,10,0,0"
+			       IsVisible="{Binding IsNewCustomer, Converter={StaticResource NotBool}}" />
+
+			<CollectionView ItemsSource="{Binding Entries}" IsVisible="{Binding IsNewCustomer, Converter={StaticResource NotBool}}">
+				<CollectionView.ItemsLayout>
+					<LinearItemsLayout Orientation="Vertical" ItemSpacing="10" />
+				</CollectionView.ItemsLayout>
+				<CollectionView.ItemTemplate>
+					<DataTemplate x:DataType="models:LedgerEntry">
+						<Border Style="{StaticResource CardBorder}" Padding="14">
+							<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+								<Border Grid.Column="0" BackgroundColor="{Binding Type, Converter={StaticResource EntryColorConverter}}"
+								        StrokeShape="RoundRectangle 8" Padding="8,4" VerticalOptions="Center">
+									<Label Text="{Binding Type, Converter={StaticResource EntryLabelConverter}}"
+									       TextColor="White" FontSize="11" FontAttributes="Bold" />
+								</Border>
+								<VerticalStackLayout Grid.Column="1" Spacing="2">
+									<Label Text="{Binding Notes}" FontAttributes="Bold" FontSize="14" />
+									<Label Text="{Binding Date, StringFormat='{0:dd MMM yyyy, hh:mm tt}'}" Style="{StaticResource MutedLabel}" />
+								</VerticalStackLayout>
+								<VerticalStackLayout Grid.Column="2" Spacing="2" HorizontalOptions="End">
+									<Label Text="{Binding Amount, StringFormat='{0:N2}'}" FontAttributes="Bold" />
+									<Label Text="{Binding RunningBalance, StringFormat='Bal: {0:N2}'}" Style="{StaticResource MutedLabel}" HorizontalTextAlignment="End" />
+								</VerticalStackLayout>
+							</Grid>
+						</Border>
+					</DataTemplate>
+				</CollectionView.ItemTemplate>
+			</CollectionView>
+
+			<Label Text="No ledger entries yet." Style="{StaticResource MutedLabel}"
+			       HorizontalTextAlignment="Center" Margin="0,20"
+			       IsVisible="{Binding HasNoEntries}" />
+
+		</VerticalStackLayout>
+	</ScrollView>
+
+</ContentPage>

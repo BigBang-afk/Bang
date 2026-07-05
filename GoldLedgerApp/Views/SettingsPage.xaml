@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:GoldLedgerApp.ViewModels"
+             xmlns:models="clr-namespace:GoldLedgerApp.Models"
+             x:Class="GoldLedgerApp.Views.SettingsPage"
+             x:DataType="vm:SettingsViewModel"
+             Title="Settings">
+
+	<RefreshView Command="{Binding LoadCommand}" IsRefreshing="{Binding IsBusy}">
+		<ScrollView>
+			<VerticalStackLayout Padding="20" Spacing="16">
+
+				<Border Style="{StaticResource CardBorder}">
+					<VerticalStackLayout Spacing="12">
+						<Label Text="SHOP PROFILE" Style="{StaticResource SectionHeaderLabel}" />
+
+						<Border Style="{StaticResource FieldBorder}">
+							<Entry Placeholder="Shop name" Text="{Binding ShopName}" />
+						</Border>
+
+						<Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+							<Border Grid.Column="0" Style="{StaticResource FieldBorder}">
+								<Entry Placeholder="Currency symbol" Text="{Binding CurrencySymbol}" />
+							</Border>
+							<Border Grid.Column="1" Style="{StaticResource FieldBorder}">
+								<Picker Title="Weight unit"
+								        ItemsSource="{x:Static vm:SettingsViewModel.WeightUnitOptions}"
+								        SelectedItem="{Binding SelectedWeightUnit}" />
+							</Border>
+						</Grid>
+
+						<Border Style="{StaticResource FieldBorder}">
+							<Entry Placeholder="Default purity (karat)" Text="{Binding DefaultPurityText}" Keyboard="Numeric" />
+						</Border>
+
+						<Button Text="Save Profile" Command="{Binding SaveProfileCommand}" />
+					</VerticalStackLayout>
+				</Border>
+
+				<Border Style="{StaticResource CardBorder}">
+					<VerticalStackLayout Spacing="12">
+						<Label Text="GOLD RATE" Style="{StaticResource SectionHeaderLabel}" />
+						<Grid ColumnDefinitions="*,Auto">
+							<VerticalStackLayout Grid.Column="0">
+								<Label Text="Current rate / g (24K)" Style="{StaticResource MutedLabel}" />
+								<Label Text="{Binding CurrentRateText}" Style="{StaticResource AmountLabel}" />
+							</VerticalStackLayout>
+							<Button Grid.Column="1" Text="Update" Style="{StaticResource SecondaryButton}"
+							        HeightRequest="40" FontSize="13" VerticalOptions="Center"
+							        Command="{Binding UpdateRateCommand}" />
+						</Grid>
+
+						<CollectionView ItemsSource="{Binding RateHistory}" HeightRequest="160">
+							<CollectionView.ItemTemplate>
+								<DataTemplate x:DataType="models:GoldRate">
+									<Grid ColumnDefinitions="*,Auto" Padding="0,6">
+										<Label Grid.Column="0" Text="{Binding Date, StringFormat='{0:dd MMM yyyy, hh:mm tt}'}" Style="{StaticResource MutedLabel}" />
+										<Label Grid.Column="1" Text="{Binding RatePerGram24K, StringFormat='{0:N2}'}" FontAttributes="Bold" HorizontalTextAlignment="End" />
+									</Grid>
+								</DataTemplate>
+							</CollectionView.ItemTemplate>
+						</CollectionView>
+					</VerticalStackLayout>
+				</Border>
+
+				<Border Style="{StaticResource CardBorder}">
+					<VerticalStackLayout Spacing="12">
+						<Label Text="SECURITY" Style="{StaticResource SectionHeaderLabel}" />
+						<Button Text="Change PIN" Style="{StaticResource SecondaryButton}" Command="{Binding ChangePinCommand}" />
+						<Button Text="Lock App Now" Style="{StaticResource SecondaryButton}" Command="{Binding LockAppCommand}" />
+					</VerticalStackLayout>
+				</Border>
+
+				<Border Style="{StaticResource CardBorder}">
+					<VerticalStackLayout Spacing="12">
+						<Label Text="DATA" Style="{StaticResource SectionHeaderLabel}" />
+						<Label Text="Export a copy of your shop database to share or store safely." Style="{StaticResource MutedLabel}" />
+						<Button Text="Backup Data" Style="{StaticResource SecondaryButton}" Command="{Binding BackupCommand}" />
+					</VerticalStackLayout>
+				</Border>
+
+				<Label Text="{Binding AppVersion, StringFormat='24K Gold Ledger · v{0}'}"
+				       Style="{StaticResource MutedLabel}" HorizontalOptions="Center" Margin="0,10" />
+
+			</VerticalStackLayout>
+		</ScrollView>
+	</RefreshView>
+
+</ContentPage>

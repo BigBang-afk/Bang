@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:GoldLedgerApp.ViewModels"
+             xmlns:models="clr-namespace:GoldLedgerApp.Models"
+             xmlns:conv="clr-namespace:GoldLedgerApp.Converters"
+             x:Class="GoldLedgerApp.Views.DashboardPage"
+             x:DataType="vm:DashboardViewModel"
+             Title="Dashboard">
+
+	<ContentPage.Resources>
+		<conv:TransactionTypeColorConverter x:Key="TypeColorConverter" />
+		<conv:TransactionTypeLabelConverter x:Key="TypeLabelConverter" />
+		<conv:InvertedBoolConverter x:Key="NotBool" />
+	</ContentPage.Resources>
+
+	<RefreshView Command="{Binding LoadCommand}" IsRefreshing="{Binding IsBusy}">
+		<ScrollView>
+			<VerticalStackLayout Padding="20" Spacing="18">
+
+				<VerticalStackLayout Spacing="2">
+					<Label Text="{Binding ShopName}" Style="{StaticResource TitleLabel}" />
+					<Label Text="{Binding TodayDateText}" Style="{StaticResource MutedLabel}" />
+				</VerticalStackLayout>
+
+				<Border StrokeShape="RoundRectangle 20" Padding="20" Stroke="{StaticResource GoldDark}" StrokeThickness="1">
+					<Border.Background>
+						<LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+							<GradientStop Color="{StaticResource GoldDark}" Offset="0.0" />
+							<GradientStop Color="{StaticResource Ink}" Offset="1.0" />
+						</LinearGradientBrush>
+					</Border.Background>
+					<Border.GestureRecognizers>
+						<TapGestureRecognizer Command="{Binding UpdateRateCommand}" />
+					</Border.GestureRecognizers>
+					<Grid ColumnDefinitions="*,Auto">
+						<VerticalStackLayout Grid.Column="0" Spacing="4">
+							<Label Text="TODAY'S 24K GOLD RATE" TextColor="#EADFC0" FontSize="12" CharacterSpacing="0.8" FontAttributes="Bold" />
+							<Label Text="{Binding FormattedRate}" TextColor="White" FontSize="24" FontAttributes="Bold" />
+							<Label Text="Tap to update rate" TextColor="#D8C69A" FontSize="12" />
+						</VerticalStackLayout>
+						<Label Grid.Column="1" Text="✎" TextColor="White" FontSize="20" VerticalOptions="Start" />
+					</Grid>
+				</Border>
+
+				<Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+					<Border Grid.Column="0" Style="{StaticResource CardBorder}">
+						<VerticalStackLayout Spacing="6">
+							<Label Text="BOUGHT TODAY" Style="{StaticResource SectionHeaderLabel}" />
+							<Label Text="{Binding TodayBuyText}" Style="{StaticResource AmountLabel}" TextColor="{StaticResource Success}" />
+							<Label Text="{Binding BuyCountToday, StringFormat='{0} transaction(s)'}" Style="{StaticResource MutedLabel}" />
+						</VerticalStackLayout>
+					</Border>
+					<Border Grid.Column="1" Style="{StaticResource CardBorder}">
+						<VerticalStackLayout Spacing="6">
+							<Label Text="SOLD TODAY" Style="{StaticResource SectionHeaderLabel}" />
+							<Label Text="{Binding TodaySellText}" Style="{StaticResource AmountLabel}" TextColor="{StaticResource Danger}" />
+							<Label Text="{Binding SellCountToday, StringFormat='{0} transaction(s)'}" Style="{StaticResource MutedLabel}" />
+						</VerticalStackLayout>
+					</Border>
+				</Grid>
+
+				<Border Style="{StaticResource CardBorder}">
+					<Grid ColumnDefinitions="*,Auto">
+						<VerticalStackLayout Grid.Column="0" Spacing="6">
+							<Label Text="TOTAL OUTSTANDING" Style="{StaticResource SectionHeaderLabel}" />
+							<Label Text="{Binding OutstandingText}" Style="{StaticResource AmountLabel}" />
+							<Label Text="Net receivable across all customers" Style="{StaticResource MutedLabel}" />
+						</VerticalStackLayout>
+						<Button Grid.Column="1" Text="View Ledger" Style="{StaticResource SecondaryButton}"
+						        HeightRequest="40" FontSize="13" VerticalOptions="Center"
+						        Command="{Binding GoToLedgerCommand}" />
+					</Grid>
+				</Border>
+
+				<Label Text="QUICK ACTIONS" Style="{StaticResource SectionHeaderLabel}" Margin="4,10,0,0" />
+				<Grid ColumnDefinitions="*,*" ColumnSpacing="14" RowDefinitions="Auto" >
+					<Button Grid.Column="0" Text="＋ Buy Gold" Style="{StaticResource ChipButtonBuy}"
+					        Command="{Binding GoToBuyCommand}" />
+					<Button Grid.Column="1" Text="＋ Sell Gold" Style="{StaticResource ChipButtonSell}"
+					        Command="{Binding GoToSellCommand}" />
+				</Grid>
+
+				<Grid ColumnDefinitions="*" Margin="0,8,0,0">
+					<Label Text="RECENT TRANSACTIONS" Style="{StaticResource SectionHeaderLabel}" />
+				</Grid>
+
+				<Label Text="No transactions yet. Record your first Buy or Sell above."
+				       Style="{StaticResource MutedLabel}"
+				       IsVisible="{Binding HasNoTransactions}"
+				       HorizontalTextAlignment="Center"
+				       Margin="0,20" />
+
+				<CollectionView ItemsSource="{Binding RecentTransactions}" IsVisible="{Binding HasNoTransactions, Converter={StaticResource NotBool}}">
+					<CollectionView.ItemsLayout>
+						<LinearItemsLayout Orientation="Vertical" ItemSpacing="10" />
+					</CollectionView.ItemsLayout>
+					<CollectionView.ItemTemplate>
+						<DataTemplate x:DataType="models:GoldTransaction">
+							<Border Style="{StaticResource CardBorder}" Padding="14">
+								<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+									<Border Grid.Column="0" BackgroundColor="{Binding Type, Converter={StaticResource TypeColorConverter}}"
+									        StrokeShape="RoundRectangle 8" Padding="8,4" VerticalOptions="Center">
+										<Label Text="{Binding Type, Converter={StaticResource TypeLabelConverter}}"
+										       TextColor="White" FontSize="11" FontAttributes="Bold" />
+									</Border>
+									<VerticalStackLayout Grid.Column="1" Spacing="2">
+										<Label Text="{Binding CustomerName}" FontAttributes="Bold" FontSize="15" />
+										<Label Text="{Binding NetWeightGrams, StringFormat='{0:N3} g · 24K equiv.'}" Style="{StaticResource MutedLabel}" />
+									</VerticalStackLayout>
+									<VerticalStackLayout Grid.Column="2" Spacing="2" HorizontalOptions="End">
+										<Label Text="{Binding TotalAmount, StringFormat='{0:N2}'}" FontAttributes="Bold" TextColor="{StaticResource Gold}" HorizontalTextAlignment="End" />
+										<Label Text="{Binding Date, StringFormat='{0:dd MMM, hh:mm tt}'}" Style="{StaticResource MutedLabel}" HorizontalTextAlignment="End" />
+									</VerticalStackLayout>
+								</Grid>
+							</Border>
+						</DataTemplate>
+					</CollectionView.ItemTemplate>
+				</CollectionView>
+
+			</VerticalStackLayout>
+		</ScrollView>
+	</RefreshView>
+
+</ContentPage>

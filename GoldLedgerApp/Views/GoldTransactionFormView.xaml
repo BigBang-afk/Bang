@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:GoldLedgerApp.ViewModels"
+             xmlns:models="clr-namespace:GoldLedgerApp.Models"
+             xmlns:conv="clr-namespace:GoldLedgerApp.Converters"
+             x:Class="GoldLedgerApp.Views.GoldTransactionFormView"
+             x:DataType="vm:GoldTransactionViewModel">
+
+	<ContentView.Resources>
+		<conv:TransactionTypeButtonStyleConverter x:Key="TypeButtonStyle" />
+		<conv:TransactionTypeActionLabelConverter x:Key="TypeActionLabel" />
+	</ContentView.Resources>
+
+	<RefreshView Command="{Binding LoadCommand}" IsRefreshing="{Binding IsBusy}">
+		<ScrollView>
+			<VerticalStackLayout Padding="20" Spacing="16">
+
+				<Border Style="{StaticResource CardBorder}">
+					<VerticalStackLayout Spacing="12">
+						<Label Text="CUSTOMER" Style="{StaticResource SectionHeaderLabel}" />
+						<Border Style="{StaticResource FieldBorder}">
+							<Picker Title="Walk-in (no customer)"
+							        ItemsSource="{Binding Customers}"
+							        ItemDisplayBinding="{Binding Name}"
+							        SelectedItem="{Binding SelectedCustomer}" />
+						</Border>
+					</VerticalStackLayout>
+				</Border>
+
+				<Border Style="{StaticResource CardBorder}">
+					<VerticalStackLayout Spacing="12">
+						<Label Text="GOLD DETAILS" Style="{StaticResource SectionHeaderLabel}" />
+
+						<Border Style="{StaticResource FieldBorder}">
+							<Entry Placeholder="Gross weight (grams)" Text="{Binding GrossWeightText}" Keyboard="Numeric" />
+						</Border>
+
+						<Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+							<Border Grid.Column="0" Style="{StaticResource FieldBorder}">
+								<Picker Title="Purity"
+								        ItemsSource="{x:Static vm:GoldTransactionViewModel.PurityOptions}"
+								        SelectedItem="{Binding SelectedPurity}" />
+							</Border>
+							<Border Grid.Column="1" Style="{StaticResource FieldBorder}">
+								<Entry Placeholder="Rate / g (24K)" Text="{Binding RateText}" Keyboard="Numeric" />
+							</Border>
+						</Grid>
+
+						<Border Style="{StaticResource FieldBorder}">
+							<Entry Placeholder="Making charges (optional)" Text="{Binding MakingChargesText}" Keyboard="Numeric" />
+						</Border>
+					</VerticalStackLayout>
+				</Border>
+
+				<Border Style="{StaticResource CardBorder}">
+					<VerticalStackLayout Spacing="12">
+						<Label Text="PAYMENT" Style="{StaticResource SectionHeaderLabel}" />
+
+						<Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+							<Border Grid.Column="0" Style="{StaticResource FieldBorder}">
+								<Entry Placeholder="Amount paid now" Text="{Binding AmountPaidText}" Keyboard="Numeric" />
+							</Border>
+							<Border Grid.Column="1" Style="{StaticResource FieldBorder}">
+								<Picker Title="Mode"
+								        ItemsSource="{x:Static vm:GoldTransactionViewModel.PaymentModeOptions}"
+								        SelectedItem="{Binding SelectedPaymentMode}" />
+							</Border>
+						</Grid>
+
+						<Border Style="{StaticResource FieldBorder}">
+							<Entry Placeholder="Notes (optional)" Text="{Binding Notes}" />
+						</Border>
+					</VerticalStackLayout>
+				</Border>
+
+				<Border Style="{StaticResource CardBorder}">
+					<VerticalStackLayout Spacing="10">
+						<Grid ColumnDefinitions="*,*">
+							<VerticalStackLayout Grid.Column="0">
+								<Label Text="NET WEIGHT (24K)" Style="{StaticResource SectionHeaderLabel}" />
+								<Label Text="{Binding NetWeightDisplay}" FontAttributes="Bold" FontSize="16" />
+							</VerticalStackLayout>
+							<VerticalStackLayout Grid.Column="1" HorizontalOptions="End">
+								<Label Text="GOLD VALUE" Style="{StaticResource SectionHeaderLabel}" HorizontalTextAlignment="End" />
+								<Label Text="{Binding GoldValueDisplay}" FontAttributes="Bold" FontSize="16" HorizontalTextAlignment="End" />
+							</VerticalStackLayout>
+						</Grid>
+						<BoxView HeightRequest="1" BackgroundColor="{StaticResource CardDarkAlt}" />
+						<Grid ColumnDefinitions="*,*">
+							<VerticalStackLayout Grid.Column="0">
+								<Label Text="TOTAL AMOUNT" Style="{StaticResource SectionHeaderLabel}" />
+								<Label Text="{Binding TotalAmountDisplay}" Style="{StaticResource AmountLabel}" />
+							</VerticalStackLayout>
+							<VerticalStackLayout Grid.Column="1" HorizontalOptions="End">
+								<Label Text="BALANCE DUE" Style="{StaticResource SectionHeaderLabel}" HorizontalTextAlignment="End" />
+								<Label Text="{Binding BalanceDueDisplay}" Style="{StaticResource AmountLabel}" TextColor="{StaticResource Danger}" HorizontalTextAlignment="End" />
+							</VerticalStackLayout>
+						</Grid>
+					</VerticalStackLayout>
+				</Border>
+
+				<Button Text="{Binding Type, Converter={StaticResource TypeActionLabel}}"
+				        Style="{Binding Type, Converter={StaticResource TypeButtonStyle}}"
+				        Command="{Binding SaveCommand}" />
+
+			</VerticalStackLayout>
+		</ScrollView>
+	</RefreshView>
+
+</ContentView>
