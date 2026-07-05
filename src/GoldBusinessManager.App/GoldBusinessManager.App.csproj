@@ -37,8 +37,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Microsoft.Maui.Controls itself comes from the MAUI workload via UseMaui=true above;
-         only the Blazor WebView host and add-on packages need explicit references. -->
+    <!-- Pinned explicitly: the SDK's implicit default (10.0.20) is lower than what
+         CommunityToolkit.Maui 14.2.0 requires (>= 10.0.60), which NuGet treats as a
+         package downgrade error unless this project references the higher version directly. -->
+    <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.60" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
     <!-- Provides platform dialogs (alerts, file pickers, sharing) used later for PDF export / WhatsApp share. -->
