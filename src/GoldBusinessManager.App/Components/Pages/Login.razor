@@ -27,7 +27,7 @@
             <button class="pin-key" @onclick="() => AppendDigit(digit)">@digit</button>
         }
         <button class="pin-key pin-key-secondary" @onclick="ClearPin">Clear</button>
-        <button class="pin-key" @onclick="() => AppendDigit(@"0")">0</button>
+        <button class="pin-key" @onclick='() => AppendDigit("0")'>0</button>
         <button class="pin-key pin-key-secondary" @onclick="Backspace">⌫</button>
     </div>
 
