@@ -9,13 +9,13 @@ public partial class OnboardingViewModel : BaseViewModel
 {
 	private readonly ISettingsService _settingsService;
 	private readonly ILocationService _locationService;
-	private readonly INotificationService _notificationService;
+	private readonly IAzanNotificationService _notificationService;
 
 	[ObservableProperty]
 	private int currentPageIndex;
 
 	public OnboardingViewModel(ISettingsService settingsService, ILocationService locationService,
-		INotificationService notificationService)
+		IAzanNotificationService notificationService)
 	{
 		_settingsService = settingsService;
 		_locationService = locationService;

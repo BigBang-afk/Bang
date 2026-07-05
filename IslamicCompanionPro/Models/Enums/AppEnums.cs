@@ -27,7 +27,11 @@ public enum LocationMode
 	Manual = 1
 }
 
-public enum AppTheme
+/// <summary>
+/// Named AppThemeMode (not AppTheme) to avoid colliding with Microsoft.Maui.ApplicationModel.AppTheme,
+/// which is in scope project-wide via MAUI's implicit global usings.
+/// </summary>
+public enum AppThemeMode
 {
 	System = 0,
 	Light = 1,

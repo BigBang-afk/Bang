@@ -12,7 +12,7 @@ public class AppSettings
 
 	public AppLanguage Language { get; set; } = AppLanguage.English;
 
-	public AppTheme Theme { get; set; } = AppTheme.System;
+	public AppThemeMode Theme { get; set; } = AppThemeMode.System;
 
 	public double QuranFontSize { get; set; } = 26;
 

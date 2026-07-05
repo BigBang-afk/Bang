@@ -10,7 +10,7 @@ public interface ISettingsService
 	/// SQLite database) so App.xaml.cs can apply it before the first frame is drawn, without
 	/// waiting on database initialization.
 	/// </summary>
-	AppTheme GetAppTheme();
+	AppThemeMode GetAppTheme();
 
 	Task<AppSettings> GetAppSettingsAsync();
 	Task SaveAppSettingsAsync(AppSettings settings);

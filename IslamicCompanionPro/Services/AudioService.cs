@@ -1,12 +1,14 @@
-using CommunityToolkit.Maui.Core;
 using IslamicCompanionPro.Models;
 using IslamicCompanionPro.Services.Interfaces;
 
 namespace IslamicCompanionPro.Services;
 
 /// <summary>
-/// Downloads and plays per-Ayah recitation audio. Audio is entirely optional per the app's
-/// offline-first requirement: nothing here blocks Quran reading, bookmarking or search.
+/// Downloads per-Ayah recitation audio and resolves a playable source for it. Audio is entirely
+/// optional per the app's offline-first requirement: nothing here blocks Quran reading,
+/// bookmarking or search. Actual playback is done by a CommunityToolkit.Maui
+/// &lt;toolkit:MediaElement&gt; in SurahDetailPage.xaml, bound to the source this service returns —
+/// that keeps this service free of any dependency on a specific playback API surface.
 ///
 /// IMPORTANT: <see cref="RecitationBaseUrl"/> is a placeholder. Before shipping, replace it with
 /// a reciter audio CDN you are licensed/permitted to use (e.g. an API you have a usage agreement
@@ -18,7 +20,6 @@ public class AudioService : IAudioService
 
 	private readonly ISQLiteDatabaseService _db;
 	private readonly HttpClient _httpClient;
-	private IAudioPlayer? _currentPlayer;
 
 	public AudioService(ISQLiteDatabaseService db, HttpClient httpClient)
 	{
@@ -100,38 +101,15 @@ public class AudioService : IAudioService
 		return download;
 	}
 
-	public async Task PlayAsync(int globalAyahNumber, string reciterId)
+	public Task<string> GetPlaybackSourceAsync(int globalAyahNumber, string reciterId)
 	{
-		Stop();
-
 		string localPath = BuildLocalPath(globalAyahNumber, reciterId);
-		Stream audioStream;
 
-		if (File.Exists(localPath))
-		{
-			audioStream = File.OpenRead(localPath);
-		}
-		else
-		{
-			// Falls back to network streaming — this is the one place in the app that needs
-			// internet, and only because the user chose to play un-downloaded audio.
-			audioStream = await _httpClient.GetStreamAsync(BuildAudioUrl(globalAyahNumber, reciterId));
-		}
-
-		_currentPlayer = AudioManager.Current.CreatePlayer(audioStream);
-		_currentPlayer.Play();
-	}
-
-	public void Stop()
-	{
-		if (_currentPlayer is null)
-		{
-			return;
-		}
-
-		_currentPlayer.Stop();
-		_currentPlayer.Dispose();
-		_currentPlayer = null;
+		// Local file if already downloaded (fully offline); otherwise the remote URL — this is the
+		// one place in the app that needs internet, and only because the user chose to play
+		// un-downloaded audio.
+		string source = File.Exists(localPath) ? localPath : BuildAudioUrl(globalAyahNumber, reciterId);
+		return Task.FromResult(source);
 	}
 
 	public async Task<List<AudioDownload>> GetDownloadsAsync()

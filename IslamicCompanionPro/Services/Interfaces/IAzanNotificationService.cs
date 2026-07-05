@@ -1,6 +1,11 @@
 namespace IslamicCompanionPro.Services.Interfaces;
 
-public interface INotificationService
+/// <summary>
+/// Named IAzanNotificationService (not INotificationService) to avoid colliding with
+/// Plugin.LocalNotification's own INotificationService type, which is in scope wherever that
+/// package's namespace is imported.
+/// </summary>
+public interface IAzanNotificationService
 {
 	Task<bool> RequestPermissionAsync();
 

@@ -17,10 +17,10 @@ public class SettingsService : ISettingsService
 		_db = db;
 	}
 
-	public AppTheme GetAppTheme()
+	public AppThemeMode GetAppTheme()
 	{
-		int stored = Preferences.Default.Get(ThemePreferenceKey, (int)AppTheme.System);
-		return (AppTheme)stored;
+		int stored = Preferences.Default.Get(ThemePreferenceKey, (int)AppThemeMode.System);
+		return (AppThemeMode)stored;
 	}
 
 	public async Task<AppSettings> GetAppSettingsAsync()

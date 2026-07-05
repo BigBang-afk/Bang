@@ -11,11 +11,11 @@ public partial class SettingsViewModel : BaseViewModel, IAppearingViewModel
 	private readonly ISettingsService _settingsService;
 	private readonly ILocationService _locationService;
 	private readonly IPrayerTimeService _prayerTimeService;
-	private readonly INotificationService _notificationService;
+	private readonly IAzanNotificationService _notificationService;
 
 	// --- App settings ---
 	[ObservableProperty] private AppLanguage language;
-	[ObservableProperty] private AppTheme theme;
+	[ObservableProperty] private AppThemeMode theme;
 	[ObservableProperty] private double quranFontSize;
 	[ObservableProperty] private double duaFontSize;
 
@@ -41,7 +41,7 @@ public partial class SettingsViewModel : BaseViewModel, IAppearingViewModel
 	[ObservableProperty] private string statusMessage = string.Empty;
 
 	public List<AppLanguage> Languages { get; } = Enum.GetValues<AppLanguage>().ToList();
-	public List<AppTheme> Themes { get; } = Enum.GetValues<AppTheme>().ToList();
+	public List<AppThemeMode> Themes { get; } = Enum.GetValues<AppThemeMode>().ToList();
 	public List<CalculationMethod> CalculationMethods { get; } = Enum.GetValues<CalculationMethod>().ToList();
 	public List<AsrMethod> AsrMethods { get; } = Enum.GetValues<AsrMethod>().ToList();
 	public List<AzanSound> AzanSounds { get; } = Enum.GetValues<AzanSound>().ToList();
@@ -50,7 +50,7 @@ public partial class SettingsViewModel : BaseViewModel, IAppearingViewModel
 		TimeZoneInfo.GetSystemTimeZones().Select(tz => tz.Id).OrderBy(id => id));
 
 	public SettingsViewModel(ISettingsService settingsService, ILocationService locationService,
-		IPrayerTimeService prayerTimeService, INotificationService notificationService)
+		IPrayerTimeService prayerTimeService, IAzanNotificationService notificationService)
 	{
 		_settingsService = settingsService;
 		_locationService = locationService;
@@ -116,8 +116,8 @@ public partial class SettingsViewModel : BaseViewModel, IAppearingViewModel
 
 		Application.Current!.UserAppTheme = Theme switch
 		{
-			AppTheme.Light => Microsoft.Maui.ApplicationModel.AppTheme.Light,
-			AppTheme.Dark => Microsoft.Maui.ApplicationModel.AppTheme.Dark,
+			AppThemeMode.Light => Microsoft.Maui.ApplicationModel.AppTheme.Light,
+			AppThemeMode.Dark => Microsoft.Maui.ApplicationModel.AppTheme.Dark,
 			_ => Microsoft.Maui.ApplicationModel.AppTheme.Unspecified
 		};
 

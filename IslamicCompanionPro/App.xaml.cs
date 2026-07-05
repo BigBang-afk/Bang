@@ -25,8 +25,8 @@ public partial class App : Application
 		var theme = _settingsService.GetAppTheme();
 		UserAppTheme = theme switch
 		{
-			Models.Enums.AppTheme.Light => AppTheme.Light,
-			Models.Enums.AppTheme.Dark => AppTheme.Dark,
+			Models.Enums.AppThemeMode.Light => AppTheme.Light,
+			Models.Enums.AppThemeMode.Dark => AppTheme.Dark,
 			_ => AppTheme.Unspecified
 		};
 	}
@@ -41,7 +41,7 @@ public partial class App : Application
 			// Azan notifications in case the device was rebooted or the day changed.
 			MainThread.BeginInvokeOnMainThread(async () =>
 			{
-				var notificationService = IPlatformApplication.Current?.Services.GetService<INotificationService>();
+				var notificationService = IPlatformApplication.Current?.Services.GetService<IAzanNotificationService>();
 				if (notificationService is not null)
 				{
 					await notificationService.RescheduleAllAsync();

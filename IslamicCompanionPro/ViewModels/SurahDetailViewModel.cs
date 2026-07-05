@@ -28,6 +28,10 @@ public partial class SurahDetailViewModel : BaseViewModel
 	[ObservableProperty]
 	private int scrollToAyahNumber;
 
+	/// <summary>Bound to the page's MediaElement.Source; set by PlayAudioCommand to start playback.</summary>
+	[ObservableProperty]
+	private string? currentAudioSource;
+
 	public string SurahNumberParam { set => _ = LoadBySurahAsync(int.Parse(value)); }
 	public string JuzNumberParam { set => _ = LoadByJuzAsync(int.Parse(value)); }
 	public string AyahNumberParam { set => ScrollToAyahNumber = int.TryParse(value, out int n) ? n : 0; }
@@ -182,8 +186,17 @@ public partial class SurahDetailViewModel : BaseViewModel
 	}
 
 	[RelayCommand]
-	private Task PlayAudioAsync(AyahDisplayItem? item) =>
-		item is null ? Task.CompletedTask : _audioService.PlayAsync(item.GlobalAyahNumber, "mishary_alafasy");
+	private async Task PlayAudioAsync(AyahDisplayItem? item)
+	{
+		if (item is null)
+		{
+			return;
+		}
+
+		// Reset first so MediaElement's Source binding fires again even if the same Ayah is tapped twice in a row.
+		CurrentAudioSource = null;
+		CurrentAudioSource = await _audioService.GetPlaybackSourceAsync(item.GlobalAyahNumber, "mishary_alafasy");
+	}
 
 	[RelayCommand]
 	private Task DownloadAudioAsync(AyahDisplayItem? item) =>

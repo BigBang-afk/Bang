@@ -51,7 +51,7 @@ public static class MauiProgram
 		services.AddSingleton<IHijriCalendarService, HijriCalendarService>();
 		services.AddSingleton<ILocationService, LocationService>();
 		services.AddSingleton<ICompassService, CompassService>();
-		services.AddSingleton<INotificationService, NotificationService>();
+		services.AddSingleton<IAzanNotificationService, NotificationService>();
 		services.AddSingleton<IAudioService, AudioService>();
 	}
 

@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:IslamicCompanionPro.ViewModels"
              xmlns:base="clr-namespace:IslamicCompanionPro.Views.Base"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="IslamicCompanionPro.Views.SurahDetailPage"
              x:DataType="vm:SurahDetailViewModel"
              x:Name="Root"
@@ -76,5 +77,11 @@
         </CollectionView>
 
         <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Style="{StaticResource ActivityIndicatorStyle}" />
+
+        <!-- Audio-only, invisible: PlayAudioCommand sets CurrentAudioSource, which starts playback. -->
+        <toolkit:MediaElement Source="{Binding CurrentAudioSource}"
+                              ShouldAutoPlay="True"
+                              ShouldShowPlaybackControls="False"
+                              HeightRequest="1" WidthRequest="1" Opacity="0" InputTransparent="True" />
     </Grid>
 </base:AppearingContentPage>

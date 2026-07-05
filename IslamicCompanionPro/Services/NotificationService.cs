@@ -15,7 +15,7 @@ namespace IslamicCompanionPro.Services;
 /// WorkManager job / iOS BGTaskScheduler background refresh task for users who don't reopen the
 /// app daily.
 /// </summary>
-public class NotificationService : INotificationService
+public class NotificationService : IAzanNotificationService
 {
 	private static class NotificationIds
 	{
