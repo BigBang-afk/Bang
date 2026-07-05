@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Application xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:local="clr-namespace:IslamicCompanionPro"
+             xmlns:helpers="clr-namespace:IslamicCompanionPro.Helpers"
+             x:Class="IslamicCompanionPro.App">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Resources/Styles/Colors.xaml" />
+                <ResourceDictionary Source="Resources/Styles/Styles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <helpers:InverseBoolConverter x:Key="InverseBoolConverter" />
+            <helpers:IsNotNullConverter x:Key="IsNotNullConverter" />
+            <helpers:InverseBoolToColorConverter x:Key="InverseBoolToColorConverter" />
+            <helpers:BoolToGlyphConverter x:Key="FavoriteGlyphConverter" TrueGlyph="★" FalseGlyph="☆" />
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

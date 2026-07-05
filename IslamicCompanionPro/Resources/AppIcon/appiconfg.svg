@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Simple crescent + star silhouette used as the foreground layer over the green background. -->
+  <path d="M78 30a34 34 0 1 0 0 68 28 28 0 1 1 0-68z" fill="#C9A227" />
+  <path d="M96 40l3 7 7 3-7 3-3 7-3-7-7-3 7-3z" fill="#C9A227" />
+</svg>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<base:AppearingContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:IslamicCompanionPro.ViewModels"
+             xmlns:base="clr-namespace:IslamicCompanionPro.Views.Base"
+             x:Class="IslamicCompanionPro.Views.OnboardingPage"
+             x:DataType="vm:OnboardingViewModel"
+             Shell.NavBarIsVisible="False">
+
+    <Grid RowDefinitions="*,Auto" Padding="28">
+        <VerticalStackLayout Grid.Row="0" Spacing="20" VerticalOptions="Center">
+            <Label Text="☪" FontSize="64" HorizontalOptions="Center" TextColor="{StaticResource IslamicGreen}" />
+            <Label Text="Assalamu Alaikum" FontFamily="OpenSansSemibold" FontSize="26" HorizontalOptions="Center" />
+            <Label Text="Islamic Companion Pro brings the Quran, Duas, prayer times, Qibla direction and Tasbeeh together — and works fully offline."
+                   HorizontalTextAlignment="Center" Style="{StaticResource TranslationLabelStyle}" />
+
+            <Border Style="{StaticResource CardBorderStyle}">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="For accurate prayer times and Qibla direction, the app needs your location." Style="{StaticResource TranslationLabelStyle}" />
+                    <Label Text="For Azan reminders, the app needs notification permission." Style="{StaticResource TranslationLabelStyle}" />
+                    <Label Text="You can change these anytime in Settings, and use a manual location instead of GPS." Style="{StaticResource SubtitleLabelStyle}" />
+                </VerticalStackLayout>
+            </Border>
+        </VerticalStackLayout>
+
+        <VerticalStackLayout Grid.Row="1" Spacing="12">
+            <Button Text="Enable Location &amp; Notifications" Command="{Binding RequestPermissionsCommand}" />
+            <Button Text="Get Started" Style="{StaticResource OutlineButtonStyle}" Command="{Binding FinishCommand}" />
+        </VerticalStackLayout>
+    </Grid>
+</base:AppearingContentPage>

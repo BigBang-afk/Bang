@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<?xaml-comp compile="true" ?>
+<ResourceDictionary xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+                     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+
+    <!-- Islamic Companion Pro brand palette: deep Islamic green + gold accent, on white/black. -->
+    <Color x:Key="IslamicGreen">#0B6E4F</Color>
+    <Color x:Key="IslamicGreenDark">#084A35</Color>
+    <Color x:Key="IslamicGreenLight">#E7F4EE</Color>
+    <Color x:Key="Gold">#C9A227</Color>
+    <Color x:Key="GoldLight">#F1E3B4</Color>
+
+    <Color x:Key="White">#FFFFFF</Color>
+    <Color x:Key="Black">#0E0E0E</Color>
+    <Color x:Key="OffWhite">#F7F7F5</Color>
+    <Color x:Key="OffBlack">#161A18</Color>
+
+    <Color x:Key="Gray100">#E1E1E1</Color>
+    <Color x:Key="Gray300">#ACACAC</Color>
+    <Color x:Key="Gray500">#6D6D6D</Color>
+    <Color x:Key="Gray700">#3B3B3B</Color>
+
+    <Color x:Key="ErrorRed">#B3261E</Color>
+
+    <!-- Semantic tokens used throughout Styles.xaml / pages so light+dark are consistent -->
+    <Color x:Key="SurfaceLight">#FFFFFF</Color>
+    <Color x:Key="SurfaceDark">#101613</Color>
+    <Color x:Key="CardSurfaceLight">#FFFFFF</Color>
+    <Color x:Key="CardSurfaceDark">#1B2320</Color>
+    <Color x:Key="BackgroundLight">#F7F7F5</Color>
+    <Color x:Key="BackgroundDark">#0B0F0D</Color>
+    <Color x:Key="TextPrimaryLight">#161A18</Color>
+    <Color x:Key="TextPrimaryDark">#F2F2F0</Color>
+    <Color x:Key="TextSecondaryLight">#5B655F</Color>
+    <Color x:Key="TextSecondaryDark">#AAB5AF</Color>
+
+</ResourceDictionary>

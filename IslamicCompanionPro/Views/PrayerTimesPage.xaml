@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<base:AppearingContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:IslamicCompanionPro.ViewModels"
+             xmlns:base="clr-namespace:IslamicCompanionPro.Views.Base"
+             x:Class="IslamicCompanionPro.Views.PrayerTimesPage"
+             x:DataType="vm:PrayerTimesViewModel"
+             Title="{Binding Title}">
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Monthly" Command="{Binding ViewMonthlyCommand}" />
+        <ToolbarItem Text="⚙" Command="{Binding OpenSettingsCommand}" />
+    </ContentPage.ToolbarItems>
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16" Spacing="14">
+
+            <Border Style="{StaticResource CardBorderStyle}" BackgroundColor="{StaticResource IslamicGreen}">
+                <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
+                    <Label Text="Next Prayer" TextColor="{StaticResource GoldLight}" HorizontalOptions="Center" />
+                    <Label Text="{Binding NextPrayerName}" TextColor="{StaticResource White}" FontFamily="OpenSansSemibold" FontSize="22" HorizontalOptions="Center" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Style="{StaticResource ListItemBorderStyle}">
+                <Grid ColumnDefinitions="*,Auto"><Label Text="Fajr" FontFamily="OpenSansSemibold" /><Label Grid.Column="1" Text="{Binding FajrText}" /></Grid>
+            </Border>
+            <Border Style="{StaticResource ListItemBorderStyle}">
+                <Grid ColumnDefinitions="*,Auto"><Label Text="Sunrise" FontFamily="OpenSansSemibold" /><Label Grid.Column="1" Text="{Binding SunriseText}" /></Grid>
+            </Border>
+            <Border Style="{StaticResource ListItemBorderStyle}">
+                <Grid ColumnDefinitions="*,Auto"><Label Text="Dhuhr" FontFamily="OpenSansSemibold" /><Label Grid.Column="1" Text="{Binding DhuhrText}" /></Grid>
+            </Border>
+            <Border Style="{StaticResource ListItemBorderStyle}">
+                <Grid ColumnDefinitions="*,Auto"><Label Text="Asr" FontFamily="OpenSansSemibold" /><Label Grid.Column="1" Text="{Binding AsrText}" /></Grid>
+            </Border>
+            <Border Style="{StaticResource ListItemBorderStyle}">
+                <Grid ColumnDefinitions="*,Auto"><Label Text="Maghrib" FontFamily="OpenSansSemibold" /><Label Grid.Column="1" Text="{Binding MaghribText}" /></Grid>
+            </Border>
+            <Border Style="{StaticResource ListItemBorderStyle}">
+                <Grid ColumnDefinitions="*,Auto"><Label Text="Isha" FontFamily="OpenSansSemibold" /><Label Grid.Column="1" Text="{Binding IshaText}" /></Grid>
+            </Border>
+
+            <Border Style="{StaticResource CardBorderStyle}">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Ramadan Timings" Style="{StaticResource SectionTitleStyle}" FontSize="16" />
+                    <Grid ColumnDefinitions="*,*">
+                        <VerticalStackLayout Grid.Column="0" HorizontalOptions="Center">
+                            <Label Text="Sehri Ends" Style="{StaticResource SubtitleLabelStyle}" HorizontalOptions="Center" />
+                            <Label Text="{Binding SehriText}" FontFamily="OpenSansSemibold" HorizontalOptions="Center" />
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="1" HorizontalOptions="Center">
+                            <Label Text="Iftar" Style="{StaticResource SubtitleLabelStyle}" HorizontalOptions="Center" />
+                            <Label Text="{Binding IftarText}" FontFamily="OpenSansSemibold" HorizontalOptions="Center" />
+                        </VerticalStackLayout>
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</base:AppearingContentPage>

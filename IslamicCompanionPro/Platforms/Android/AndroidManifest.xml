@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+	<application android:allowBackup="true" android:icon="@mipmap/appicon" android:roundIcon="@mipmap/appicon_round"
+				 android:supportsRtl="true"></application>
+
+	<!-- Qibla Finder + Prayer Times: current location -->
+	<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+	<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+	<!-- Azan / reminder notifications -->
+	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+	<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+	<uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+	<uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+	<uses-permission android:name="android.permission.VIBRATE" />
+	<uses-permission android:name="android.permission.WAKE_LOCK" />
+
+	<!-- Optional audio recitation download / update checks (app works fully offline without it) -->
+	<uses-permission android:name="android.permission.INTERNET" />
+	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+	<!-- Declares the compass (magnetometer) as an optional hardware feature: the app still
+	     installs and runs on devices without one (QiblaPage falls back to a bearing-only display) -->
+	<uses-feature android:name="android.hardware.sensor.compass" android:required="false" />
+	<uses-feature android:name="android.hardware.location.gps" android:required="false" />
+</manifest>

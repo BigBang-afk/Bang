@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<base:AppearingContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:IslamicCompanionPro.ViewModels"
+             xmlns:models="clr-namespace:IslamicCompanionPro.Models"
+             xmlns:base="clr-namespace:IslamicCompanionPro.Views.Base"
+             x:Class="IslamicCompanionPro.Views.QuranPage"
+             x:DataType="vm:QuranViewModel"
+             x:Name="Root"
+             Title="{Binding Title}">
+
+    <Grid RowDefinitions="Auto,Auto,*" Padding="16" RowSpacing="12">
+
+        <SearchBar Grid.Row="0"
+                   Placeholder="Search Surah name, ayah (2:255), or keyword"
+                   Text="{Binding SearchText}" />
+
+        <Border Grid.Row="1" Style="{StaticResource ListItemBorderStyle}" IsVisible="{Binding LastRead, Converter={StaticResource IsNotNullConverter}}">
+            <Border.GestureRecognizers>
+                <TapGestureRecognizer Command="{Binding ContinueLastReadCommand}" />
+            </Border.GestureRecognizers>
+            <HorizontalStackLayout Spacing="10">
+                <Label Text="🔖" FontSize="20" VerticalOptions="Center" />
+                <Label Text="Continue reading from last read position" VerticalOptions="Center" FontFamily="OpenSansSemibold" />
+            </HorizontalStackLayout>
+        </Border>
+
+        <Grid Grid.Row="2" IsVisible="{Binding IsSearchActive}">
+            <CollectionView ItemsSource="{Binding SearchResults}">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:QuranAyah">
+                        <Border Style="{StaticResource ListItemBorderStyle}" Margin="0,4">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding Source={x:Reference Root}, Path=BindingContext.OpenAyahCommand}"
+                                                       CommandParameter="{Binding .}" />
+                            </Border.GestureRecognizers>
+                            <VerticalStackLayout Spacing="6">
+                                <Label Text="{Binding TextArabic}" Style="{StaticResource ArabicAyahLabelStyle}" FontSize="20" />
+                                <HorizontalStackLayout Spacing="4">
+                                    <Label Text="Surah" Style="{StaticResource SubtitleLabelStyle}" />
+                                    <Label Text="{Binding SurahNumber}" Style="{StaticResource SubtitleLabelStyle}" />
+                                    <Label Text=", Ayah" Style="{StaticResource SubtitleLabelStyle}" />
+                                    <Label Text="{Binding AyahNumber}" Style="{StaticResource SubtitleLabelStyle}" />
+                                </HorizontalStackLayout>
+                            </VerticalStackLayout>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </Grid>
+
+        <CollectionView Grid.Row="2" ItemsSource="{Binding Surahs}" IsVisible="{Binding IsSearchActive, Converter={StaticResource InverseBoolConverter}}">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="models:QuranSurah">
+                    <Border Style="{StaticResource ListItemBorderStyle}" Margin="0,4">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding Source={x:Reference Root}, Path=BindingContext.OpenSurahCommand}"
+                                                   CommandParameter="{Binding .}" />
+                        </Border.GestureRecognizers>
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <Border Grid.Column="0" WidthRequest="40" HeightRequest="40" StrokeShape="RoundRectangle 20"
+                                    BackgroundColor="{StaticResource IslamicGreenLight}" Padding="0">
+                                <Label Text="{Binding SurahNumber}" HorizontalOptions="Center" VerticalOptions="Center"
+                                       TextColor="{StaticResource IslamicGreenDark}" FontFamily="OpenSansSemibold" />
+                            </Border>
+                            <VerticalStackLayout Grid.Column="1" Margin="12,0,0,0" VerticalOptions="Center">
+                                <Label Text="{Binding NameTransliteration}" FontFamily="OpenSansSemibold" FontSize="16" />
+                                <HorizontalStackLayout Spacing="4">
+                                    <Label Text="{Binding RevelationPlace}" Style="{StaticResource SubtitleLabelStyle}" />
+                                    <Label Text="•" Style="{StaticResource SubtitleLabelStyle}" />
+                                    <Label Text="{Binding AyahCount}" Style="{StaticResource SubtitleLabelStyle}" />
+                                    <Label Text="Ayahs" Style="{StaticResource SubtitleLabelStyle}" />
+                                </HorizontalStackLayout>
+                            </VerticalStackLayout>
+                            <Label Grid.Column="2" Text="{Binding NameArabic}" Style="{StaticResource ArabicAyahLabelStyle}" FontSize="20" VerticalOptions="Center" />
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <ActivityIndicator Grid.Row="2" IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}"
+                            Style="{StaticResource ActivityIndicatorStyle}" VerticalOptions="Center" />
+    </Grid>
+</base:AppearingContentPage>

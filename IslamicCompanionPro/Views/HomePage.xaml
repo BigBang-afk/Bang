@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<base:AppearingContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:IslamicCompanionPro.ViewModels"
+             xmlns:base="clr-namespace:IslamicCompanionPro.Views.Base"
+             x:Class="IslamicCompanionPro.Views.HomePage"
+             x:DataType="vm:HomeViewModel"
+             Title="{Binding Title}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16" Spacing="16">
+
+            <!-- Header: Hijri + Gregorian date -->
+            <Border Style="{StaticResource CardBorderStyle}" BackgroundColor="{StaticResource IslamicGreen}">
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="{Binding HijriDateText}" TextColor="{StaticResource GoldLight}" FontFamily="OpenSansSemibold" FontSize="20" />
+                    <Label Text="{Binding GregorianDateText}" TextColor="{StaticResource White}" FontSize="13" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Next prayer countdown -->
+            <Border Style="{StaticResource CardBorderStyle}">
+                <VerticalStackLayout Spacing="6" HorizontalOptions="Center">
+                    <Label Text="Next Prayer" Style="{StaticResource SubtitleLabelStyle}" HorizontalOptions="Center" />
+                    <Label Text="{Binding NextPrayerName}" Style="{StaticResource SectionTitleStyle}" FontSize="24" HorizontalOptions="Center" />
+                    <Label Text="{Binding NextPrayerCountdown}" FontSize="32" FontFamily="OpenSansSemibold" TextColor="{StaticResource Gold}" HorizontalOptions="Center" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Today's prayer times -->
+            <Border Style="{StaticResource CardBorderStyle}">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Today's Prayer Times" Style="{StaticResource SectionTitleStyle}" />
+                    <Grid ColumnDefinitions="*,*,*,*,*,*" RowDefinitions="Auto,Auto">
+                        <Label Grid.Row="0" Grid.Column="0" Text="Fajr" Style="{StaticResource SubtitleLabelStyle}" HorizontalTextAlignment="Center" />
+                        <Label Grid.Row="0" Grid.Column="1" Text="Sunrise" Style="{StaticResource SubtitleLabelStyle}" HorizontalTextAlignment="Center" />
+                        <Label Grid.Row="0" Grid.Column="2" Text="Dhuhr" Style="{StaticResource SubtitleLabelStyle}" HorizontalTextAlignment="Center" />
+                        <Label Grid.Row="0" Grid.Column="3" Text="Asr" Style="{StaticResource SubtitleLabelStyle}" HorizontalTextAlignment="Center" />
+                        <Label Grid.Row="0" Grid.Column="4" Text="Maghrib" Style="{StaticResource SubtitleLabelStyle}" HorizontalTextAlignment="Center" />
+                        <Label Grid.Row="0" Grid.Column="5" Text="Isha" Style="{StaticResource SubtitleLabelStyle}" HorizontalTextAlignment="Center" />
+
+                        <Label Grid.Row="1" Grid.Column="0" Text="{Binding FajrText}" FontFamily="OpenSansSemibold" HorizontalTextAlignment="Center" />
+                        <Label Grid.Row="1" Grid.Column="1" Text="{Binding SunriseText}" FontFamily="OpenSansSemibold" HorizontalTextAlignment="Center" />
+                        <Label Grid.Row="1" Grid.Column="2" Text="{Binding DhuhrText}" FontFamily="OpenSansSemibold" HorizontalTextAlignment="Center" />
+                        <Label Grid.Row="1" Grid.Column="3" Text="{Binding AsrText}" FontFamily="OpenSansSemibold" HorizontalTextAlignment="Center" />
+                        <Label Grid.Row="1" Grid.Column="4" Text="{Binding MaghribText}" FontFamily="OpenSansSemibold" HorizontalTextAlignment="Center" />
+                        <Label Grid.Row="1" Grid.Column="5" Text="{Binding IshaText}" FontFamily="OpenSansSemibold" HorizontalTextAlignment="Center" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Quick access -->
+            <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="10">
+                <Border Grid.Column="0" Style="{StaticResource ListItemBorderStyle}">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding GoToQuranCommand}" />
+                    </Border.GestureRecognizers>
+                    <VerticalStackLayout HorizontalOptions="Center" Spacing="4">
+                        <Label Text="📖" FontSize="26" HorizontalOptions="Center" />
+                        <Label Text="Quran" FontSize="12" HorizontalOptions="Center" />
+                    </VerticalStackLayout>
+                </Border>
+                <Border Grid.Column="1" Style="{StaticResource ListItemBorderStyle}">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding GoToDuaCommand}" />
+                    </Border.GestureRecognizers>
+                    <VerticalStackLayout HorizontalOptions="Center" Spacing="4">
+                        <Label Text="🤲" FontSize="26" HorizontalOptions="Center" />
+                        <Label Text="Duas" FontSize="12" HorizontalOptions="Center" />
+                    </VerticalStackLayout>
+                </Border>
+                <Border Grid.Column="2" Style="{StaticResource ListItemBorderStyle}">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding GoToQiblaCommand}" />
+                    </Border.GestureRecognizers>
+                    <VerticalStackLayout HorizontalOptions="Center" Spacing="4">
+                        <Label Text="🧭" FontSize="26" HorizontalOptions="Center" />
+                        <Label Text="Qibla" FontSize="12" HorizontalOptions="Center" />
+                    </VerticalStackLayout>
+                </Border>
+                <Border Grid.Column="3" Style="{StaticResource ListItemBorderStyle}">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding GoToTasbeehCommand}" />
+                    </Border.GestureRecognizers>
+                    <VerticalStackLayout HorizontalOptions="Center" Spacing="4">
+                        <Label Text="📿" FontSize="26" HorizontalOptions="Center" />
+                        <Label Text="Tasbeeh" FontSize="12" HorizontalOptions="Center" />
+                    </VerticalStackLayout>
+                </Border>
+            </Grid>
+
+            <!-- Daily Ayah -->
+            <Border Style="{StaticResource CardBorderStyle}">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Ayah of the Day" Style="{StaticResource SectionTitleStyle}" />
+                    <Label Text="{Binding DailyAyahArabic}" Style="{StaticResource ArabicAyahLabelStyle}" FontSize="24" />
+                    <Label Text="{Binding DailyAyahTranslation}" Style="{StaticResource TranslationLabelStyle}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Daily Dua -->
+            <Border Style="{StaticResource CardBorderStyle}">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Dua of the Day" Style="{StaticResource SectionTitleStyle}" />
+                    <Label Text="{Binding DailyDuaTitle}" FontFamily="OpenSansSemibold" />
+                    <Label Text="{Binding DailyDuaArabic}" Style="{StaticResource ArabicAyahLabelStyle}" FontSize="20" />
+                </VerticalStackLayout>
+            </Border>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</base:AppearingContentPage>

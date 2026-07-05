@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<base:AppearingContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:IslamicCompanionPro.ViewModels"
+             xmlns:base="clr-namespace:IslamicCompanionPro.Views.Base"
+             x:Class="IslamicCompanionPro.Views.SettingsPage"
+             x:DataType="vm:SettingsViewModel"
+             Title="{Binding Title}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16" Spacing="16">
+
+            <Label Text="{Binding StatusMessage}" IsVisible="{Binding StatusMessage, Converter={StaticResource IsNotNullConverter}}"
+                   Style="{StaticResource GoldBadgeLabelStyle}" />
+
+            <!-- General -->
+            <Border Style="{StaticResource CardBorderStyle}">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="General" Style="{StaticResource SectionTitleStyle}" />
+
+                    <Label Text="Language" Style="{StaticResource SubtitleLabelStyle}" />
+                    <Picker ItemsSource="{Binding Languages}" SelectedItem="{Binding Language}" />
+
+                    <Label Text="Theme" Style="{StaticResource SubtitleLabelStyle}" />
+                    <Picker ItemsSource="{Binding Themes}" SelectedItem="{Binding Theme}" />
+
+                    <Label Text="Quran Font Size" Style="{StaticResource SubtitleLabelStyle}" />
+                    <Slider Minimum="16" Maximum="48" Value="{Binding QuranFontSize}" />
+
+                    <Label Text="Dua Font Size" Style="{StaticResource SubtitleLabelStyle}" />
+                    <Slider Minimum="14" Maximum="36" Value="{Binding DuaFontSize}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Location -->
+            <Border Style="{StaticResource CardBorderStyle}">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="Location" Style="{StaticResource SectionTitleStyle}" />
+
+                    <Picker ItemsSource="{Binding LocationModes}" SelectedItem="{Binding LocationMode}" Title="Location mode" />
+
+                    <Button Text="Use Current GPS Location" Command="{Binding UseCurrentLocationCommand}" />
+
+                    <Entry Placeholder="City" Text="{Binding CityName}" />
+                    <Entry Placeholder="Country" Text="{Binding CountryName}" />
+
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                        <Entry Grid.Column="0" Placeholder="Latitude" Keyboard="Numeric" Text="{Binding ManualLatitude}" />
+                        <Entry Grid.Column="1" Placeholder="Longitude" Keyboard="Numeric" Text="{Binding ManualLongitude}" />
+                    </Grid>
+
+                    <Label Text="Timezone" Style="{StaticResource SubtitleLabelStyle}" />
+                    <Picker ItemsSource="{Binding TimeZoneIds}" SelectedItem="{Binding SelectedTimeZoneId}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Prayer calculation -->
+            <Border Style="{StaticResource CardBorderStyle}">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="Prayer Calculation" Style="{StaticResource SectionTitleStyle}" />
+
+                    <Label Text="Calculation Method" Style="{StaticResource SubtitleLabelStyle}" />
+                    <Picker ItemsSource="{Binding CalculationMethods}" SelectedItem="{Binding CalculationMethod}" />
+
+                    <Label Text="Asr Method" Style="{StaticResource SubtitleLabelStyle}" />
+                    <Picker ItemsSource="{Binding AsrMethods}" SelectedItem="{Binding AsrMethod}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Notifications -->
+            <Border Style="{StaticResource CardBorderStyle}">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Azan &amp; Notifications" Style="{StaticResource SectionTitleStyle}" />
+
+                    <HorizontalStackLayout Spacing="10"><Label Text="Fajr" HorizontalOptions="StartAndExpand" VerticalOptions="Center" /><Switch IsToggled="{Binding FajrNotificationEnabled}" /></HorizontalStackLayout>
+                    <HorizontalStackLayout Spacing="10"><Label Text="Dhuhr" HorizontalOptions="StartAndExpand" VerticalOptions="Center" /><Switch IsToggled="{Binding DhuhrNotificationEnabled}" /></HorizontalStackLayout>
+                    <HorizontalStackLayout Spacing="10"><Label Text="Asr" HorizontalOptions="StartAndExpand" VerticalOptions="Center" /><Switch IsToggled="{Binding AsrNotificationEnabled}" /></HorizontalStackLayout>
+                    <HorizontalStackLayout Spacing="10"><Label Text="Maghrib" HorizontalOptions="StartAndExpand" VerticalOptions="Center" /><Switch IsToggled="{Binding MaghribNotificationEnabled}" /></HorizontalStackLayout>
+                    <HorizontalStackLayout Spacing="10"><Label Text="Isha" HorizontalOptions="StartAndExpand" VerticalOptions="Center" /><Switch IsToggled="{Binding IshaNotificationEnabled}" /></HorizontalStackLayout>
+                    <HorizontalStackLayout Spacing="10"><Label Text="Jumu'ah Reminder" HorizontalOptions="StartAndExpand" VerticalOptions="Center" /><Switch IsToggled="{Binding JummahReminderEnabled}" /></HorizontalStackLayout>
+                    <HorizontalStackLayout Spacing="10"><Label Text="Silent Notifications" HorizontalOptions="StartAndExpand" VerticalOptions="Center" /><Switch IsToggled="{Binding SilentNotifications}" /></HorizontalStackLayout>
+
+                    <Label Text="Reminder before prayer (minutes)" Style="{StaticResource SubtitleLabelStyle}" />
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Slider Grid.Column="0" Minimum="0" Maximum="30" Value="{Binding ReminderMinutesBeforePrayer}" />
+                        <Label Grid.Column="1" Text="{Binding ReminderMinutesBeforePrayer, StringFormat='{0} min'}" VerticalOptions="Center" WidthRequest="60" />
+                    </Grid>
+
+                    <Label Text="Azan Sound" Style="{StaticResource SubtitleLabelStyle}" />
+                    <Picker ItemsSource="{Binding AzanSounds}" SelectedItem="{Binding AzanSound}" />
+
+                    <Button Text="Send Test Notification" Style="{StaticResource OutlineButtonStyle}" Command="{Binding SendTestNotificationCommand}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Button Text="Save Settings" Command="{Binding SaveCommand}" />
+
+            <!-- Data management -->
+            <Border Style="{StaticResource CardBorderStyle}">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Data" Style="{StaticResource SectionTitleStyle}" />
+                    <Button Text="Backup Data" Style="{StaticResource OutlineButtonStyle}" Command="{Binding BackupDataCommand}" />
+                    <Button Text="Restore Data" Style="{StaticResource OutlineButtonStyle}" Command="{Binding RestoreDataCommand}" />
+                    <Button Text="Reset App to Defaults" TextColor="{StaticResource ErrorRed}" BackgroundColor="Transparent"
+                            BorderColor="{StaticResource ErrorRed}" BorderWidth="1.5" Command="{Binding ResetAppCommand}" />
+                </VerticalStackLayout>
+            </Border>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</base:AppearingContentPage>

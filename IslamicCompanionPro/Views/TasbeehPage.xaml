@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<base:AppearingContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:IslamicCompanionPro.ViewModels"
+             xmlns:models="clr-namespace:IslamicCompanionPro.Models"
+             xmlns:base="clr-namespace:IslamicCompanionPro.Views.Base"
+             x:Class="IslamicCompanionPro.Views.TasbeehPage"
+             x:DataType="vm:TasbeehViewModel"
+             x:Name="Root"
+             Title="{Binding Title}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16" Spacing="16">
+
+            <CollectionView ItemsSource="{Binding TodaysZikr}" HeightRequest="56" Orientation="Horizontal" SelectionMode="None">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:TasbeehRecord">
+                        <Border Style="{StaticResource ListItemBorderStyle}" Margin="0,0,8,0" Padding="14,8">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding Source={x:Reference Root}, Path=BindingContext.SelectZikrCommand}"
+                                                       CommandParameter="{Binding .}" />
+                            </Border.GestureRecognizers>
+                            <Label Text="{Binding ZikrName}" VerticalOptions="Center" FontFamily="OpenSansSemibold" />
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <Border Style="{StaticResource CardBorderStyle}" HorizontalOptions="Center" WidthRequest="280" HeightRequest="280"
+                    StrokeShape="RoundRectangle 140" BackgroundColor="{StaticResource IslamicGreen}">
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding IncrementCommand}" />
+                </Border.GestureRecognizers>
+                <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="8">
+                    <Label Text="{Binding SelectedZikr.ZikrName}" TextColor="{StaticResource GoldLight}" HorizontalOptions="Center" FontFamily="OpenSansSemibold" />
+                    <Label Text="{Binding SelectedZikr.Count}" TextColor="{StaticResource White}" FontSize="64" FontFamily="OpenSansSemibold" HorizontalOptions="Center" />
+                    <Label Text="{Binding SelectedZikr.DailyTarget, StringFormat='Target: {0}'}" TextColor="{StaticResource GoldLight}" HorizontalOptions="Center" />
+                    <Label Text="Tap anywhere in the circle to count" TextColor="{StaticResource GoldLight}" FontSize="11" HorizontalOptions="Center" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Button Text="Reset Counter" Style="{StaticResource OutlineButtonStyle}" Command="{Binding ResetCommand}" HorizontalOptions="Center" />
+
+            <Border Style="{StaticResource CardBorderStyle}">
+                <VerticalStackLayout Spacing="10">
+                    <HorizontalStackLayout Spacing="10">
+                        <Label Text="Vibration" VerticalOptions="Center" HorizontalOptions="StartAndExpand" />
+                        <Switch IsToggled="{Binding VibrationEnabled}" />
+                    </HorizontalStackLayout>
+                    <HorizontalStackLayout Spacing="10">
+                        <Label Text="Sound" VerticalOptions="Center" HorizontalOptions="StartAndExpand" />
+                        <Switch IsToggled="{Binding SoundEnabled}" />
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Style="{StaticResource CardBorderStyle}">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Add Custom Zikr" Style="{StaticResource SectionTitleStyle}" FontSize="15" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                        <Entry Grid.Column="0" Placeholder="e.g. Ya Rahman" Text="{Binding NewCustomZikrName}" />
+                        <Button Grid.Column="1" Text="Add" Command="{Binding AddCustomZikrCommand}" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</base:AppearingContentPage>

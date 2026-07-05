@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<base:AppearingContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:IslamicCompanionPro.ViewModels"
+             xmlns:base="clr-namespace:IslamicCompanionPro.Views.Base"
+             x:Class="IslamicCompanionPro.Views.SurahDetailPage"
+             x:DataType="vm:SurahDetailViewModel"
+             x:Name="Root"
+             Title="{Binding Title}">
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="A-" Command="{Binding DecreaseFontSizeCommand}" />
+        <ToolbarItem Text="A+" Command="{Binding IncreaseFontSizeCommand}" />
+    </ContentPage.ToolbarItems>
+
+    <Grid>
+        <CollectionView x:Name="AyahsCollectionView" ItemsSource="{Binding Ayahs}" Margin="16">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="vm:AyahDisplayItem">
+                    <Border Style="{StaticResource CardBorderStyle}" Margin="0,6">
+                        <VerticalStackLayout Spacing="10">
+                            <HorizontalStackLayout Spacing="8">
+                                <Label Text="{Binding Reference}" Style="{StaticResource GoldBadgeLabelStyle}" VerticalOptions="Center" />
+                            </HorizontalStackLayout>
+
+                            <Label Text="{Binding TextArabic}"
+                                   Style="{StaticResource ArabicAyahLabelStyle}"
+                                   FontSize="{Binding Source={x:Reference Root}, Path=BindingContext.FontSize}"
+                                   FontFamily="{Binding Source={x:Reference Root}, Path=BindingContext.ArabicFontFamily}" />
+
+                            <Label Text="{Binding Translation}" Style="{StaticResource TranslationLabelStyle}" />
+
+                            <HorizontalStackLayout Spacing="18">
+                                <Label Text="{Binding IsFavorite, Converter={StaticResource FavoriteGlyphConverter}}"
+                                       FontSize="20" TextColor="{StaticResource Gold}">
+                                    <Label.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding Source={x:Reference Root}, Path=BindingContext.ToggleFavoriteCommand}"
+                                                               CommandParameter="{Binding .}" />
+                                    </Label.GestureRecognizers>
+                                </Label>
+                                <Label Text="🔖" FontSize="18">
+                                    <Label.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding Source={x:Reference Root}, Path=BindingContext.BookmarkCommand}"
+                                                               CommandParameter="{Binding .}" />
+                                    </Label.GestureRecognizers>
+                                </Label>
+                                <Label Text="📋" FontSize="18">
+                                    <Label.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding Source={x:Reference Root}, Path=BindingContext.CopyAyahCommand}"
+                                                               CommandParameter="{Binding .}" />
+                                    </Label.GestureRecognizers>
+                                </Label>
+                                <Label Text="📤" FontSize="18">
+                                    <Label.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding Source={x:Reference Root}, Path=BindingContext.ShareAyahCommand}"
+                                                               CommandParameter="{Binding .}" />
+                                    </Label.GestureRecognizers>
+                                </Label>
+                                <Label Text="▶️" FontSize="18">
+                                    <Label.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding Source={x:Reference Root}, Path=BindingContext.PlayAudioCommand}"
+                                                               CommandParameter="{Binding .}" />
+                                    </Label.GestureRecognizers>
+                                </Label>
+                                <Label Text="⬇️" FontSize="18">
+                                    <Label.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding Source={x:Reference Root}, Path=BindingContext.DownloadAudioCommand}"
+                                                               CommandParameter="{Binding .}" />
+                                    </Label.GestureRecognizers>
+                                </Label>
+                            </HorizontalStackLayout>
+                        </VerticalStackLayout>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Style="{StaticResource ActivityIndicatorStyle}" />
+    </Grid>
+</base:AppearingContentPage>

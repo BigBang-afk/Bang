@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<base:AppearingContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:IslamicCompanionPro.ViewModels"
+             xmlns:base="clr-namespace:IslamicCompanionPro.Views.Base"
+             x:Class="IslamicCompanionPro.Views.QiblaPage"
+             x:DataType="vm:QiblaViewModel"
+             Title="{Binding Title}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="24" Spacing="20">
+
+            <Label Text="{Binding StatusMessage}" IsVisible="{Binding StatusMessage, Converter={StaticResource IsNotNullConverter}}"
+                   Style="{StaticResource SubtitleLabelStyle}" HorizontalTextAlignment="Center" />
+
+            <Border WidthRequest="260" HeightRequest="260" HorizontalOptions="Center"
+                    StrokeShape="RoundRectangle 130" Stroke="{StaticResource Gold}" StrokeThickness="3"
+                    BackgroundColor="{AppThemeBinding Light={StaticResource IslamicGreenLight}, Dark={StaticResource CardSurfaceDark}}">
+                <Grid>
+                    <Label Text="N" HorizontalOptions="Center" VerticalOptions="Start" Margin="0,10,0,0" FontFamily="OpenSansSemibold" />
+                    <Label Text="🕋"
+                           FontSize="54"
+                           HorizontalOptions="Center"
+                           VerticalOptions="Center"
+                           Rotation="{Binding NeedleRotation}"
+                           AnchorX="0.5" AnchorY="2.2" />
+                </Grid>
+            </Border>
+
+            <Label Text="{Binding QiblaBearingDegrees, StringFormat='Qibla Bearing: {0:F1}°'}"
+                   HorizontalOptions="Center" Style="{StaticResource SectionTitleStyle}" />
+
+            <Label Text="{Binding DistanceKm, StringFormat='Distance to Kaaba: {0:F0} km'}"
+                   HorizontalOptions="Center" Style="{StaticResource SubtitleLabelStyle}" />
+
+            <Border Style="{StaticResource CardBorderStyle}">
+                <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto">
+                    <Label Grid.Row="0" Grid.Column="0" Text="Latitude" Style="{StaticResource SubtitleLabelStyle}" />
+                    <Label Grid.Row="0" Grid.Column="1" Text="Longitude" Style="{StaticResource SubtitleLabelStyle}" HorizontalTextAlignment="End" />
+                    <Label Grid.Row="1" Grid.Column="0" Text="{Binding Latitude, StringFormat='{0:F5}'}" FontFamily="OpenSansSemibold" />
+                    <Label Grid.Row="1" Grid.Column="1" Text="{Binding Longitude, StringFormat='{0:F5}'}" FontFamily="OpenSansSemibold" HorizontalTextAlignment="End" />
+                </Grid>
+            </Border>
+
+            <Label Text="Using manually-set location (GPS unavailable)" IsVisible="{Binding UsingManualLocation}"
+                   Style="{StaticResource SubtitleLabelStyle}" HorizontalTextAlignment="Center" />
+
+            <Border Style="{StaticResource CardBorderStyle}" IsVisible="{Binding CompassSupported, Converter={StaticResource InverseBoolConverter}}">
+                <Label Text="This device has no compass sensor. Use the bearing above with a separate compass, or a map app, to orient toward the Kaaba."
+                       Style="{StaticResource TranslationLabelStyle}" />
+            </Border>
+
+            <Border Style="{StaticResource CardBorderStyle}" IsVisible="{Binding CompassSupported}">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="Calibration Tip" Style="{StaticResource SectionTitleStyle}" FontSize="15" />
+                    <Label Text="If the needle seems inaccurate, move your phone in a figure-8 motion a few times, away from metal objects and magnets, to recalibrate the compass sensor."
+                           Style="{StaticResource TranslationLabelStyle}" />
+                </VerticalStackLayout>
+            </Border>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</base:AppearingContentPage>

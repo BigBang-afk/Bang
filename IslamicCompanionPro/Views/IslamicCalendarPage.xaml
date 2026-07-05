@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<base:AppearingContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:IslamicCompanionPro.ViewModels"
+             xmlns:base="clr-namespace:IslamicCompanionPro.Views.Base"
+             x:Class="IslamicCompanionPro.Views.IslamicCalendarPage"
+             x:DataType="vm:IslamicCalendarViewModel"
+             Title="{Binding Title}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16" Spacing="16">
+
+            <Border Style="{StaticResource CardBorderStyle}" BackgroundColor="{StaticResource IslamicGreen}">
+                <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
+                    <Label Text="{Binding HijriDateText}" TextColor="{StaticResource GoldLight}" FontFamily="OpenSansSemibold" FontSize="20" HorizontalOptions="Center" />
+                    <Label Text="{Binding GregorianDateText}" TextColor="{StaticResource White}" HorizontalOptions="Center" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Style="{StaticResource CardBorderStyle}">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Manual Hijri Adjustment" Style="{StaticResource SectionTitleStyle}" FontSize="15" />
+                    <Label Text="If this date doesn't match your local moon-sighting announcement, adjust it by ±1-2 days." Style="{StaticResource SubtitleLabelStyle}" />
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <Button Grid.Column="0" Text="-1" Style="{StaticResource IconButtonStyle}" Command="{Binding DecreaseAdjustmentCommand}" />
+                        <Label Grid.Column="1" Text="{Binding AdjustmentDays, StringFormat='{0:+0;-0;0} days'}" HorizontalOptions="Center" VerticalOptions="Center" FontFamily="OpenSansSemibold" />
+                        <Button Grid.Column="2" Text="+1" Style="{StaticResource IconButtonStyle}" Command="{Binding IncreaseAdjustmentCommand}" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <Label Text="Upcoming Islamic Dates" Style="{StaticResource SectionTitleStyle}" />
+
+            <CollectionView ItemsSource="{Binding UpcomingEvents}">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="vm:UpcomingEventItem">
+                        <Border Style="{StaticResource ListItemBorderStyle}" Margin="0,4">
+                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                                <Label Grid.Row="0" Grid.Column="0" Text="{Binding Name}" FontFamily="OpenSansSemibold" />
+                                <Label Grid.Row="0" Grid.Column="1" Text="{Binding DaysAway, StringFormat='in {0}d'}" Style="{StaticResource GoldBadgeLabelStyle}" />
+                                <Label Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding DateText}" Style="{StaticResource SubtitleLabelStyle}" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</base:AppearingContentPage>

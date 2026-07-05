@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<base:AppearingContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:IslamicCompanionPro.ViewModels"
+             xmlns:base="clr-namespace:IslamicCompanionPro.Views.Base"
+             x:Class="IslamicCompanionPro.Views.MonthlyPrayerTimesPage"
+             x:DataType="vm:MonthlyPrayerTimesViewModel"
+             Title="{Binding Title}">
+
+    <Grid RowDefinitions="Auto,*" Padding="12" RowSpacing="10">
+
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto">
+            <Button Grid.Column="0" Text="‹" Style="{StaticResource IconButtonStyle}" Command="{Binding PreviousMonthCommand}" />
+            <Label Grid.Column="1" Text="{Binding DisplayedMonth, StringFormat='{0:MMMM yyyy}'}"
+                   HorizontalOptions="Center" VerticalOptions="Center" Style="{StaticResource SectionTitleStyle}" />
+            <Button Grid.Column="2" Text="›" Style="{StaticResource IconButtonStyle}" Command="{Binding NextMonthCommand}" />
+        </Grid>
+
+        <ScrollView Grid.Row="1" Orientation="Both">
+            <CollectionView ItemsSource="{Binding Rows}">
+                <CollectionView.Header>
+                    <Grid ColumnDefinitions="110,80,80,80,80,80,80" Padding="10,6" BackgroundColor="{StaticResource IslamicGreen}">
+                        <Label Grid.Column="0" Text="Date" TextColor="{StaticResource White}" FontFamily="OpenSansSemibold" FontSize="12" />
+                        <Label Grid.Column="1" Text="Fajr" TextColor="{StaticResource White}" FontFamily="OpenSansSemibold" FontSize="12" />
+                        <Label Grid.Column="2" Text="Sunrise" TextColor="{StaticResource White}" FontFamily="OpenSansSemibold" FontSize="12" />
+                        <Label Grid.Column="3" Text="Dhuhr" TextColor="{StaticResource White}" FontFamily="OpenSansSemibold" FontSize="12" />
+                        <Label Grid.Column="4" Text="Asr" TextColor="{StaticResource White}" FontFamily="OpenSansSemibold" FontSize="12" />
+                        <Label Grid.Column="5" Text="Maghrib" TextColor="{StaticResource White}" FontFamily="OpenSansSemibold" FontSize="12" />
+                        <Label Grid.Column="6" Text="Isha" TextColor="{StaticResource White}" FontFamily="OpenSansSemibold" FontSize="12" />
+                    </Grid>
+                </CollectionView.Header>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="vm:MonthlyPrayerRow">
+                        <Grid ColumnDefinitions="110,80,80,80,80,80,80" Padding="10,8">
+                            <Label Grid.Column="0" Text="{Binding DateText}" FontSize="12" />
+                            <Label Grid.Column="1" Text="{Binding Fajr}" FontSize="12" />
+                            <Label Grid.Column="2" Text="{Binding Sunrise}" FontSize="12" />
+                            <Label Grid.Column="3" Text="{Binding Dhuhr}" FontSize="12" />
+                            <Label Grid.Column="4" Text="{Binding Asr}" FontSize="12" />
+                            <Label Grid.Column="5" Text="{Binding Maghrib}" FontSize="12" />
+                            <Label Grid.Column="6" Text="{Binding Isha}" FontSize="12" />
+                        </Grid>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </ScrollView>
+
+        <ActivityIndicator Grid.Row="1" IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Style="{StaticResource ActivityIndicatorStyle}" />
+    </Grid>
+</base:AppearingContentPage>

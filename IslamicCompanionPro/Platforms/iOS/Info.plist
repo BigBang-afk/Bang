@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>UIDeviceFamily</key>
+	<array>
+		<integer>1</integer>
+		<integer>2</integer>
+	</array>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>XSAppIconAssets</key>
+	<string>Assets.xcassets/appicon.appiconset</string>
+
+	<!-- Qibla Finder + Prayer Times: current location -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Islamic Companion Pro uses your location to calculate accurate prayer times and to point you toward the Qibla (Kaaba).</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Islamic Companion Pro uses your location to calculate accurate prayer times and to point you toward the Qibla (Kaaba).</string>
+
+	<!-- Azan / reminder notifications -->
+	<key>NSUserNotificationsUsageDescription</key>
+	<string>Islamic Companion Pro sends Azan and reminder notifications before each prayer time.</string>
+
+	<!-- Optional: only used if the user chooses to save/share a database backup file -->
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>Used only when you choose to back up or restore your saved bookmarks, favorites and settings.</string>
+</dict>
+</plist>

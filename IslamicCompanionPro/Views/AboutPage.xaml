@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<base:AppearingContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:IslamicCompanionPro.ViewModels"
+             xmlns:base="clr-namespace:IslamicCompanionPro.Views.Base"
+             x:Class="IslamicCompanionPro.Views.AboutPage"
+             x:DataType="vm:AboutViewModel"
+             Title="{Binding Title}">
+
+    <VerticalStackLayout Padding="24" Spacing="16" VerticalOptions="Center">
+        <Label Text="☪" FontSize="56" HorizontalOptions="Center" TextColor="{StaticResource Gold}" />
+        <Label Text="Islamic Companion Pro" FontFamily="OpenSansSemibold" FontSize="22" HorizontalOptions="Center" />
+        <Label Text="{Binding AppVersion, StringFormat='Version {0}'}" Style="{StaticResource SubtitleLabelStyle}" HorizontalOptions="Center" />
+
+        <Border Style="{StaticResource CardBorderStyle}">
+            <Label Text="A companion app for Quran reading, Duas, Qibla direction, prayer times and Azan reminders, Islamic calendar, and Tasbeeh — designed to work fully offline."
+                   Style="{StaticResource TranslationLabelStyle}" />
+        </Border>
+
+        <Button Text="Privacy Policy" Style="{StaticResource OutlineButtonStyle}" Command="{Binding OpenPrivacyPolicyCommand}" />
+
+        <Label Text="Quran and Dua sources should be verified against Tanzil.net / Hisnul Muslim before publishing. See project README."
+               Style="{StaticResource SubtitleLabelStyle}" HorizontalTextAlignment="Center" />
+    </VerticalStackLayout>
+</base:AppearingContentPage>

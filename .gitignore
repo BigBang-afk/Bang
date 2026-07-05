@@ -1,0 +1,15 @@
+## .NET / MAUI build output
+bin/
+obj/
+*.user
+
+## Visual Studio
+.vs/
+*.suo
+
+## Rider / VS Code
+.idea/
+.vscode/
+
+## macOS
+.DS_Store

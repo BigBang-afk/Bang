@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<?xaml-comp compile="true" ?>
+<ResourceDictionary xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+                     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+
+    <Style TargetType="Page" ApplyToDerivedTypes="True">
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource BackgroundLight}, Dark={StaticResource BackgroundDark}}" />
+    </Style>
+
+    <Style TargetType="Shell" ApplyToDerivedTypes="True">
+        <Setter Property="Shell.BackgroundColor" Value="{StaticResource IslamicGreen}" />
+        <Setter Property="Shell.ForegroundColor" Value="{StaticResource White}" />
+        <Setter Property="Shell.TitleColor" Value="{StaticResource White}" />
+        <Setter Property="Shell.UnselectedColor" Value="{StaticResource Gray100}" />
+        <Setter Property="Shell.TabBarBackgroundColor" Value="{StaticResource IslamicGreen}" />
+        <Setter Property="Shell.TabBarForegroundColor" Value="{StaticResource White}" />
+        <Setter Property="Shell.FlyoutBackgroundColor" Value="{AppThemeBinding Light={StaticResource SurfaceLight}, Dark={StaticResource SurfaceDark}}" />
+    </Style>
+
+    <Style TargetType="Label">
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource TextPrimaryLight}, Dark={StaticResource TextPrimaryDark}}" />
+        <Setter Property="FontFamily" Value="OpenSansRegular" />
+        <Setter Property="FontSize" Value="15" />
+    </Style>
+
+    <Style x:Key="SubtitleLabelStyle" TargetType="Label">
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource TextSecondaryLight}, Dark={StaticResource TextSecondaryDark}}" />
+        <Setter Property="FontSize" Value="13" />
+    </Style>
+
+    <Style x:Key="SectionTitleStyle" TargetType="Label">
+        <Setter Property="FontFamily" Value="OpenSansSemibold" />
+        <Setter Property="FontSize" Value="18" />
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource IslamicGreenDark}, Dark={StaticResource Gold}}" />
+    </Style>
+
+    <Style x:Key="ArabicAyahLabelStyle" TargetType="Label">
+        <Setter Property="FontFamily" Value="Amiri" />
+        <Setter Property="FlowDirection" Value="RightToLeft" />
+        <Setter Property="HorizontalTextAlignment" Value="End" />
+        <Setter Property="LineHeight" Value="1.8" />
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource TextPrimaryLight}, Dark={StaticResource TextPrimaryDark}}" />
+    </Style>
+
+    <Style x:Key="TranslationLabelStyle" TargetType="Label">
+        <Setter Property="FontSize" Value="15" />
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource TextSecondaryLight}, Dark={StaticResource TextSecondaryDark}}" />
+    </Style>
+
+    <Style x:Key="GoldBadgeLabelStyle" TargetType="Label">
+        <Setter Property="TextColor" Value="{StaticResource IslamicGreenDark}" />
+        <Setter Property="BackgroundColor" Value="{StaticResource GoldLight}" />
+        <Setter Property="FontFamily" Value="OpenSansSemibold" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Padding" Value="8,3" />
+    </Style>
+
+    <Style TargetType="Button">
+        <Setter Property="BackgroundColor" Value="{StaticResource IslamicGreen}" />
+        <Setter Property="TextColor" Value="{StaticResource White}" />
+        <Setter Property="FontFamily" Value="OpenSansSemibold" />
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="Padding" Value="16,12" />
+    </Style>
+
+    <Style x:Key="GoldButtonStyle" TargetType="Button">
+        <Setter Property="BackgroundColor" Value="{StaticResource Gold}" />
+        <Setter Property="TextColor" Value="{StaticResource Black}" />
+        <Setter Property="FontFamily" Value="OpenSansSemibold" />
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="Padding" Value="16,12" />
+    </Style>
+
+    <Style x:Key="OutlineButtonStyle" TargetType="Button">
+        <Setter Property="BackgroundColor" Value="Transparent" />
+        <Setter Property="TextColor" Value="{StaticResource IslamicGreen}" />
+        <Setter Property="BorderColor" Value="{StaticResource IslamicGreen}" />
+        <Setter Property="BorderWidth" Value="1.5" />
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="Padding" Value="16,12" />
+    </Style>
+
+    <Style x:Key="IconButtonStyle" TargetType="Button">
+        <Setter Property="BackgroundColor" Value="Transparent" />
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource IslamicGreenDark}, Dark={StaticResource Gold}}" />
+        <Setter Property="FontFamily" Value="OpenSansSemibold" />
+        <Setter Property="Padding" Value="8" />
+        <Setter Property="WidthRequest" Value="44" />
+        <Setter Property="HeightRequest" Value="44" />
+    </Style>
+
+    <Style TargetType="Entry">
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource TextPrimaryLight}, Dark={StaticResource TextPrimaryDark}}" />
+        <Setter Property="PlaceholderColor" Value="{AppThemeBinding Light={StaticResource TextSecondaryLight}, Dark={StaticResource TextSecondaryDark}}" />
+        <Setter Property="BackgroundColor" Value="Transparent" />
+    </Style>
+
+    <Style TargetType="Picker">
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource TextPrimaryLight}, Dark={StaticResource TextPrimaryDark}}" />
+        <Setter Property="TitleColor" Value="{AppThemeBinding Light={StaticResource TextSecondaryLight}, Dark={StaticResource TextSecondaryDark}}" />
+    </Style>
+
+    <Style TargetType="Switch">
+        <Setter Property="OnColor" Value="{StaticResource IslamicGreenLight}" />
+        <Setter Property="ThumbColor" Value="{StaticResource IslamicGreen}" />
+    </Style>
+
+    <Style x:Key="CardBorderStyle" TargetType="Border">
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource CardSurfaceLight}, Dark={StaticResource CardSurfaceDark}}" />
+        <Setter Property="Stroke" Value="Transparent" />
+        <Setter Property="StrokeShape" Value="RoundRectangle 16" />
+        <Setter Property="Padding" Value="16" />
+        <Setter Property="Shadow">
+            <Shadow Brush="{StaticResource Gray700}" Offset="0,2" Radius="8" Opacity="0.12" />
+        </Setter>
+    </Style>
+
+    <Style x:Key="ListItemBorderStyle" TargetType="Border">
+        <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource CardSurfaceLight}, Dark={StaticResource CardSurfaceDark}}" />
+        <Setter Property="Stroke" Value="{AppThemeBinding Light={StaticResource Gray100}, Dark={StaticResource Gray700}}" />
+        <Setter Property="StrokeThickness" Value="1" />
+        <Setter Property="StrokeShape" Value="RoundRectangle 12" />
+        <Setter Property="Padding" Value="14,12" />
+    </Style>
+
+    <Style x:Key="ActivityIndicatorStyle" TargetType="ActivityIndicator">
+        <Setter Property="Color" Value="{StaticResource IslamicGreen}" />
+    </Style>
+
+</ResourceDictionary>
