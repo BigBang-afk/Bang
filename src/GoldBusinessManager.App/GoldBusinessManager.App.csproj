@@ -42,7 +42,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
     <!-- Provides platform dialogs (alerts, file pickers, sharing) used later for PDF export / WhatsApp share. -->
-    <PackageReference Include="CommunityToolkit.Maui" Version="11.0.0" />
+    <PackageReference Include="CommunityToolkit.Maui" Version="14.2.0" />
   </ItemGroup>
 
   <ItemGroup>
