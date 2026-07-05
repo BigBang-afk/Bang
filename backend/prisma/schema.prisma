@@ -1,0 +1,122 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum AssetClass {
+  CRYPTO
+  FOREX
+  STOCK
+}
+
+enum TradeDirection {
+  UP
+  DOWN
+}
+
+enum TradeStatus {
+  OPEN
+  WON
+  LOST
+  PUSH
+}
+
+enum DepositStatus {
+  PENDING
+  CONFIRMED
+}
+
+enum WithdrawalStatus {
+  PENDING_REVIEW
+  APPROVED
+  BROADCAST
+  CONFIRMED
+  REJECTED
+  FAILED
+}
+
+model User {
+  id              Int       @id @default(autoincrement())
+  email           String    @unique
+  passwordHash    String
+  role            Role      @default(USER)
+  balanceCents    BigInt    @default(0)
+  createdAt       DateTime  @default(now())
+
+  depositAddress  DepositAddress?
+  deposits        Deposit[]
+  withdrawals     Withdrawal[]
+  trades          Trade[]
+}
+
+// One HD-derived Ethereum address per user, used for both ETH and
+// ERC20 (USDT) deposits. Derivation path: m/44'/60'/0'/0/{derivationIndex}
+model DepositAddress {
+  id               Int      @id @default(autoincrement())
+  userId           Int      @unique
+  user             User     @relation(fields: [userId], references: [id])
+  address          String   @unique
+  derivationIndex  Int      @unique
+  createdAt        DateTime @default(now())
+}
+
+model Deposit {
+  id            Int           @id @default(autoincrement())
+  userId        Int
+  user          User          @relation(fields: [userId], references: [id])
+  txHash        String
+  logIndex      Int           @default(0)
+  asset         String        // "ETH" | "USDT"
+  amountWei     String        // raw on-chain amount, string to avoid precision loss
+  amountUsdCents BigInt
+  confirmations Int           @default(0)
+  status        DepositStatus @default(PENDING)
+  createdAt     DateTime      @default(now())
+  confirmedAt   DateTime?
+
+  @@unique([txHash, logIndex, asset])
+}
+
+model Withdrawal {
+  id            Int              @id @default(autoincrement())
+  userId        Int
+  user          User             @relation(fields: [userId], references: [id])
+  toAddress     String
+  asset         String           // "ETH" | "USDT"
+  amountUsdCents BigInt
+  status        WithdrawalStatus @default(PENDING_REVIEW)
+  txHash        String?
+  reviewedBy    Int?
+  reviewNote    String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+}
+
+model Trade {
+  id            Int            @id @default(autoincrement())
+  userId        Int
+  user          User           @relation(fields: [userId], references: [id])
+  symbol        String         // e.g. "BTC/USDT", "EUR/USD"
+  assetClass    AssetClass
+  direction     TradeDirection
+  stakeCents    BigInt
+  payoutRatio   Float          // e.g. 0.85 = 85% profit on win
+  entryPrice    Float
+  entryAt       DateTime       @default(now())
+  expiryAt      DateTime
+  exitPrice     Float?
+  status        TradeStatus    @default(OPEN)
+  payoutCents   BigInt?
+  settledAt     DateTime?
+
+  @@index([status, expiryAt])
+}

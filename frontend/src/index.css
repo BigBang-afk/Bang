@@ -1,0 +1,119 @@
+:root {
+  --bg: #0b0d12;
+  --panel: #12141b;
+  --border: #22252f;
+  --text: #d1d4dc;
+  --text-dim: #7d8291;
+  --up: #26a69a;
+  --down: #ef5350;
+  --accent: #4f8cff;
+  font: 15px/1.5 system-ui, "Segoe UI", Roboto, sans-serif;
+  color-scheme: dark;
+  color: var(--text);
+  background: var(--bg);
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+h1, h2, h3 { color: var(--text); font-weight: 600; margin: 16px 0 8px; }
+h1 { font-size: 24px; }
+h2 { font-size: 18px; }
+h3 { font-size: 15px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; }
+
+main { max-width: 1200px; margin: 0 auto; padding: 16px; }
+
+button {
+  font: inherit;
+  cursor: pointer;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 14px;
+}
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+input, select {
+  font: inherit;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  width: 100%;
+}
+
+label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--text-dim); margin-bottom: 10px; }
+
+a { color: var(--accent); }
+
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+.navbar-left, .navbar-right { display: flex; align-items: center; gap: 16px; }
+.brand { font-weight: 700; color: var(--text); text-decoration: none; }
+.balance { font-weight: 600; color: var(--up); }
+
+.error { color: var(--down); font-size: 13px; margin-bottom: 8px; }
+.warning { color: #f5a623; font-size: 13px; margin-bottom: 8px; }
+.hint { color: var(--text-dim); font-size: 12px; }
+
+.auth-page { display: flex; justify-content: center; padding-top: 60px; }
+.auth-form {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 32px;
+  width: 340px;
+}
+.auth-form button { width: 100%; margin-top: 8px; background: var(--accent); border-color: var(--accent); }
+
+.trade-page { display: grid; grid-template-columns: 1fr 300px; gap: 20px; align-items: start; }
+.chart-column { min-width: 0; }
+
+.instrument-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.instrument-btn { display: flex; align-items: center; gap: 6px; }
+.instrument-btn.active { border-color: var(--accent); color: var(--accent); }
+.instrument-btn .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--up); }
+.instrument-btn.offline .dot { background: var(--text-dim); }
+
+.price-header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 8px; }
+.price-header .symbol { font-weight: 700; font-size: 18px; }
+.price-header .price { font-size: 22px; font-variant-numeric: tabular-nums; }
+.price-header .payout { color: var(--text-dim); font-size: 13px; }
+
+.trades-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px; }
+.trades-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); }
+.trades-table .up { color: var(--up); font-weight: 600; }
+.trades-table .down { color: var(--down); font-weight: 600; }
+.trades-table tr.won td:nth-child(4) { color: var(--up); }
+.trades-table tr.lost td:nth-child(4) { color: var(--down); }
+.address-cell { font-family: ui-monospace, monospace; font-size: 12px; word-break: break-all; }
+
+.trade-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  position: sticky;
+  top: 16px;
+}
+.expiry-options { display: flex; gap: 6px; }
+.expiry-options button { flex: 1; padding: 6px; }
+.expiry-options button.active { border-color: var(--accent); color: var(--accent); }
+.payout-preview { font-size: 13px; color: var(--text-dim); margin-bottom: 12px; }
+.up-btn, .down-btn { width: 100%; padding: 14px; font-weight: 700; font-size: 16px; margin-bottom: 8px; }
+.up-btn { background: var(--up); border-color: var(--up); color: #06201c; }
+.down-btn { background: var(--down); border-color: var(--down); color: #2a0a09; }
+
+.wallet-page, .admin-page { max-width: 800px; }
+.balance-large { font-size: 32px; font-weight: 700; color: var(--up); margin-bottom: 20px; }
+.address { display: block; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px; word-break: break-all; margin: 8px 0 20px; }
+.withdraw-form { max-width: 400px; }
+
+section { margin-bottom: 32px; }
