@@ -1,0 +1,89 @@
+@page "/"
+@page "/login"
+@using GoldBusinessManager.App.Services
+@inject IRepository<User> UserRepository
+@inject AuthState AuthState
+@inject NavigationManager NavigationManager
+
+<div class="login-page">
+    <h1>24K Pure Gold Business Manager</h1>
+    <p class="subtitle">Enter your PIN to continue</p>
+
+    <div class="pin-display">
+        @for (var i = 0; i < 6; i++)
+        {
+            <span class="pin-dot @(i < _pin.Length ? "filled" : "")"></span>
+        }
+    </div>
+
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <p class="error-text">@_errorMessage</p>
+    }
+
+    <div class="pin-pad">
+        @foreach (var digit in new[] { "1", "2", "3", "4", "5", "6", "7", "8", "9" })
+        {
+            <button class="pin-key" @onclick="() => AppendDigit(digit)">@digit</button>
+        }
+        <button class="pin-key pin-key-secondary" @onclick="ClearPin">Clear</button>
+        <button class="pin-key" @onclick="() => AppendDigit(@"0")">0</button>
+        <button class="pin-key pin-key-secondary" @onclick="Backspace">⌫</button>
+    </div>
+
+    <button class="btn-primary" @onclick="SignInAsync" disabled="@(_pin.Length == 0 || _isBusy)">
+        @(_isBusy ? "Checking..." : "Sign In")
+    </button>
+</div>
+
+@code {
+    private string _pin = string.Empty;
+    private string? _errorMessage;
+    private bool _isBusy;
+
+    private void AppendDigit(string digit)
+    {
+        if (_pin.Length >= 6) return;
+        _pin += digit;
+        _errorMessage = null;
+    }
+
+    private void Backspace()
+    {
+        if (_pin.Length == 0) return;
+        _pin = _pin[..^1];
+    }
+
+    private void ClearPin() => _pin = string.Empty;
+
+    private async Task SignInAsync()
+    {
+        _isBusy = true;
+        _errorMessage = null;
+
+        try
+        {
+            var users = await UserRepository.GetAllAsync();
+            var pinHash = DatabaseService.HashPin(_pin);
+            var matchedUser = users.FirstOrDefault(u => u.IsActive && u.PinHash == pinHash);
+
+            if (matchedUser is null)
+            {
+                _errorMessage = "Incorrect PIN. Please try again.";
+                _pin = string.Empty;
+                return;
+            }
+
+            AuthState.SignIn(matchedUser);
+            NavigationManager.NavigateTo("dashboard");
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Sign-in failed: {ex.Message}";
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+}

@@ -1,0 +1,151 @@
+@page "/dashboard"
+@using GoldBusinessManager.App.Services
+@inject IRepository<GoldStock> GoldStockRepository
+@inject IRepository<CashTransaction> CashTransactionRepository
+@inject IRepository<BankAccount> BankAccountRepository
+@inject IRepository<SalesInvoice> SalesInvoiceRepository
+@inject IRepository<Purchase> PurchaseRepository
+@inject IRepository<Customer> CustomerRepository
+@inject IRepository<Supplier> SupplierRepository
+@inject AuthState AuthState
+@inject NavigationManager NavigationManager
+
+<h1>Dashboard</h1>
+
+@if (!AuthState.IsLoggedIn)
+{
+    <p>Redirecting to sign-in...</p>
+}
+else if (_isLoading)
+{
+    <p>Loading dashboard...</p>
+}
+else if (_errorMessage is not null)
+{
+    <p class="error-text">@_errorMessage</p>
+}
+else
+{
+    <p class="welcome-text">Welcome, @AuthState.CurrentUser!.FullName</p>
+
+    <div class="dashboard-grid">
+        <div class="dashboard-card">
+            <span class="card-label">Total 24K Gold Stock</span>
+            <span class="card-value">@_totalStockGrams.ToString("N2") g</span>
+            <span class="card-subvalue">@_totalStockTola.ToString("N3") tola</span>
+        </div>
+
+        <div class="dashboard-card">
+            <span class="card-label">Cash Balance</span>
+            <span class="card-value">@_cashBalance.ToString("N2")</span>
+        </div>
+
+        <div class="dashboard-card">
+            <span class="card-label">Bank Balance</span>
+            <span class="card-value">@_bankBalance.ToString("N2")</span>
+        </div>
+
+        <div class="dashboard-card">
+            <span class="card-label">Today Sales</span>
+            <span class="card-value">@_todaySales.ToString("N2")</span>
+        </div>
+
+        <div class="dashboard-card">
+            <span class="card-label">Today Purchases</span>
+            <span class="card-value">@_todayPurchases.ToString("N2")</span>
+        </div>
+
+        <div class="dashboard-card">
+            <span class="card-label">Customer Receivables</span>
+            <span class="card-value">@_customerReceivables.ToString("N2")</span>
+        </div>
+
+        <div class="dashboard-card">
+            <span class="card-label">Supplier Payables</span>
+            <span class="card-value">@_supplierPayables.ToString("N2")</span>
+        </div>
+
+        <div class="dashboard-card dashboard-card-muted">
+            <span class="card-label">Today Profit / Loss</span>
+            <span class="card-value">Coming soon</span>
+            <span class="card-subvalue">Added with the Reports module</span>
+        </div>
+
+        <div class="dashboard-card dashboard-card-muted">
+            <span class="card-label">Monthly Profit / Loss</span>
+            <span class="card-value">Coming soon</span>
+            <span class="card-subvalue">Added with the Reports module</span>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _isLoading = true;
+    private string? _errorMessage;
+
+    private double _totalStockGrams;
+    private double _totalStockTola;
+    private double _cashBalance;
+    private double _bankBalance;
+    private double _todaySales;
+    private double _todayPurchases;
+    private double _customerReceivables;
+    private double _supplierPayables;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!AuthState.IsLoggedIn)
+        {
+            NavigationManager.NavigateTo("/", replace: true);
+            return;
+        }
+
+        await LoadDashboardAsync();
+    }
+
+    private async Task LoadDashboardAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            var today = DateTime.Now.Date;
+
+            var goldStock = await GoldStockRepository.GetAllAsync();
+            _totalStockGrams = goldStock.Sum(s => s.WeightInGrams);
+            _totalStockTola = WeightConverter.FromGrams(_totalStockGrams, WeightUnit.Tola);
+
+            var cashTransactions = await CashTransactionRepository.GetAllAsync();
+            _cashBalance = cashTransactions
+                .OrderByDescending(t => t.TransactionDate)
+                .ThenByDescending(t => t.Id)
+                .FirstOrDefault()?.RunningBalance ?? 0;
+
+            var bankAccounts = await BankAccountRepository.GetAllAsync();
+            _bankBalance = bankAccounts.Where(a => a.IsActive).Sum(a => a.CurrentBalance);
+
+            var salesInvoices = (await SalesInvoiceRepository.GetAllAsync()).Where(i => !i.IsDeleted).ToList();
+            _todaySales = salesInvoices.Where(i => i.InvoiceDate.Date == today).Sum(i => i.FinalTotal);
+            _customerReceivables = salesInvoices.Sum(i => i.BalanceAmount);
+
+            var purchases = (await PurchaseRepository.GetAllAsync()).Where(p => !p.IsDeleted).ToList();
+            _todayPurchases = purchases.Where(p => p.PurchaseDate.Date == today).Sum(p => p.TotalAmount);
+            _supplierPayables = purchases.Sum(p => p.BalanceAmount);
+
+            var customers = await CustomerRepository.GetAllAsync();
+            _customerReceivables += customers.Sum(c => c.OpeningBalance);
+
+            var suppliers = await SupplierRepository.GetAllAsync();
+            _supplierPayables += suppliers.Sum(s => s.OpeningBalance);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Could not load dashboard data: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>GoldBusinessManager.Data</RootNamespace>
+    <AssemblyName>GoldBusinessManager.Data</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="sqlite-net-pcl" Version="1.9.172" />
+    <!-- Provides the native SQLite engine for every platform (Android/iOS/MacCatalyst/Windows). -->
+    <PackageReference Include="SQLitePCLRaw.bundle_green" Version="2.1.10" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GoldBusinessManager.Core\GoldBusinessManager.Core.csproj" />
+  </ItemGroup>
+
+</Project>

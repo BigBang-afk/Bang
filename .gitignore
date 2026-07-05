@@ -1,0 +1,41 @@
+## .NET / MAUI
+
+bin/
+obj/
+*.user
+.vs/
+.vscode/
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Rider / VS Mac
+.idea/
+*.DotSettings.user
+
+## Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+
+## MAUI / mobile packaging
+*.apk
+*.aab
+*.ipa
+*.appx
+*.appxbundle
+*.msix
+
+## Local database files (do not commit real business data)
+*.db3
+*.db3-journal
+*.db3-shm
+*.db3-wal
+
+## OS files
+.DS_Store
+Thumbs.db

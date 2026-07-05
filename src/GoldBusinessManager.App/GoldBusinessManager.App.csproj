@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0-android;net8.0-ios;net8.0-maccatalyst</TargetFrameworks>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>GoldBusinessManager.App</RootNamespace>
+    <UseMaui>true</UseMaui>
+    <SingleProject>true</SingleProject>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <!-- Display name and unique bundle/package identifiers. Change these before publishing to a store. -->
+    <ApplicationTitle>24K Pure Gold Business Manager</ApplicationTitle>
+    <ApplicationId>com.goldbusiness.manager</ApplicationId>
+    <ApplicationIdGuid>B2C35081-0F38-49A1-AF43-E0511AFEA633</ApplicationIdGuid>
+
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
+
+    <SupportedOSPlatformVersion Condition="'$(TargetFramework)' == 'net8.0-ios'">15.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="'$(TargetFramework)' == 'net8.0-maccatalyst'">15.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="'$(TargetFramework)' == 'net8.0-android'">21.0</SupportedOSPlatformVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- App icon, generated for every platform at build time from this single SVG. -->
+    <MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#FFD700" />
+
+    <!-- Splash screen. -->
+    <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#1A1A1A" BaseSize="128,128" />
+
+    <!-- Custom fonts: drop .ttf/.otf files in Resources/Fonts and they are picked up automatically. -->
+    <MauiFont Include="Resources\Fonts\*" />
+
+    <!-- Raw assets bundled with the app (none needed yet). -->
+    <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Microsoft.Maui.Controls itself comes from the MAUI workload via UseMaui=true above;
+         only the Blazor WebView host and add-on packages need explicit references. -->
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="8.0.100" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="8.0.1" />
+    <!-- Provides platform dialogs (alerts, file pickers, sharing) used later for PDF export / WhatsApp share. -->
+    <PackageReference Include="CommunityToolkit.Maui" Version="9.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GoldBusinessManager.Core\GoldBusinessManager.Core.csproj" />
+    <ProjectReference Include="..\GoldBusinessManager.Data\GoldBusinessManager.Data.csproj" />
+  </ItemGroup>
+
+</Project>

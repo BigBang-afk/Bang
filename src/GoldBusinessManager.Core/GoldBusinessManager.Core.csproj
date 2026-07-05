@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>GoldBusinessManager.Core</RootNamespace>
+    <AssemblyName>GoldBusinessManager.Core</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Referenced here only for the [Table]/[PrimaryKey]/[Indexed] attributes used on the
+         entities below, so the same class can be handed straight to sqlite-net-pcl's
+         CreateTableAsync<T>() in the Data project without a second set of mapping classes. -->
+    <PackageReference Include="sqlite-net-pcl" Version="1.9.172" />
+  </ItemGroup>
+
+</Project>

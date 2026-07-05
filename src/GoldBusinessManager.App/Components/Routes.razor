@@ -1,0 +1,13 @@
+@using GoldBusinessManager.App.Components.Layout
+
+<Router AppAssembly="@typeof(Routes).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <LayoutView Layout="@typeof(MainLayout)">
+            <p role="alert">Sorry, that page was not found.</p>
+        </LayoutView>
+    </NotFound>
+</Router>
