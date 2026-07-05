@@ -1,14 +1,20 @@
 using IslamicCompanionPro.Models;
 using IslamicCompanionPro.Services.Interfaces;
+#if ANDROID
+using Android.Media;
+#elif IOS
+using AVFoundation;
+using Foundation;
+#endif
 
 namespace IslamicCompanionPro.Services;
 
 /// <summary>
-/// Downloads per-Ayah recitation audio and resolves a playable source for it. Audio is entirely
-/// optional per the app's offline-first requirement: nothing here blocks Quran reading,
-/// bookmarking or search. Actual playback is done by a CommunityToolkit.Maui
-/// &lt;toolkit:MediaElement&gt; in SurahDetailPage.xaml, bound to the source this service returns —
-/// that keeps this service free of any dependency on a specific playback API surface.
+/// Downloads per-Ayah recitation audio and plays it back using each platform's native player
+/// (Android MediaPlayer / iOS AVPlayer) directly, via conditional compilation. This deliberately
+/// avoids any third-party audio-playback NuGet package: those come and go/rename their APIs
+/// between versions, whereas Android.Media.MediaPlayer and AVFoundation.AVPlayer are part of the
+/// platform SDKs themselves and ship with the net9.0-android/net9.0-ios workloads you already have.
 ///
 /// IMPORTANT: <see cref="RecitationBaseUrl"/> is a placeholder. Before shipping, replace it with
 /// a reciter audio CDN you are licensed/permitted to use (e.g. an API you have a usage agreement
@@ -20,6 +26,12 @@ public class AudioService : IAudioService
 
 	private readonly ISQLiteDatabaseService _db;
 	private readonly HttpClient _httpClient;
+
+#if ANDROID
+	private MediaPlayer? _androidPlayer;
+#elif IOS
+	private AVPlayer? _iosPlayer;
+#endif
 
 	public AudioService(ISQLiteDatabaseService db, HttpClient httpClient)
 	{
@@ -101,15 +113,54 @@ public class AudioService : IAudioService
 		return download;
 	}
 
-	public Task<string> GetPlaybackSourceAsync(int globalAyahNumber, string reciterId)
+	public Task PlayAsync(int globalAyahNumber, string reciterId)
 	{
+		Stop();
+
 		string localPath = BuildLocalPath(globalAyahNumber, reciterId);
 
 		// Local file if already downloaded (fully offline); otherwise the remote URL — this is the
 		// one place in the app that needs internet, and only because the user chose to play
 		// un-downloaded audio.
 		string source = File.Exists(localPath) ? localPath : BuildAudioUrl(globalAyahNumber, reciterId);
-		return Task.FromResult(source);
+
+#if ANDROID
+		_androidPlayer = new MediaPlayer();
+		_androidPlayer.SetDataSource(source);
+		_androidPlayer.Prepared += (_, _) => _androidPlayer?.Start();
+		_androidPlayer.PrepareAsync();
+#elif IOS
+		var url = source.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+			? NSUrl.FromString(source)
+			: NSUrl.FromFilename(source);
+		_iosPlayer = AVPlayer.FromUrl(url!);
+		_iosPlayer.Play();
+#endif
+
+		return Task.CompletedTask;
+	}
+
+	public void Stop()
+	{
+#if ANDROID
+		if (_androidPlayer is not null)
+		{
+			if (_androidPlayer.IsPlaying)
+			{
+				_androidPlayer.Stop();
+			}
+			_androidPlayer.Release();
+			_androidPlayer.Dispose();
+			_androidPlayer = null;
+		}
+#elif IOS
+		if (_iosPlayer is not null)
+		{
+			_iosPlayer.Pause();
+			_iosPlayer.Dispose();
+			_iosPlayer = null;
+		}
+#endif
 	}
 
 	public async Task<List<AudioDownload>> GetDownloadsAsync()
