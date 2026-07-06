@@ -1,84 +1,110 @@
 <UserControl x:Class="GeneralStorePro.Views.SettingsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Border Style="{StaticResource Card}" MaxWidth="640" HorizontalAlignment="Left">
-        <DockPanel>
-            <TextBlock DockPanel.Dock="Top" Text="Settings" Style="{StaticResource Text.PageTitle}" Margin="0,0,0,4" />
-            <TextBlock DockPanel.Dock="Top" Text="Store details and billing defaults" Style="{StaticResource Text.Muted}" Margin="0,0,0,20" />
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel MaxWidth="640" HorizontalAlignment="Left">
+            <Border Style="{StaticResource Card}">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="Settings" Style="{StaticResource Text.PageTitle}" Margin="0,0,0,4" />
+                    <TextBlock DockPanel.Dock="Top" Text="Store details and billing defaults" Style="{StaticResource Text.Muted}" Margin="0,0,0,20" />
 
-            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,20,0,0">
-                <Button Content="Save Settings"
-                        Command="{Binding SaveCommand}"
-                        Style="{StaticResource Button.Primary}" />
-                <TextBlock Text="{Binding StatusMessage}"
-                           Foreground="{StaticResource Brush.Success}"
-                           VerticalAlignment="Center"
-                           Margin="16,0,0,0" />
-            </StackPanel>
+                    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,20,0,0">
+                        <Button Content="Save Settings"
+                                Command="{Binding SaveCommand}"
+                                Style="{StaticResource Button.Primary}" />
+                        <TextBlock Text="{Binding StatusMessage}"
+                                   Foreground="{StaticResource Brush.Success}"
+                                   VerticalAlignment="Center"
+                                   Margin="16,0,0,0" />
+                    </StackPanel>
 
-            <ScrollViewer>
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="16" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0">
+                                <Label Content="STORE NAME" />
+                                <TextBox Style="{StaticResource Input.TextBox}" Text="{Binding StoreName, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <Label Content="STORE PHONE" />
+                                <TextBox Style="{StaticResource Input.TextBox}" Text="{Binding StorePhone, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Label Content="STORE ADDRESS" Margin="0,16,0,4" />
+                        <TextBox Style="{StaticResource Input.TextBox}" Text="{Binding StoreAddress, UpdateSourceTrigger=PropertyChanged}" />
+
+                        <Grid Margin="0,16,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="16" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0">
+                                <Label Content="CURRENCY SYMBOL" />
+                                <TextBox Style="{StaticResource Input.TextBox}" Text="{Binding CurrencySymbol, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <Label Content="TAX RATE (%)" />
+                                <TextBox Style="{StaticResource Input.TextBox}" Text="{Binding TaxRatePercent, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Margin="0,16,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="16" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0">
+                                <Label Content="INVOICE PREFIX" />
+                                <TextBox Style="{StaticResource Input.TextBox}" Text="{Binding InvoicePrefix, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <Label Content="PURCHASE PREFIX" />
+                                <TextBox Style="{StaticResource Input.TextBox}" Text="{Binding PurchasePrefix, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Label Content="LOW STOCK THRESHOLD" Margin="0,16,0,4" />
+                        <TextBox Style="{StaticResource Input.TextBox}"
+                                 Text="{Binding LowStockThreshold, UpdateSourceTrigger=PropertyChanged}"
+                                 HorizontalAlignment="Left"
+                                 Width="140" />
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
                 <StackPanel>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="16" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
+                    <TextBlock Text="Backup &amp; Restore" Style="{StaticResource Text.PageTitle}" FontSize="18" Margin="0,0,0,4" />
+                    <TextBlock Text="Back up the store database to a file, or restore from a previous backup."
+                               Style="{StaticResource Text.Muted}"
+                               Margin="0,0,0,16" />
 
-                        <StackPanel Grid.Column="0">
-                            <Label Content="STORE NAME" />
-                            <TextBox Style="{StaticResource Input.TextBox}" Text="{Binding StoreName, UpdateSourceTrigger=PropertyChanged}" />
-                        </StackPanel>
-                        <StackPanel Grid.Column="2">
-                            <Label Content="STORE PHONE" />
-                            <TextBox Style="{StaticResource Input.TextBox}" Text="{Binding StorePhone, UpdateSourceTrigger=PropertyChanged}" />
-                        </StackPanel>
-                    </Grid>
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="Backup Database"
+                                Command="{Binding BackupDatabaseCommand}"
+                                Style="{StaticResource Button.Primary}"
+                                Margin="0,0,8,0" />
+                        <Button Content="Restore Database"
+                                Command="{Binding RestoreDatabaseCommand}"
+                                Style="{StaticResource Button.Danger}" />
+                    </StackPanel>
 
-                    <Label Content="STORE ADDRESS" Margin="0,16,0,4" />
-                    <TextBox Style="{StaticResource Input.TextBox}" Text="{Binding StoreAddress, UpdateSourceTrigger=PropertyChanged}" />
-
-                    <Grid Margin="0,16,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="16" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-
-                        <StackPanel Grid.Column="0">
-                            <Label Content="CURRENCY SYMBOL" />
-                            <TextBox Style="{StaticResource Input.TextBox}" Text="{Binding CurrencySymbol, UpdateSourceTrigger=PropertyChanged}" />
-                        </StackPanel>
-                        <StackPanel Grid.Column="2">
-                            <Label Content="TAX RATE (%)" />
-                            <TextBox Style="{StaticResource Input.TextBox}" Text="{Binding TaxRatePercent, UpdateSourceTrigger=PropertyChanged}" />
-                        </StackPanel>
-                    </Grid>
-
-                    <Grid Margin="0,16,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="16" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-
-                        <StackPanel Grid.Column="0">
-                            <Label Content="INVOICE PREFIX" />
-                            <TextBox Style="{StaticResource Input.TextBox}" Text="{Binding InvoicePrefix, UpdateSourceTrigger=PropertyChanged}" />
-                        </StackPanel>
-                        <StackPanel Grid.Column="2">
-                            <Label Content="PURCHASE PREFIX" />
-                            <TextBox Style="{StaticResource Input.TextBox}" Text="{Binding PurchasePrefix, UpdateSourceTrigger=PropertyChanged}" />
-                        </StackPanel>
-                    </Grid>
-
-                    <Label Content="LOW STOCK THRESHOLD" Margin="0,16,0,4" />
-                    <TextBox Style="{StaticResource Input.TextBox}"
-                             Text="{Binding LowStockThreshold, UpdateSourceTrigger=PropertyChanged}"
-                             HorizontalAlignment="Left"
-                             Width="140" />
+                    <TextBlock Text="{Binding BackupStatusMessage}"
+                               Style="{StaticResource Text.Muted}"
+                               TextWrapping="Wrap"
+                               Margin="0,12,0,0" />
                 </StackPanel>
-            </ScrollViewer>
-        </DockPanel>
-    </Border>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
 </UserControl>

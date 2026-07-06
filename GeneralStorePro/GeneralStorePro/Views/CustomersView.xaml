@@ -5,7 +5,7 @@
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="16" />
-            <ColumnDefinition Width="320" />
+            <ColumnDefinition Width="380" />
         </Grid.ColumnDefinitions>
 
         <Border Grid.Column="0" Style="{StaticResource Card}">
@@ -32,25 +32,15 @@
                         <DataGridTextColumn Header="Phone" Binding="{Binding Phone}" Width="*" />
                         <DataGridTextColumn Header="Address" Binding="{Binding Address}" Width="2*" />
                         <DataGridTextColumn Header="Credit Limit" Binding="{Binding CreditLimit, StringFormat={}{0:C}}" Width="110" />
-                        <DataGridTemplateColumn Header="Balance Due" Width="110">
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding CurrentBalance, StringFormat={}{0:C}}" VerticalAlignment="Center">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding HasDue}" Value="True">
-                                                        <Setter Property="Foreground" Value="{StaticResource Brush.Danger}" />
-                                                        <Setter Property="FontWeight" Value="Bold" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="Balance Due"
+                                             Binding="{Binding CurrentBalance, StringFormat={}{0:C}}"
+                                             Width="110">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{Binding CurrentBalance, Converter={StaticResource PositiveAmountToBrushConverter}}" />
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
                     </DataGrid.Columns>
                 </DataGrid>
             </DockPanel>
@@ -61,34 +51,91 @@
                 Visibility="{Binding IsEditorOpen, Converter={StaticResource BoolToVisibilityConverter}}">
             <DockPanel>
                 <TextBlock DockPanel.Dock="Top" Text="Customer Details" Style="{StaticResource Text.SectionTitle}" Margin="0,0,0,16" />
-                <ScrollViewer>
-                    <StackPanel DataContext="{Binding SelectedCustomer}">
-                        <Label Content="NAME" />
-                        <TextBox Style="{StaticResource Input.TextBox}" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" />
 
-                        <Label Content="PHONE" Margin="0,12,0,4" />
-                        <TextBox Style="{StaticResource Input.TextBox}" Text="{Binding Phone, UpdateSourceTrigger=PropertyChanged}" />
-
-                        <Label Content="ADDRESS" Margin="0,12,0,4" />
-                        <TextBox Style="{StaticResource Input.TextBox}" Text="{Binding Address, UpdateSourceTrigger=PropertyChanged}" />
-
-                        <Label Content="CREDIT LIMIT" Margin="0,12,0,4" />
-                        <TextBox Style="{StaticResource Input.TextBox}" Text="{Binding CreditLimit, UpdateSourceTrigger=PropertyChanged}" />
-
-                        <Label Content="CURRENT BALANCE" Margin="0,12,0,4" />
-                        <TextBox Style="{StaticResource Input.TextBox}" Text="{Binding CurrentBalance, UpdateSourceTrigger=PropertyChanged}" />
-                    </StackPanel>
-                </ScrollViewer>
                 <Grid DockPanel.Dock="Bottom" Margin="0,16,0,0">
                     <Button Content="Delete"
                             Command="{Binding DeleteSelectedCommand}"
                             Style="{StaticResource Button.Danger}"
                             HorizontalAlignment="Left" />
-                    <Button Content="Close"
-                            Command="{Binding CloseEditorCommand}"
-                            Style="{StaticResource Button.Secondary}"
-                            HorizontalAlignment="Right" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Close"
+                                Command="{Binding CloseEditorCommand}"
+                                Style="{StaticResource Button.Secondary}"
+                                Margin="0,0,8,0" />
+                        <Button Content="Save"
+                                Command="{Binding SaveCustomerCommand}"
+                                Style="{StaticResource Button.Primary}" />
+                    </StackPanel>
                 </Grid>
+
+                <ScrollViewer>
+                    <StackPanel>
+                        <StackPanel DataContext="{Binding Editor}">
+                            <Label Content="NAME" />
+                            <TextBox Style="{StaticResource Input.TextBox}" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <Label Content="PHONE" Margin="0,12,0,4" />
+                            <TextBox Style="{StaticResource Input.TextBox}" Text="{Binding Phone, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <Label Content="ADDRESS" Margin="0,12,0,4" />
+                            <TextBox Style="{StaticResource Input.TextBox}" Text="{Binding Address, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <Label Content="CREDIT LIMIT" Margin="0,12,0,4" />
+                            <TextBox Style="{StaticResource Input.TextBox}" Text="{Binding CreditLimit, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <StackPanel Visibility="{Binding DataContext.IsNewCustomer, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <Label Content="OPENING BALANCE" Margin="0,12,0,4" />
+                                <TextBox Style="{StaticResource Input.TextBox}" Text="{Binding OpeningBalance, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <TextBlock Text="{Binding StatusMessage}"
+                                   Foreground="{StaticResource Brush.Success}"
+                                   Margin="0,12,0,0" />
+
+                        <StackPanel Visibility="{Binding ShowLedgerSection, Converter={StaticResource BoolToVisibilityConverter}}">
+
+                            <TextBlock Text="Ledger" Style="{StaticResource Text.SectionTitle}" Margin="0,20,0,8" />
+                            <DataGrid ItemsSource="{Binding Ledger}"
+                                      Style="{StaticResource Grid.Modern}"
+                                      IsReadOnly="True"
+                                      MaxHeight="220"
+                                      AutoGenerateColumns="False">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Date" Binding="{Binding Date, StringFormat={}{0:d}}" Width="80" />
+                                    <DataGridTextColumn Header="Type" Binding="{Binding Type}" Width="*" />
+                                    <DataGridTextColumn Header="Debit" Binding="{Binding Debit, StringFormat={}{0:C}}" Width="80" />
+                                    <DataGridTextColumn Header="Credit" Binding="{Binding Credit, StringFormat={}{0:C}}" Width="80" />
+                                    <DataGridTextColumn Header="Balance" Binding="{Binding RunningBalance, StringFormat={}{0:C}}" Width="90" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <TextBlock Text="Receive Payment" Style="{StaticResource Text.SectionTitle}" Margin="0,20,0,8" />
+                            <Label Content="AMOUNT" />
+                            <TextBox Style="{StaticResource Input.TextBox}" Text="{Binding PaymentAmount, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <Label Content="METHOD" Margin="0,12,0,4" />
+                            <ComboBox ItemsSource="{Binding PaymentMethods}"
+                                      SelectedItem="{Binding PaymentMethod}"
+                                      Style="{StaticResource Input.ComboBox}" />
+
+                            <Label Content="NOTES" Margin="0,12,0,4" />
+                            <TextBox Style="{StaticResource Input.TextBox}" Text="{Binding PaymentNotes, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <Button Content="Record Payment"
+                                    Command="{Binding ReceivePaymentCommand}"
+                                    Style="{StaticResource Button.Primary}"
+                                    HorizontalAlignment="Stretch"
+                                    Margin="0,12,0,0" />
+
+                            <Button Content="Print Ledger"
+                                    Command="{Binding PrintLedgerCommand}"
+                                    Style="{StaticResource Button.Secondary}"
+                                    HorizontalAlignment="Stretch"
+                                    Margin="0,8,0,0" />
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
             </DockPanel>
         </Border>
     </Grid>

@@ -1,47 +1,141 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Linq;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using GeneralStorePro.Data.Repositories;
+using GeneralStorePro.Models;
+using GeneralStorePro.Services;
+using Microsoft.Win32;
 
 namespace GeneralStorePro.ViewModels;
 
-public sealed record SalesReportRow(DateTime Date, string InvoiceNumber, string Customer, decimal Total);
-
-public sealed record StockReportRow(string ProductName, double Stock, double ReorderLevel);
-
-public sealed record DueReportRow(string Name, decimal Balance);
-
 public partial class ReportsViewModel : ViewModelBase
 {
-    public ObservableCollection<SalesReportRow> RecentSales { get; } = new()
+    public ObservableCollection<TodaySaleRow> TodaySales { get; } = new();
+
+    public ObservableCollection<Product> StockLevels { get; } = new();
+
+    public ObservableCollection<Product> LowStockProducts { get; } = new();
+
+    public ObservableCollection<Customer> CustomerBalances { get; } = new();
+
+    public ObservableCollection<Supplier> SupplierBalances { get; } = new();
+
+    public ObservableCollection<Expense> Expenses { get; } = new();
+
+    [ObservableProperty]
+    private decimal todaySalesTotal;
+
+    [ObservableProperty]
+    private decimal todayRevenue;
+
+    [ObservableProperty]
+    private decimal todayCost;
+
+    [ObservableProperty]
+    private decimal todayProfit;
+
+    [ObservableProperty]
+    private decimal totalExpenses;
+
+    [ObservableProperty]
+    private string? exportStatusMessage;
+
+    public ReportsViewModel()
     {
-        new(DateTime.Now.AddHours(-2), "INV-1042", "Aarav Traders", 340.50m),
-        new(DateTime.Now.AddHours(-5), "INV-1041", "Walk-in Customer", 58.00m),
-        new(DateTime.Now.AddDays(-1), "INV-1040", "Meera Kirana Shop", 212.75m),
-        new(DateTime.Now.AddDays(-1), "INV-1039", "Walk-in Customer", 44.20m)
-    };
+        LoadReports();
+    }
 
-    public ObservableCollection<StockReportRow> StockLevels { get; } = new()
+    [RelayCommand]
+    private void Refresh() => LoadReports();
+
+    [RelayCommand]
+    private void ExportToCsv()
     {
-        new("Sugar 1kg", 3, 10),
-        new("Cooking Oil 1L", 2, 15),
-        new("Rice 5kg", 42, 10),
-        new("Wheat Flour 2kg", 26, 8)
-    };
+        var dialog = new SaveFileDialog
+        {
+            Title = "Export Reports to CSV",
+            Filter = "CSV File (*.csv)|*.csv",
+            FileName = $"Reports-{DateTime.Now:yyyyMMdd-HHmmss}.csv"
+        };
 
-    public ObservableCollection<DueReportRow> CustomerDues { get; } = new()
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        try
+        {
+            ReportExporter.ExportToCsv(BuildSnapshot(), dialog.FileName);
+            ExportStatusMessage = $"Exported to {dialog.FileName}";
+        }
+        catch (Exception ex)
+        {
+            ExportStatusMessage = $"Export failed: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private void ExportToPdf() => ReportExporter.PrintToPdf(BuildSnapshot());
+
+    private ReportsSnapshot BuildSnapshot() => new(
+        TodaySales.ToList(),
+        TodaySalesTotal,
+        TodayRevenue,
+        TodayCost,
+        TodayProfit,
+        StockLevels.ToList(),
+        LowStockProducts.ToList(),
+        CustomerBalances.ToList(),
+        SupplierBalances.ToList(),
+        Expenses.ToList(),
+        TotalExpenses);
+
+    private void LoadReports()
     {
-        new("Aarav Traders", 1250m),
-        new("Rohan Fashions", 640m)
-    };
+        TodaySales.Clear();
+        foreach (var sale in ReportRepository.GetTodaySales())
+        {
+            TodaySales.Add(sale);
+        }
 
-    public ObservableCollection<DueReportRow> SupplierDues { get; } = new()
-    {
-        new("Global Foods Distributors", 4200m),
-        new("National Beverages Co.", 1580m)
-    };
+        TodaySalesTotal = ReportRepository.GetTodaySalesTotal();
 
-    public decimal TotalSalesToday => 24850m;
+        var profit = ReportRepository.GetTodayProfitSummary();
+        TodayRevenue = profit.Revenue;
+        TodayCost = profit.Cost;
+        TodayProfit = profit.Profit;
 
-    public decimal TotalPurchasesToday => 9200m;
+        StockLevels.Clear();
+        LowStockProducts.Clear();
+        foreach (var product in ProductRepository.GetActiveProducts())
+        {
+            StockLevels.Add(product);
+            if (product.StockQuantity <= product.ReorderLevel)
+            {
+                LowStockProducts.Add(product);
+            }
+        }
 
-    public decimal GrossProfitToday => TotalSalesToday - TotalPurchasesToday;
+        CustomerBalances.Clear();
+        foreach (var customer in CustomerRepository.GetActiveCustomers())
+        {
+            CustomerBalances.Add(customer);
+        }
+
+        SupplierBalances.Clear();
+        foreach (var supplier in SupplierRepository.GetActiveSuppliers())
+        {
+            SupplierBalances.Add(supplier);
+        }
+
+        Expenses.Clear();
+        foreach (var expense in ExpenseRepository.GetAll())
+        {
+            Expenses.Add(expense);
+        }
+
+        TotalExpenses = Expenses.Sum(e => e.Amount);
+    }
 }

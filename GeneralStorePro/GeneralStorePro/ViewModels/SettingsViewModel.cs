@@ -1,9 +1,13 @@
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dapper;
 using GeneralStorePro.Data;
 using GeneralStorePro.Data.Repositories;
+using Microsoft.Win32;
 
 namespace GeneralStorePro.ViewModels;
 
@@ -35,6 +39,9 @@ public partial class SettingsViewModel : ViewModelBase
 
     [ObservableProperty]
     private string? statusMessage;
+
+    [ObservableProperty]
+    private string? backupStatusMessage;
 
     public SettingsViewModel()
     {
@@ -78,5 +85,80 @@ public partial class SettingsViewModel : ViewModelBase
 
         transaction.Commit();
         StatusMessage = "Settings saved.";
+    }
+
+    [RelayCommand]
+    private void BackupDatabase()
+    {
+        var dialog = new SaveFileDialog
+        {
+            Title = "Backup Database",
+            Filter = "SQLite Database (*.db)|*.db",
+            FileName = $"GeneralStorePro-Backup-{DateTime.Now:yyyyMMdd-HHmmss}.db"
+        };
+
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        try
+        {
+            BackupService.BackupTo(dialog.FileName);
+
+            using var connection = DbConnectionFactory.CreateConnection();
+            connection.Execute(
+                "UPDATE Settings SET SettingValue = @Value WHERE SettingKey = 'LastBackupDate';",
+                new { Value = DateTime.Now.ToString("g") });
+
+            BackupStatusMessage = $"Backup saved to {dialog.FileName}";
+        }
+        catch (Exception ex)
+        {
+            BackupStatusMessage = $"Backup failed: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private void RestoreDatabase()
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Restore Database",
+            Filter = "SQLite Database (*.db)|*.db"
+        };
+
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        var confirm = MessageBox.Show(
+            "Restoring will replace all current data with the selected backup, and the application will restart. Continue?",
+            "Confirm Restore",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+
+        if (confirm != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        try
+        {
+            BackupService.RestoreFrom(dialog.FileName);
+
+            var processPath = Environment.ProcessPath;
+            if (!string.IsNullOrEmpty(processPath))
+            {
+                Process.Start(processPath);
+            }
+
+            Application.Current.Shutdown();
+        }
+        catch (Exception ex)
+        {
+            BackupStatusMessage = $"Restore failed: {ex.Message}";
+        }
     }
 }

@@ -3,62 +3,131 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Border Style="{StaticResource Card}">
         <DockPanel>
-            <TextBlock DockPanel.Dock="Top" Text="Reports" Style="{StaticResource Text.PageTitle}" Margin="0,0,0,16" />
+            <Grid DockPanel.Dock="Top" Margin="0,0,0,16">
+                <TextBlock Text="Reports" Style="{StaticResource Text.PageTitle}" HorizontalAlignment="Left" />
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <TextBlock Text="{Binding ExportStatusMessage}"
+                               Style="{StaticResource Text.Muted}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,12,0" />
+                    <Button Content="Export CSV (Excel)"
+                            Command="{Binding ExportToCsvCommand}"
+                            Style="{StaticResource Button.Secondary}"
+                            Margin="0,0,8,0" />
+                    <Button Content="Export PDF"
+                            Command="{Binding ExportToPdfCommand}"
+                            Style="{StaticResource Button.Secondary}"
+                            Margin="0,0,8,0" />
+                    <Button Content="Refresh"
+                            Command="{Binding RefreshCommand}"
+                            Style="{StaticResource Button.Primary}" />
+                </StackPanel>
+            </Grid>
 
             <TabControl BorderThickness="0" Background="Transparent">
-                <TabItem Header="Sales">
+                <TabItem Header="Today Sales">
                     <StackPanel Margin="0,16,0,0">
-                        <UniformGrid Rows="1" Columns="3" Margin="0,0,0,16">
-                            <StackPanel Margin="0,0,20,0">
-                                <TextBlock Text="TOTAL SALES TODAY" Style="{StaticResource Text.Muted}" />
-                                <TextBlock Text="{Binding TotalSalesToday, StringFormat={}{0:C}}" FontSize="20" FontWeight="Bold" />
-                            </StackPanel>
-                            <StackPanel Margin="0,0,20,0">
-                                <TextBlock Text="TOTAL PURCHASES TODAY" Style="{StaticResource Text.Muted}" />
-                                <TextBlock Text="{Binding TotalPurchasesToday, StringFormat={}{0:C}}" FontSize="20" FontWeight="Bold" />
-                            </StackPanel>
-                            <StackPanel>
-                                <TextBlock Text="GROSS PROFIT TODAY" Style="{StaticResource Text.Muted}" />
-                                <TextBlock Text="{Binding GrossProfitToday, StringFormat={}{0:C}}" FontSize="20" FontWeight="Bold" Foreground="{StaticResource Brush.Success}" />
-                            </StackPanel>
-                        </UniformGrid>
-                        <DataGrid ItemsSource="{Binding RecentSales}" Style="{StaticResource Grid.Modern}" IsReadOnly="True">
+                        <TextBlock Style="{StaticResource Text.Muted}" Margin="0,0,0,12">
+                            <Run Text="Total:" />
+                            <Run Text="{Binding TodaySalesTotal, StringFormat={}{0:C}, Mode=OneWay}" FontWeight="SemiBold" FontSize="16" />
+                        </TextBlock>
+                        <DataGrid ItemsSource="{Binding TodaySales}" Style="{StaticResource Grid.Modern}" IsReadOnly="True">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="Date" Binding="{Binding Date, StringFormat={}{0:g}}" Width="160" />
+                                <DataGridTextColumn Header="Time" Binding="{Binding SaleDate, StringFormat={}{0:t}}" Width="100" />
                                 <DataGridTextColumn Header="Invoice #" Binding="{Binding InvoiceNumber}" Width="120" />
-                                <DataGridTextColumn Header="Customer" Binding="{Binding Customer}" Width="*" />
-                                <DataGridTextColumn Header="Total" Binding="{Binding Total, StringFormat={}{0:C}}" Width="100" />
+                                <DataGridTextColumn Header="Customer" Binding="{Binding CustomerName}" Width="*" />
+                                <DataGridTextColumn Header="Total" Binding="{Binding TotalAmount, StringFormat={}{0:C}}" Width="100" />
                             </DataGrid.Columns>
                         </DataGrid>
                     </StackPanel>
                 </TabItem>
 
+                <TabItem Header="Profit">
+                    <UniformGrid Rows="1" Columns="3" Margin="0,16,0,0">
+                        <StackPanel Margin="0,0,20,0">
+                            <TextBlock Text="REVENUE (TODAY)" Style="{StaticResource Text.Muted}" />
+                            <TextBlock Text="{Binding TodayRevenue, StringFormat={}{0:C}}" FontSize="20" FontWeight="Bold" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,20,0">
+                            <TextBlock Text="COST OF GOODS SOLD" Style="{StaticResource Text.Muted}" />
+                            <TextBlock Text="{Binding TodayCost, StringFormat={}{0:C}}" FontSize="20" FontWeight="Bold" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Text="GROSS PROFIT" Style="{StaticResource Text.Muted}" />
+                            <TextBlock Text="{Binding TodayProfit, StringFormat={}{0:C}}" FontSize="20" FontWeight="Bold" Foreground="{StaticResource Brush.Success}" />
+                        </StackPanel>
+                    </UniformGrid>
+                </TabItem>
+
                 <TabItem Header="Stock">
                     <DataGrid Margin="0,16,0,0" ItemsSource="{Binding StockLevels}" Style="{StaticResource Grid.Modern}" IsReadOnly="True">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Product" Binding="{Binding ProductName}" Width="*" />
-                            <DataGridTextColumn Header="Stock" Binding="{Binding Stock}" Width="120" />
-                            <DataGridTextColumn Header="Reorder Level" Binding="{Binding ReorderLevel}" Width="140" />
+                            <DataGridTextColumn Header="Product" Binding="{Binding Name}" Width="*" />
+                            <DataGridTextColumn Header="SKU" Binding="{Binding Sku}" Width="120" />
+                            <DataGridTextColumn Header="Stock" Binding="{Binding StockQuantity}" Width="100" />
+                            <DataGridTextColumn Header="Reorder Level" Binding="{Binding ReorderLevel}" Width="120" />
                         </DataGrid.Columns>
                     </DataGrid>
                 </TabItem>
 
-                <TabItem Header="Customer Dues">
-                    <DataGrid Margin="0,16,0,0" ItemsSource="{Binding CustomerDues}" Style="{StaticResource Grid.Modern}" IsReadOnly="True">
+                <TabItem Header="Low Stock">
+                    <DataGrid Margin="0,16,0,0" ItemsSource="{Binding LowStockProducts}" Style="{StaticResource Grid.Modern}" IsReadOnly="True">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Product" Binding="{Binding Name}" Width="*" />
+                            <DataGridTextColumn Header="SKU" Binding="{Binding Sku}" Width="120" />
+                            <DataGridTextColumn Header="Stock" Binding="{Binding StockQuantity}" Width="100" />
+                            <DataGridTextColumn Header="Reorder Level" Binding="{Binding ReorderLevel}" Width="120" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </TabItem>
+
+                <TabItem Header="Customer Balance">
+                    <DataGrid Margin="0,16,0,0" ItemsSource="{Binding CustomerBalances}" Style="{StaticResource Grid.Modern}" IsReadOnly="True">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Customer" Binding="{Binding Name}" Width="*" />
-                            <DataGridTextColumn Header="Balance Due" Binding="{Binding Balance, StringFormat={}{0:C}}" Width="140" />
+                            <DataGridTextColumn Header="Phone" Binding="{Binding Phone}" Width="140" />
+                            <DataGridTextColumn Header="Balance Due" Binding="{Binding CurrentBalance, StringFormat={}{0:C}}" Width="140">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{Binding CurrentBalance, Converter={StaticResource PositiveAmountToBrushConverter}}" />
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
                         </DataGrid.Columns>
                     </DataGrid>
                 </TabItem>
 
-                <TabItem Header="Supplier Dues">
-                    <DataGrid Margin="0,16,0,0" ItemsSource="{Binding SupplierDues}" Style="{StaticResource Grid.Modern}" IsReadOnly="True">
+                <TabItem Header="Supplier Balance">
+                    <DataGrid Margin="0,16,0,0" ItemsSource="{Binding SupplierBalances}" Style="{StaticResource Grid.Modern}" IsReadOnly="True">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Supplier" Binding="{Binding Name}" Width="*" />
-                            <DataGridTextColumn Header="Balance Due" Binding="{Binding Balance, StringFormat={}{0:C}}" Width="140" />
+                            <DataGridTextColumn Header="Phone" Binding="{Binding Phone}" Width="140" />
+                            <DataGridTextColumn Header="Balance Due" Binding="{Binding CurrentBalance, StringFormat={}{0:C}}" Width="140">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{Binding CurrentBalance, Converter={StaticResource PositiveAmountToBrushConverter}}" />
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
                         </DataGrid.Columns>
                     </DataGrid>
+                </TabItem>
+
+                <TabItem Header="Expenses">
+                    <StackPanel Margin="0,16,0,0">
+                        <TextBlock Style="{StaticResource Text.Muted}" Margin="0,0,0,12">
+                            <Run Text="Total:" />
+                            <Run Text="{Binding TotalExpenses, StringFormat={}{0:C}, Mode=OneWay}" FontWeight="SemiBold" FontSize="16" />
+                        </TextBlock>
+                        <DataGrid ItemsSource="{Binding Expenses}" Style="{StaticResource Grid.Modern}" IsReadOnly="True">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Date" Binding="{Binding ExpenseDate, StringFormat={}{0:d}}" Width="110" />
+                                <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="*" />
+                                <DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="2*" />
+                                <DataGridTextColumn Header="Amount" Binding="{Binding Amount, StringFormat={}{0:C}}" Width="100" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </StackPanel>
                 </TabItem>
             </TabControl>
         </DockPanel>

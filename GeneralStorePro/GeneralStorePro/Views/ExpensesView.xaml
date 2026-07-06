@@ -18,11 +18,15 @@
                             <Run Text="{Binding TotalExpenses, StringFormat={}{0:C}, Mode=OneWay}" FontWeight="SemiBold" />
                         </TextBlock>
                     </StackPanel>
-                    <Button Content="+ Add Expense"
-                            Command="{Binding AddNewCommand}"
-                            Style="{StaticResource Button.Primary}"
-                            HorizontalAlignment="Right"
-                            VerticalAlignment="Top" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+                        <Button Content="Delete Selected"
+                                Command="{Binding DeleteSelectedCommand}"
+                                Style="{StaticResource Button.Danger}"
+                                Margin="0,0,8,0" />
+                        <Button Content="+ Add Expense"
+                                Command="{Binding AddNewCommand}"
+                                Style="{StaticResource Button.Primary}" />
+                    </StackPanel>
                 </Grid>
 
                 <DataGrid ItemsSource="{Binding Expenses}"
@@ -44,9 +48,21 @@
                 Style="{StaticResource Card}"
                 Visibility="{Binding IsEditorOpen, Converter={StaticResource BoolToVisibilityConverter}}">
             <DockPanel>
-                <TextBlock DockPanel.Dock="Top" Text="Expense Details" Style="{StaticResource Text.SectionTitle}" Margin="0,0,0,16" />
+                <TextBlock DockPanel.Dock="Top" Text="New Expense" Style="{StaticResource Text.SectionTitle}" Margin="0,0,0,16" />
+
+                <Grid DockPanel.Dock="Bottom" Margin="0,16,0,0">
+                    <Button Content="Cancel"
+                            Command="{Binding CloseEditorCommand}"
+                            Style="{StaticResource Button.Secondary}"
+                            HorizontalAlignment="Left" />
+                    <Button Content="Save"
+                            Command="{Binding SaveExpenseCommand}"
+                            Style="{StaticResource Button.Primary}"
+                            HorizontalAlignment="Right" />
+                </Grid>
+
                 <ScrollViewer>
-                    <StackPanel DataContext="{Binding SelectedExpense}">
+                    <StackPanel DataContext="{Binding Editor}">
                         <Label Content="DATE" />
                         <DatePicker SelectedDate="{Binding ExpenseDate, UpdateSourceTrigger=PropertyChanged}" />
 
@@ -57,22 +73,19 @@
                         <TextBox Style="{StaticResource Input.TextBox}" Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" />
 
                         <Label Content="PAYMENT METHOD" Margin="0,12,0,4" />
-                        <TextBox Style="{StaticResource Input.TextBox}" Text="{Binding PaymentMethod, UpdateSourceTrigger=PropertyChanged}" />
+                        <ComboBox ItemsSource="{Binding DataContext.PaymentMethods, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                  SelectedItem="{Binding PaymentMethod}"
+                                  Style="{StaticResource Input.ComboBox}" />
 
                         <Label Content="AMOUNT" Margin="0,12,0,4" />
                         <TextBox Style="{StaticResource Input.TextBox}" Text="{Binding Amount, UpdateSourceTrigger=PropertyChanged}" />
+
+                        <TextBlock Text="{Binding DataContext.StatusMessage, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                   Foreground="{StaticResource Brush.Danger}"
+                                   TextWrapping="Wrap"
+                                   Margin="0,12,0,0" />
                     </StackPanel>
                 </ScrollViewer>
-                <Grid DockPanel.Dock="Bottom" Margin="0,16,0,0">
-                    <Button Content="Delete"
-                            Command="{Binding DeleteSelectedCommand}"
-                            Style="{StaticResource Button.Danger}"
-                            HorizontalAlignment="Left" />
-                    <Button Content="Close"
-                            Command="{Binding CloseEditorCommand}"
-                            Style="{StaticResource Button.Secondary}"
-                            HorizontalAlignment="Right" />
-                </Grid>
             </DockPanel>
         </Border>
     </Grid>

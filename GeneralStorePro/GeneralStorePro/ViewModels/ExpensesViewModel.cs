@@ -1,12 +1,15 @@
 using System;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using GeneralStorePro.Data.Repositories;
+using GeneralStorePro.Models;
+using GeneralStorePro.Services;
 
 namespace GeneralStorePro.ViewModels;
 
-public partial class ExpenseRow : ObservableObject
+public partial class ExpenseEditorModel : ObservableObject
 {
     [ObservableProperty]
     private DateTime expenseDate = DateTime.Now;
@@ -26,53 +29,74 @@ public partial class ExpenseRow : ObservableObject
 
 public partial class ExpensesViewModel : ViewModelBase
 {
-    public ObservableCollection<ExpenseRow> Expenses { get; } = new()
-    {
-        new() { ExpenseDate = DateTime.Now.AddDays(-1), Category = "Rent", Description = "Monthly shop rent", Amount = 800, PaymentMethod = "BankTransfer" },
-        new() { ExpenseDate = DateTime.Now.AddDays(-2), Category = "Utilities", Description = "Electricity bill", Amount = 145.50m, PaymentMethod = "Cash" },
-        new() { ExpenseDate = DateTime.Now.AddDays(-3), Category = "Salary", Description = "Cashier wages", Amount = 620, PaymentMethod = "Cash" }
-    };
+    public ObservableCollection<Expense> Expenses { get; } = new();
+
+    public ObservableCollection<string> PaymentMethods { get; } = new() { "Cash", "Card", "BankTransfer", "Other" };
 
     [ObservableProperty]
-    private ExpenseRow? selectedExpense;
+    private Expense? selectedExpense;
 
     [ObservableProperty]
     private bool isEditorOpen;
 
-    public decimal TotalExpenses => Sum();
+    [ObservableProperty]
+    private ExpenseEditorModel editor = new();
 
-    public ExpensesViewModel()
+    [ObservableProperty]
+    private string? statusMessage;
+
+    public decimal TotalExpenses => Expenses.Sum(e => e.Amount);
+
+    public ExpensesViewModel() => LoadExpenses();
+
+    private void LoadExpenses()
     {
-        foreach (var expense in Expenses)
+        Expenses.Clear();
+        foreach (var expense in ExpenseRepository.GetAll())
         {
-            expense.PropertyChanged += OnExpenseChanged;
-        }
-    }
-
-    partial void OnSelectedExpenseChanged(ExpenseRow? value) => IsEditorOpen = value is not null;
-
-    private void OnExpenseChanged(object? sender, PropertyChangedEventArgs e) => OnPropertyChanged(nameof(TotalExpenses));
-
-    private decimal Sum()
-    {
-        decimal total = 0;
-        foreach (var expense in Expenses)
-        {
-            total += expense.Amount;
+            Expenses.Add(expense);
         }
 
-        return total;
+        OnPropertyChanged(nameof(TotalExpenses));
     }
 
     [RelayCommand]
     private void AddNew()
     {
-        var row = new ExpenseRow();
-        row.PropertyChanged += OnExpenseChanged;
-        Expenses.Add(row);
-        SelectedExpense = row;
-        OnPropertyChanged(nameof(TotalExpenses));
+        Editor = new ExpenseEditorModel();
+        IsEditorOpen = true;
+        StatusMessage = null;
     }
+
+    [RelayCommand]
+    private void SaveExpense()
+    {
+        if (string.IsNullOrWhiteSpace(Editor.Category) || Editor.Amount <= 0)
+        {
+            StatusMessage = "Category and a positive amount are required.";
+            return;
+        }
+
+        var userId = SessionService.CurrentUser?.Id
+            ?? throw new InvalidOperationException("No user is signed in.");
+
+        ExpenseRepository.Insert(
+            new Expense
+            {
+                Category = Editor.Category,
+                Description = Editor.Description,
+                Amount = Editor.Amount,
+                ExpenseDate = Editor.ExpenseDate,
+                PaymentMethod = Editor.PaymentMethod
+            },
+            userId);
+
+        LoadExpenses();
+        IsEditorOpen = false;
+    }
+
+    [RelayCommand]
+    private void CloseEditor() => IsEditorOpen = false;
 
     [RelayCommand]
     private void DeleteSelected()
@@ -82,12 +106,8 @@ public partial class ExpensesViewModel : ViewModelBase
             return;
         }
 
-        SelectedExpense.PropertyChanged -= OnExpenseChanged;
-        Expenses.Remove(SelectedExpense);
+        ExpenseRepository.Delete(SelectedExpense.Id);
+        LoadExpenses();
         SelectedExpense = null;
-        OnPropertyChanged(nameof(TotalExpenses));
     }
-
-    [RelayCommand]
-    private void CloseEditor() => SelectedExpense = null;
 }

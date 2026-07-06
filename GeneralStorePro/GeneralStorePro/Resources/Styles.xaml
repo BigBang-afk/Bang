@@ -3,6 +3,7 @@
                     xmlns:converters="clr-namespace:GeneralStorePro.Helpers.Converters">
 
     <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
+    <converters:PositiveAmountToBrushConverter x:Key="PositiveAmountToBrushConverter" />
     <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
 
     <!--  Palette  -->
