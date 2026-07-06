@@ -6,12 +6,16 @@ namespace TradingJournal.App.ViewModels;
 
 public class MainViewModel : ViewModelBase
 {
-    public MainViewModel(ILedgerService ledgerService, ICustomerService customerService, ISettingsService settingsService)
+    public MainViewModel(
+        ILedgerService ledgerService,
+        ICustomerService customerService,
+        ISettingsService settingsService,
+        EntryDialogService entryDialogService)
     {
-        DashboardViewModel = new DashboardViewModel(ledgerService);
+        DashboardViewModel = new DashboardViewModel(ledgerService, entryDialogService);
         AddProfitViewModel = new AddProfitViewModel(ledgerService, customerService, settingsService, OnEntrySaved);
         AddLossViewModel = new AddLossViewModel(ledgerService, customerService, settingsService, OnEntrySaved);
-        CustomerLedgerViewModel = new CustomerLedgerViewModel(ledgerService, customerService);
+        CustomerLedgerViewModel = new CustomerLedgerViewModel(ledgerService, customerService, entryDialogService);
         SettingsViewModel = new SettingsViewModel(settingsService, OnSettingsSaved);
 
         _currentViewModel = DashboardViewModel;

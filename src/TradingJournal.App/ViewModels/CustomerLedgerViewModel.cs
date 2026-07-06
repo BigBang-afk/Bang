@@ -1,6 +1,9 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using System.Windows.Input;
 using TradingJournal.App.Common;
+using TradingJournal.App.Reports;
+using TradingJournal.App.Views;
 using TradingJournal.Core.Models;
 using TradingJournal.Core.Services;
 
@@ -10,14 +13,21 @@ public class CustomerLedgerViewModel : ViewModelBase
 {
     private readonly ILedgerService _ledgerService;
     private readonly ICustomerService _customerService;
+    private readonly EntryDialogService _entryDialogService;
 
-    public CustomerLedgerViewModel(ILedgerService ledgerService, ICustomerService customerService)
+    public CustomerLedgerViewModel(ILedgerService ledgerService, ICustomerService customerService, EntryDialogService entryDialogService)
     {
         _ledgerService = ledgerService;
         _customerService = customerService;
+        _entryDialogService = entryDialogService;
 
         AddCustomerCommand = new RelayCommand(async () => await AddCustomerAsync());
         RefreshCommand = new RelayCommand(async () => await LoadCustomersAsync());
+        AddProfitCommand = new RelayCommand(async () => await AddEntryAsync(EntryType.Profit), () => SelectedCustomer is not null);
+        AddLossCommand = new RelayCommand(async () => await AddEntryAsync(EntryType.Loss), () => SelectedCustomer is not null);
+        EditEntryCommand = new RelayCommand(async param => await EditEntryAsync((param as LedgerEntryRow)?.Entry));
+        DeleteEntryCommand = new RelayCommand(async param => await DeleteEntryAsync((param as LedgerEntryRow)?.Entry));
+        PreviewReportCommand = new RelayCommand(PreviewReport, () => SelectedCustomer is not null);
 
         _ = LoadCustomersAsync();
     }
@@ -87,6 +97,11 @@ public class CustomerLedgerViewModel : ViewModelBase
 
     public ICommand AddCustomerCommand { get; }
     public ICommand RefreshCommand { get; }
+    public ICommand AddProfitCommand { get; }
+    public ICommand AddLossCommand { get; }
+    public ICommand EditEntryCommand { get; }
+    public ICommand DeleteEntryCommand { get; }
+    public ICommand PreviewReportCommand { get; }
 
     private async Task LoadCustomersAsync()
     {
@@ -123,6 +138,67 @@ public class CustomerLedgerViewModel : ViewModelBase
         {
             ErrorMessage = ex.Message;
         }
+    }
+
+    private async Task AddEntryAsync(EntryType type)
+    {
+        if (SelectedCustomer is null)
+            return;
+
+        var saved = await _entryDialogService.ShowAddAsync(type, SelectedCustomer.Id);
+        if (saved)
+            await LoadEntriesAsync();
+    }
+
+    private async Task EditEntryAsync(LedgerEntry? entry)
+    {
+        if (entry is null)
+            return;
+
+        var saved = await _entryDialogService.ShowEditAsync(entry);
+        if (saved)
+            await LoadEntriesAsync();
+    }
+
+    private async Task DeleteEntryAsync(LedgerEntry? entry)
+    {
+        if (entry is null)
+            return;
+
+        var confirmed = MessageBox.Show(
+            $"Delete this {entry.Type} entry of ${entry.AmountUsd:N2}?",
+            "Confirm Delete",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning) == MessageBoxResult.Yes;
+
+        if (!confirmed)
+            return;
+
+        await _ledgerService.DeleteEntryAsync(entry.Id);
+        await LoadEntriesAsync();
+    }
+
+    private void PreviewReport()
+    {
+        if (SelectedCustomer is null)
+            return;
+
+        var goldUnitLabel = Entries.FirstOrDefault()?.Entry.GoldUnitLabel ?? "Tola";
+
+        var document = CustomerStatementReportBuilder.Build(
+            SelectedCustomer,
+            Entries,
+            TotalProfitPkr,
+            TotalLossPkr,
+            NetPkr,
+            NetGold,
+            goldUnitLabel);
+
+        var window = new ReportPreviewWindow(document)
+        {
+            Owner = Application.Current.MainWindow
+        };
+        window.Show();
     }
 
     private async Task LoadEntriesAsync()

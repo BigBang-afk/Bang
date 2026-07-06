@@ -5,6 +5,7 @@ namespace TradingJournal.Core.Services;
 public interface ILedgerService
 {
     Task<LedgerEntry> AddEntryAsync(EntryType type, decimal amountUsd, int? customerId, DateTime date, string? notes);
+    Task<LedgerEntry> UpdateEntryAsync(int entryId, EntryType type, decimal amountUsd, int? customerId, DateTime date, string? notes);
     Task<List<LedgerEntry>> GetAllEntriesAsync();
     Task<List<LedgerEntry>> GetEntriesForCustomerAsync(int customerId);
     Task<List<LedgerEntry>> GetRecentEntriesAsync(int count);

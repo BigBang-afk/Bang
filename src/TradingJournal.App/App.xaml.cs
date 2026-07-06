@@ -1,4 +1,5 @@
 using System.Windows;
+using TradingJournal.App.Common;
 using TradingJournal.App.ViewModels;
 using TradingJournal.App.Views;
 using TradingJournal.Core.Data;
@@ -21,8 +22,9 @@ public partial class App : Application
         ISettingsService settingsService = new SettingsService(_db);
         ICustomerService customerService = new CustomerService(_db);
         ILedgerService ledgerService = new LedgerService(_db, settingsService);
+        var entryDialogService = new EntryDialogService(ledgerService, settingsService, customerService);
 
-        var mainViewModel = new MainViewModel(ledgerService, customerService, settingsService);
+        var mainViewModel = new MainViewModel(ledgerService, customerService, settingsService, entryDialogService);
 
         var mainWindow = new MainWindow
         {

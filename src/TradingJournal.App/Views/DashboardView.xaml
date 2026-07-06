@@ -75,6 +75,20 @@
                         <DataGridTextColumn Header="PKR" Binding="{Binding AmountPkr, StringFormat={}Rs {0:N2}}" Width="130" />
                         <DataGridTextColumn Header="Gold" Binding="{Binding AmountGold, StringFormat={}{0:N4}}" Width="100" />
                         <DataGridTextColumn Header="Notes" Binding="{Binding Notes}" Width="*" />
+                        <DataGridTemplateColumn Header="Actions" Width="150">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Content="Edit" Style="{StaticResource GridActionButtonStyle}"
+                                                Command="{Binding DataContext.EditEntryCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                CommandParameter="{Binding}" />
+                                        <Button Content="Delete" Style="{StaticResource GridActionButtonStyle}"
+                                                Command="{Binding DataContext.DeleteEntryCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                CommandParameter="{Binding}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                     </DataGrid.Columns>
                 </DataGrid>
             </Border>

@@ -33,10 +33,26 @@
         </StackPanel>
 
         <StackPanel Grid.Column="1">
-            <TextBlock FontSize="22" FontWeight="Bold" Margin="0,0,0,16">
-                <Run Text="Ledger — " />
-                <Run Text="{Binding SelectedCustomer.Name}" />
-            </TextBlock>
+            <Grid Margin="0,0,0,16">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0" FontSize="22" FontWeight="Bold" VerticalAlignment="Center">
+                    <Run Text="Ledger — " />
+                    <Run Text="{Binding SelectedCustomer.Name}" />
+                </TextBlock>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Content="Add Profit" Style="{StaticResource SecondaryButtonStyle}"
+                            Command="{Binding AddProfitCommand}" />
+                    <Button Content="Add Loss" Style="{StaticResource SecondaryButtonStyle}"
+                            Command="{Binding AddLossCommand}" />
+                    <Button Content="Print Statement" Style="{StaticResource SecondaryButtonStyle}" Margin="0"
+                            Command="{Binding PreviewReportCommand}" />
+                </StackPanel>
+            </Grid>
 
             <UniformGrid Columns="4" Margin="0,0,0,20">
                 <Border Style="{StaticResource CardStyle}" Margin="0,0,12,0">
@@ -79,6 +95,20 @@
                         <DataGridTextColumn Header="Gold" Binding="{Binding Entry.AmountGold, StringFormat={}{0:N4}}" Width="100" />
                         <DataGridTextColumn Header="Running Balance (PKR)" Binding="{Binding RunningBalancePkr, StringFormat={}Rs {0:N2}}" Width="160" />
                         <DataGridTextColumn Header="Notes" Binding="{Binding Entry.Notes}" Width="*" />
+                        <DataGridTemplateColumn Header="Actions" Width="150">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Content="Edit" Style="{StaticResource GridActionButtonStyle}"
+                                                Command="{Binding DataContext.EditEntryCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                CommandParameter="{Binding}" />
+                                        <Button Content="Delete" Style="{StaticResource GridActionButtonStyle}"
+                                                Command="{Binding DataContext.DeleteEntryCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                CommandParameter="{Binding}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                     </DataGrid.Columns>
                 </DataGrid>
             </Border>

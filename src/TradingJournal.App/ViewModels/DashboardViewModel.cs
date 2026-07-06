@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using System.Windows.Input;
 using TradingJournal.App.Common;
 using TradingJournal.Core.Models;
@@ -9,12 +10,16 @@ namespace TradingJournal.App.ViewModels;
 public class DashboardViewModel : ViewModelBase
 {
     private readonly ILedgerService _ledgerService;
+    private readonly EntryDialogService _entryDialogService;
 
-    public DashboardViewModel(ILedgerService ledgerService)
+    public DashboardViewModel(ILedgerService ledgerService, EntryDialogService entryDialogService)
     {
         _ledgerService = ledgerService;
+        _entryDialogService = entryDialogService;
         RecentEntries = new ObservableCollection<LedgerEntry>();
         RefreshCommand = new RelayCommand(async () => await RefreshAsync());
+        EditEntryCommand = new RelayCommand(async param => await EditEntryAsync(param as LedgerEntry));
+        DeleteEntryCommand = new RelayCommand(async param => await DeleteEntryAsync(param as LedgerEntry));
         _ = RefreshAsync();
     }
 
@@ -48,6 +53,36 @@ public class DashboardViewModel : ViewModelBase
     public ObservableCollection<LedgerEntry> RecentEntries { get; }
 
     public ICommand RefreshCommand { get; }
+    public ICommand EditEntryCommand { get; }
+    public ICommand DeleteEntryCommand { get; }
+
+    private async Task EditEntryAsync(LedgerEntry? entry)
+    {
+        if (entry is null)
+            return;
+
+        var saved = await _entryDialogService.ShowEditAsync(entry);
+        if (saved)
+            await RefreshAsync();
+    }
+
+    private async Task DeleteEntryAsync(LedgerEntry? entry)
+    {
+        if (entry is null)
+            return;
+
+        var confirmed = MessageBox.Show(
+            $"Delete this {entry.Type} entry of ${entry.AmountUsd:N2}?",
+            "Confirm Delete",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning) == MessageBoxResult.Yes;
+
+        if (!confirmed)
+            return;
+
+        await _ledgerService.DeleteEntryAsync(entry.Id);
+        await RefreshAsync();
+    }
 
     public async Task RefreshAsync()
     {

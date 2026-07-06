@@ -56,6 +56,31 @@ public class LedgerServiceTests : IDisposable
             () => _ledgerService.AddEntryAsync(EntryType.Profit, 0m, null, DateTime.Now, null));
     }
 
+    [Fact]
+    public async Task UpdateEntryAsync_KeepsOriginalRatesEvenIfSettingsChangeLater()
+    {
+        await _settingsService.UpdateSettingsAsync(280m, 250000m, "Tola");
+        var entry = await _ledgerService.AddEntryAsync(EntryType.Profit, 100m, null, DateTime.Now, "original");
+
+        // Rates move after the entry was created.
+        await _settingsService.UpdateSettingsAsync(300m, 260000m, "Tola");
+
+        var updated = await _ledgerService.UpdateEntryAsync(entry.Id, EntryType.Profit, 150m, null, entry.Date, "updated");
+
+        Assert.Equal(280m, updated.UsdToPkrRateApplied);
+        Assert.Equal(250000m, updated.GoldRateApplied);
+        Assert.Equal(150m * 280m, updated.AmountPkr);
+        Assert.Equal((150m * 280m) / 250000m, updated.AmountGold);
+        Assert.Equal("updated", updated.Notes);
+    }
+
+    [Fact]
+    public async Task UpdateEntryAsync_ThrowsForUnknownEntry()
+    {
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _ledgerService.UpdateEntryAsync(9999, EntryType.Profit, 10m, null, DateTime.Now, null));
+    }
+
     public void Dispose()
     {
         _db.Dispose();

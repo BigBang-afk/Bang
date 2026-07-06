@@ -42,6 +42,30 @@ public class LedgerService : ILedgerService
         return entry;
     }
 
+    public async Task<LedgerEntry> UpdateEntryAsync(int entryId, EntryType type, decimal amountUsd, int? customerId, DateTime date, string? notes)
+    {
+        if (amountUsd <= 0)
+            throw new ArgumentOutOfRangeException(nameof(amountUsd), "Amount must be greater than zero.");
+
+        var entry = await _db.LedgerEntries.FindAsync(entryId)
+            ?? throw new InvalidOperationException($"Ledger entry {entryId} was not found.");
+
+        // Keep the rates that were originally snapshotted on this entry so editing the
+        // amount/type/date doesn't silently re-price it against today's rates.
+        var (pkr, gold) = CalculationService.ConvertUsd(amountUsd, entry.UsdToPkrRateApplied, entry.GoldRateApplied);
+
+        entry.Type = type;
+        entry.AmountUsd = amountUsd;
+        entry.AmountPkr = pkr;
+        entry.AmountGold = gold;
+        entry.CustomerId = customerId;
+        entry.Date = date;
+        entry.Notes = notes;
+
+        await _db.SaveChangesAsync();
+        return entry;
+    }
+
     public async Task<List<LedgerEntry>> GetAllEntriesAsync()
     {
         return await _db.LedgerEntries
