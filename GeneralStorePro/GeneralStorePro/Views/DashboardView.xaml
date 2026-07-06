@@ -1,0 +1,85 @@
+<UserControl x:Class="GeneralStorePro.Views.DashboardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel>
+            <TextBlock Text="Dashboard" Style="{StaticResource Text.PageTitle}" />
+            <TextBlock Text="Today's overview of your store"
+                       Style="{StaticResource Text.Muted}"
+                       Margin="0,4,0,20" />
+
+            <!--  Stat cards  -->
+            <UniformGrid Rows="1" Columns="5">
+                <Border Style="{StaticResource Card}" Margin="0,0,12,0">
+                    <StackPanel>
+                        <TextBlock Text="TODAY'S SALES" Style="{StaticResource Text.Muted}" />
+                        <TextBlock Text="{Binding TodaysSales, StringFormat={}{0:C}}" FontSize="22" FontWeight="Bold" Margin="0,6,0,0" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Margin="0,0,12,0">
+                    <StackPanel>
+                        <TextBlock Text="TODAY'S PURCHASES" Style="{StaticResource Text.Muted}" />
+                        <TextBlock Text="{Binding TodaysPurchases, StringFormat={}{0:C}}" FontSize="22" FontWeight="Bold" Margin="0,6,0,0" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Margin="0,0,12,0">
+                    <StackPanel>
+                        <TextBlock Text="CUSTOMERS DUE" Style="{StaticResource Text.Muted}" />
+                        <TextBlock Text="{Binding CustomersDue, StringFormat={}{0:C}}" FontSize="22" FontWeight="Bold" Foreground="{StaticResource Brush.Warning}" Margin="0,6,0,0" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Margin="0,0,12,0">
+                    <StackPanel>
+                        <TextBlock Text="SUPPLIERS DUE" Style="{StaticResource Text.Muted}" />
+                        <TextBlock Text="{Binding SuppliersDue, StringFormat={}{0:C}}" FontSize="22" FontWeight="Bold" Foreground="{StaticResource Brush.Danger}" Margin="0,6,0,0" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="CASH IN HAND" Style="{StaticResource Text.Muted}" />
+                        <TextBlock Text="{Binding CashInHand, StringFormat={}{0:C}}" FontSize="22" FontWeight="Bold" Foreground="{StaticResource Brush.Success}" Margin="0,6,0,0" />
+                    </StackPanel>
+                </Border>
+            </UniformGrid>
+
+            <Grid Margin="0,20,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="1*" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Sales - last 7 days" Style="{StaticResource Text.SectionTitle}" Margin="0,0,0,12" />
+                        <lvc:CartesianChart Series="{Binding SalesSeries}" Height="260" />
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Column="2" Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Low stock alerts" Style="{StaticResource Text.SectionTitle}" Margin="0,0,0,12" />
+                        <ItemsControl ItemsSource="{Binding LowStockItems}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="{StaticResource Brush.Border}" BorderThickness="0,0,0,1" Padding="0,10">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding ProductName}" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Style="{StaticResource Text.Muted}" Margin="0,2,0,0">
+                                                <Run Text="Stock:" />
+                                                <Run Text="{Binding CurrentStock, Mode=OneWay}" Foreground="{StaticResource Brush.Danger}" FontWeight="SemiBold" />
+                                                <Run Text=" / reorder at" />
+                                                <Run Text="{Binding ReorderLevel, Mode=OneWay}" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

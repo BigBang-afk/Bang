@@ -1,0 +1,91 @@
+<UserControl x:Class="GeneralStorePro.Views.SuppliersView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="16" />
+            <ColumnDefinition Width="320" />
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Column="0" Style="{StaticResource Card}">
+            <DockPanel>
+                <Grid DockPanel.Dock="Top" Margin="0,0,0,16">
+                    <TextBlock Text="Suppliers" Style="{StaticResource Text.PageTitle}" HorizontalAlignment="Left" />
+                    <Button Content="+ Add Supplier"
+                            Command="{Binding AddNewCommand}"
+                            Style="{StaticResource Button.Primary}"
+                            HorizontalAlignment="Right" />
+                </Grid>
+                <TextBox DockPanel.Dock="Top"
+                         Style="{StaticResource Input.TextBox}"
+                         Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                         Tag="Search by name or phone..."
+                         Margin="0,0,0,12" />
+
+                <DataGrid ItemsSource="{Binding SuppliersView}"
+                          SelectedItem="{Binding SelectedSupplier}"
+                          Style="{StaticResource Grid.Modern}"
+                          IsReadOnly="True">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="2*" />
+                        <DataGridTextColumn Header="Phone" Binding="{Binding Phone}" Width="*" />
+                        <DataGridTextColumn Header="Address" Binding="{Binding Address}" Width="2*" />
+                        <DataGridTemplateColumn Header="Balance Due" Width="120">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding CurrentBalance, StringFormat={}{0:C}}" VerticalAlignment="Center">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding HasDue}" Value="True">
+                                                        <Setter Property="Foreground" Value="{StaticResource Brush.Danger}" />
+                                                        <Setter Property="FontWeight" Value="Bold" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </DockPanel>
+        </Border>
+
+        <Border Grid.Column="2"
+                Style="{StaticResource Card}"
+                Visibility="{Binding IsEditorOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Top" Text="Supplier Details" Style="{StaticResource Text.SectionTitle}" Margin="0,0,0,16" />
+                <ScrollViewer>
+                    <StackPanel DataContext="{Binding SelectedSupplier}">
+                        <Label Content="NAME" />
+                        <TextBox Style="{StaticResource Input.TextBox}" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" />
+
+                        <Label Content="PHONE" Margin="0,12,0,4" />
+                        <TextBox Style="{StaticResource Input.TextBox}" Text="{Binding Phone, UpdateSourceTrigger=PropertyChanged}" />
+
+                        <Label Content="ADDRESS" Margin="0,12,0,4" />
+                        <TextBox Style="{StaticResource Input.TextBox}" Text="{Binding Address, UpdateSourceTrigger=PropertyChanged}" />
+
+                        <Label Content="CURRENT BALANCE" Margin="0,12,0,4" />
+                        <TextBox Style="{StaticResource Input.TextBox}" Text="{Binding CurrentBalance, UpdateSourceTrigger=PropertyChanged}" />
+                    </StackPanel>
+                </ScrollViewer>
+                <Grid DockPanel.Dock="Bottom" Margin="0,16,0,0">
+                    <Button Content="Delete"
+                            Command="{Binding DeleteSelectedCommand}"
+                            Style="{StaticResource Button.Danger}"
+                            HorizontalAlignment="Left" />
+                    <Button Content="Close"
+                            Command="{Binding CloseEditorCommand}"
+                            Style="{StaticResource Button.Secondary}"
+                            HorizontalAlignment="Right" />
+                </Grid>
+            </DockPanel>
+        </Border>
+    </Grid>
+</UserControl>

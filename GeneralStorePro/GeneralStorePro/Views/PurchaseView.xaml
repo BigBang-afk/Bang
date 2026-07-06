@@ -1,0 +1,102 @@
+<UserControl x:Class="GeneralStorePro.Views.PurchaseView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Border Style="{StaticResource Card}">
+        <DockPanel>
+            <TextBlock DockPanel.Dock="Top" Text="New Purchase" Style="{StaticResource Text.PageTitle}" Margin="0,0,0,16" />
+
+            <Grid DockPanel.Dock="Top" Margin="0,0,0,16">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0">
+                    <Label Content="SUPPLIER" />
+                    <ComboBox ItemsSource="{Binding Suppliers}"
+                              SelectedItem="{Binding SelectedSupplier}"
+                              Style="{StaticResource Input.ComboBox}" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="2">
+                    <Label Content="ADD PRODUCT" />
+                    <ComboBox ItemsSource="{Binding AvailableProducts}"
+                              SelectedItem="{Binding ProductToAdd}"
+                              Style="{StaticResource Input.ComboBox}" />
+                </StackPanel>
+
+                <Button Grid.Column="4"
+                        Content="+ Add Line"
+                        Command="{Binding AddLineCommand}"
+                        Style="{StaticResource Button.Primary}"
+                        VerticalAlignment="Bottom" />
+            </Grid>
+
+            <Grid DockPanel.Dock="Bottom" Margin="0,16,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="280" />
+                </Grid.ColumnDefinitions>
+
+                <Button Grid.Column="0"
+                        Content="Save Purchase"
+                        Command="{Binding SavePurchaseCommand}"
+                        Style="{StaticResource Button.Primary}"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Bottom" />
+
+                <StackPanel Grid.Column="1">
+                    <Grid Margin="0,0,0,4">
+                        <TextBlock Text="Subtotal" HorizontalAlignment="Left" />
+                        <TextBlock Text="{Binding SubTotal, StringFormat={}{0:C}}" HorizontalAlignment="Right" />
+                    </Grid>
+                    <Grid Margin="0,0,0,4">
+                        <TextBlock Text="Discount" HorizontalAlignment="Left" VerticalAlignment="Center" />
+                        <TextBox Text="{Binding Discount, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource Input.TextBox}"
+                                 HorizontalAlignment="Right"
+                                 Width="100" />
+                    </Grid>
+                    <Grid Margin="0,8,0,4">
+                        <TextBlock Text="Total" FontWeight="Bold" FontSize="16" HorizontalAlignment="Left" />
+                        <TextBlock Text="{Binding Total, StringFormat={}{0:C}}" FontWeight="Bold" FontSize="16" HorizontalAlignment="Right" />
+                    </Grid>
+                    <Grid Margin="0,0,0,4">
+                        <TextBlock Text="Paid" HorizontalAlignment="Left" VerticalAlignment="Center" />
+                        <TextBox Text="{Binding PaidAmount, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource Input.TextBox}"
+                                 HorizontalAlignment="Right"
+                                 Width="100" />
+                    </Grid>
+                    <Grid>
+                        <TextBlock Text="Due" HorizontalAlignment="Left" Foreground="{StaticResource Brush.Danger}" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding DueAmount, StringFormat={}{0:C}}" HorizontalAlignment="Right" Foreground="{StaticResource Brush.Danger}" FontWeight="SemiBold" />
+                    </Grid>
+                </StackPanel>
+            </Grid>
+
+            <DataGrid ItemsSource="{Binding PurchaseLines}" Style="{StaticResource Grid.Modern}">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Product" Binding="{Binding ProductName}" Width="*" IsReadOnly="True" />
+                    <DataGridTextColumn Header="Qty" Binding="{Binding Quantity, UpdateSourceTrigger=PropertyChanged}" Width="80" />
+                    <DataGridTextColumn Header="Unit Cost" Binding="{Binding UnitCost, UpdateSourceTrigger=PropertyChanged}" Width="100" />
+                    <DataGridTextColumn Header="Total" Binding="{Binding LineTotal, StringFormat={}{0:C}}" Width="100" IsReadOnly="True" />
+                    <DataGridTemplateColumn Width="40">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Button Content="✕"
+                                        Style="{StaticResource Button.Secondary}"
+                                        Padding="6,2"
+                                        Command="{Binding DataContext.RemoveLineCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding}" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </DockPanel>
+    </Border>
+</UserControl>

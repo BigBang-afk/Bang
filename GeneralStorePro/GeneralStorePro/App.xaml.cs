@@ -1,6 +1,7 @@
 using System;
 using System.Windows;
 using GeneralStorePro.Data;
+using GeneralStorePro.Views;
 
 namespace GeneralStorePro;
 
@@ -22,6 +23,11 @@ public partial class App : Application
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
             Shutdown(-1);
+            return;
         }
+
+        var loginWindow = new LoginWindow();
+        MainWindow = loginWindow;
+        loginWindow.Show();
     }
 }
