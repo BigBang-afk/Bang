@@ -1,0 +1,41 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{7340FD19-77AC-43B4-87BB-7CDEF54777DC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TradingJournal.Core", "src\TradingJournal.Core\TradingJournal.Core.csproj", "{0494166B-700B-4B86-959E-7E109C369664}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TradingJournal.App", "src\TradingJournal.App\TradingJournal.App.csproj", "{8BF02014-BAA0-42EE-9C70-FFC6A37C6ED1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TradingJournal.Tests", "src\TradingJournal.Tests\TradingJournal.Tests.csproj", "{9520ACBF-C1C1-422D-BEA1-928CC4FC1F37}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{0494166B-700B-4B86-959E-7E109C369664}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0494166B-700B-4B86-959E-7E109C369664}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0494166B-700B-4B86-959E-7E109C369664}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0494166B-700B-4B86-959E-7E109C369664}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8BF02014-BAA0-42EE-9C70-FFC6A37C6ED1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8BF02014-BAA0-42EE-9C70-FFC6A37C6ED1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8BF02014-BAA0-42EE-9C70-FFC6A37C6ED1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8BF02014-BAA0-42EE-9C70-FFC6A37C6ED1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9520ACBF-C1C1-422D-BEA1-928CC4FC1F37}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9520ACBF-C1C1-422D-BEA1-928CC4FC1F37}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9520ACBF-C1C1-422D-BEA1-928CC4FC1F37}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9520ACBF-C1C1-422D-BEA1-928CC4FC1F37}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{0494166B-700B-4B86-959E-7E109C369664} = {7340FD19-77AC-43B4-87BB-7CDEF54777DC}
+		{8BF02014-BAA0-42EE-9C70-FFC6A37C6ED1} = {7340FD19-77AC-43B4-87BB-7CDEF54777DC}
+		{9520ACBF-C1C1-422D-BEA1-928CC4FC1F37} = {7340FD19-77AC-43B4-87BB-7CDEF54777DC}
+	EndGlobalSection
+EndGlobal

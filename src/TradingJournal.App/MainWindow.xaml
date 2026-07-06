@@ -1,0 +1,59 @@
+<Window x:Class="TradingJournal.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:TradingJournal.App.ViewModels"
+        xmlns:views="clr-namespace:TradingJournal.App.Views"
+        Title="Trading Journal" Height="720" Width="1180" MinHeight="560" MinWidth="900"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource WindowBackgroundBrush}">
+
+    <Window.Resources>
+        <DataTemplate DataType="{x:Type vm:DashboardViewModel}">
+            <views:DashboardView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:AddProfitViewModel}">
+            <views:AddProfitView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:AddLossViewModel}">
+            <views:AddLossView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:CustomerLedgerViewModel}">
+            <views:CustomerLedgerView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
+            <views:SettingsView />
+        </DataTemplate>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="220" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Column="0" Background="{StaticResource SidebarBackgroundBrush}">
+            <DockPanel LastChildFill="False">
+                <StackPanel DockPanel.Dock="Top" Margin="0,24,0,24">
+                    <TextBlock Text="Trading Journal" FontSize="18" FontWeight="Bold"
+                               Foreground="{StaticResource SidebarForegroundBrush}"
+                               HorizontalAlignment="Center" />
+                </StackPanel>
+
+                <StackPanel DockPanel.Dock="Top">
+                    <Button Content="Dashboard" Style="{StaticResource NavButtonStyle}"
+                            Command="{Binding ShowDashboardCommand}" />
+                    <Button Content="Add Profit" Style="{StaticResource NavButtonStyle}"
+                            Command="{Binding ShowAddProfitCommand}" />
+                    <Button Content="Add Loss" Style="{StaticResource NavButtonStyle}"
+                            Command="{Binding ShowAddLossCommand}" />
+                    <Button Content="Customer Ledger" Style="{StaticResource NavButtonStyle}"
+                            Command="{Binding ShowCustomerLedgerCommand}" />
+                    <Button Content="Settings" Style="{StaticResource NavButtonStyle}"
+                            Command="{Binding ShowSettingsCommand}" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <ContentControl Grid.Column="1" Content="{Binding CurrentViewModel}" Margin="24" />
+    </Grid>
+</Window>

@@ -1,0 +1,83 @@
+<UserControl x:Class="TradingJournal.App.Views.DashboardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel>
+            <TextBlock Text="Dashboard" Style="{StaticResource PageTitleStyle}" />
+
+            <UniformGrid Columns="4" Margin="0,0,0,20">
+                <Border Style="{StaticResource CardStyle}" Margin="0,0,12,0">
+                    <StackPanel>
+                        <TextBlock Text="TOTAL PROFIT (USD)" Style="{StaticResource FieldLabelStyle}" />
+                        <TextBlock Text="{Binding TotalProfitUsd, StringFormat={}${0:N2}}"
+                                   FontSize="22" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" />
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource CardStyle}" Margin="0,0,12,0">
+                    <StackPanel>
+                        <TextBlock Text="TOTAL LOSS (USD)" Style="{StaticResource FieldLabelStyle}" />
+                        <TextBlock Text="{Binding TotalLossUsd, StringFormat={}${0:N2}}"
+                                   FontSize="22" FontWeight="Bold" Foreground="{StaticResource LossBrush}" />
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource CardStyle}" Margin="0,0,12,0">
+                    <StackPanel>
+                        <TextBlock Text="NET (PKR)" Style="{StaticResource FieldLabelStyle}" />
+                        <TextBlock Text="{Binding NetPkr, StringFormat={}Rs {0:N2}}"
+                                   FontSize="22" FontWeight="Bold" />
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource CardStyle}">
+                    <StackPanel>
+                        <TextBlock Text="NET (GOLD EQUIVALENT)" Style="{StaticResource FieldLabelStyle}" />
+                        <TextBlock FontSize="22" FontWeight="Bold">
+                            <Run Text="{Binding NetGold, StringFormat={}{0:N4}}" />
+                            <Run Text="{Binding GoldUnitLabel}" />
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+            </UniformGrid>
+
+            <Border Style="{StaticResource CardStyle}" Margin="0,0,0,20">
+                <StackPanel Orientation="Horizontal">
+                    <StackPanel Margin="0,0,40,0">
+                        <TextBlock Text="Net Profit/Loss (USD)" Style="{StaticResource FieldLabelStyle}" />
+                        <TextBlock Text="{Binding NetUsd, StringFormat={}${0:N2}}" FontSize="16" FontWeight="SemiBold" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,40,0">
+                        <TextBlock Text="Current USD → PKR Rate" Style="{StaticResource FieldLabelStyle}" />
+                        <TextBlock Text="{Binding CurrentUsdToPkrRate, StringFormat={}{0:N2}}" FontSize="16" FontWeight="SemiBold" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,40,0">
+                        <TextBlock Text="Current Gold Rate" Style="{StaticResource FieldLabelStyle}" />
+                        <TextBlock Text="{Binding CurrentGoldRate, StringFormat={}Rs {0:N0}}" FontSize="16" FontWeight="SemiBold" />
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Text="Total Entries" Style="{StaticResource FieldLabelStyle}" />
+                        <TextBlock Text="{Binding EntryCount}" FontSize="16" FontWeight="SemiBold" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Text="Recent Entries" FontSize="16" FontWeight="Bold" Margin="0,0,0,10" />
+            <Border Style="{StaticResource CardStyle}" Padding="0">
+                <DataGrid ItemsSource="{Binding RecentEntries}" AutoGenerateColumns="False"
+                          IsReadOnly="True" HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                          RowHeight="34" BorderThickness="0">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Date" Binding="{Binding Date, StringFormat={}{0:dd-MMM-yyyy}}" Width="120" />
+                        <DataGridTextColumn Header="Type" Binding="{Binding Type}" Width="80" />
+                        <DataGridTextColumn Header="Customer" Binding="{Binding Customer.Name}" Width="140" />
+                        <DataGridTextColumn Header="USD" Binding="{Binding AmountUsd, StringFormat={}${0:N2}}" Width="100" />
+                        <DataGridTextColumn Header="PKR" Binding="{Binding AmountPkr, StringFormat={}Rs {0:N2}}" Width="130" />
+                        <DataGridTextColumn Header="Gold" Binding="{Binding AmountGold, StringFormat={}{0:N4}}" Width="100" />
+                        <DataGridTextColumn Header="Notes" Binding="{Binding Notes}" Width="*" />
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
