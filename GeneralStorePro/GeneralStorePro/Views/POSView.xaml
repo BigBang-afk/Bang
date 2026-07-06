@@ -54,6 +54,13 @@
 
                 <Grid DockPanel.Dock="Bottom" Margin="0,12,0,0">
                     <StackPanel>
+                        <Label Content="CUSTOMER" />
+                        <ComboBox ItemsSource="{Binding Customers}"
+                                  SelectedItem="{Binding SelectedCustomer}"
+                                  DisplayMemberPath="Name"
+                                  Style="{StaticResource Input.ComboBox}"
+                                  Margin="0,0,0,12" />
+
                         <Grid Margin="0,0,0,4">
                             <TextBlock Text="Subtotal" HorizontalAlignment="Left" />
                             <TextBlock Text="{Binding SubTotal, StringFormat={}{0:C}}" HorizontalAlignment="Right" />
@@ -81,12 +88,23 @@
                             <TextBlock Text="{Binding DueAmount, StringFormat={}{0:C}}" HorizontalAlignment="Right" Foreground="{StaticResource Brush.Danger}" FontWeight="SemiBold" />
                         </Grid>
 
-                        <ComboBox SelectedItem="{Binding PaymentMethod}" Style="{StaticResource Input.ComboBox}" Margin="0,0,0,12">
-                            <ComboBoxItem Content="Cash" />
-                            <ComboBoxItem Content="Card" />
-                            <ComboBoxItem Content="Credit" />
-                            <ComboBoxItem Content="Mixed" />
-                        </ComboBox>
+                        <ComboBox ItemsSource="{Binding PaymentMethods}"
+                                  SelectedItem="{Binding PaymentMethod}"
+                                  Style="{StaticResource Input.ComboBox}"
+                                  Margin="0,0,0,12" />
+
+                        <TextBlock Text="{Binding ErrorMessage}"
+                                   Foreground="{StaticResource Brush.Danger}"
+                                   TextWrapping="Wrap"
+                                   Margin="0,0,0,8"
+                                   Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibilityConverter}}" />
+
+                        <TextBlock Foreground="{StaticResource Brush.Success}"
+                                   Margin="0,0,0,8"
+                                   Visibility="{Binding LastInvoiceNumber, Converter={StaticResource StringToVisibilityConverter}}">
+                            <Run Text="Saved as" />
+                            <Run Text="{Binding LastInvoiceNumber, Mode=OneWay}" FontWeight="Bold" />
+                        </TextBlock>
 
                         <Button Content="Checkout"
                                 Command="{Binding CheckoutCommand}"

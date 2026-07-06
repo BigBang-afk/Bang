@@ -1,9 +1,9 @@
 using System.Collections.Generic;
-using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dapper;
 using GeneralStorePro.Data;
+using GeneralStorePro.Data.Repositories;
 
 namespace GeneralStorePro.ViewModels;
 
@@ -41,17 +41,9 @@ public partial class SettingsViewModel : ViewModelBase
         LoadSettings();
     }
 
-    private sealed class SettingRow
-    {
-        public string SettingKey { get; set; } = string.Empty;
-        public string SettingValue { get; set; } = string.Empty;
-    }
-
     private void LoadSettings()
     {
-        using var connection = DbConnectionFactory.CreateConnection();
-        var rows = connection.Query<SettingRow>("SELECT SettingKey, SettingValue FROM Settings;");
-        var map = rows.ToDictionary(r => r.SettingKey, r => r.SettingValue);
+        var map = SettingsRepository.GetAll();
 
         StoreName = map.GetValueOrDefault("StoreName", StoreName);
         StoreAddress = map.GetValueOrDefault("StoreAddress", StoreAddress);
