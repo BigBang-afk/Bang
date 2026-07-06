@@ -18,4 +18,8 @@
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Data\Schema.sql" />
+  </ItemGroup>
+
 </Project>
