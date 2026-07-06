@@ -1,0 +1,14 @@
+## .NET / Visual Studio
+bin/
+obj/
+*.user
+.vs/
+
+## SQLite runtime database (don't commit real data)
+*.db
+*.db-shm
+*.db-wal
+
+## OS
+.DS_Store
+Thumbs.db
