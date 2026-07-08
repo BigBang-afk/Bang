@@ -2,12 +2,16 @@ import { Candle, Pair } from "@/lib/types";
 import { hashString, mulberry32 } from "./rng";
 
 /**
- * Quotex does not publish a public market-data API. This module produces a
- * deterministic, seeded synthetic OTC candle stream (random walk + slow
- * session-trend bias) so the indicator/signal engine has a live feed to
- * analyze in this demo. Swap `generateCandles` for a real broker/websocket
- * feed to go live — the rest of the engine only depends on the `Candle[]`
- * shape.
+ * Quotex does not publish a public market-data API, and its OTC instruments
+ * are a broker-internal synthetic feed with no external source at all — so
+ * this module simulates one instead. It's a bounded-memory model (long-term
+ * sine drift + a rolling local random walk + EWMA-based volatility
+ * clustering + short momentum bursts + occasional long-wick rejection
+ * candles) built to look and behave like real short-timeframe price action,
+ * while staying fully deterministic per (pair, timeframe, timestamp) so the
+ * chart and the signal engine's own analysis window always agree. Swap
+ * `generateCandles` for a real broker/websocket feed to go live — the rest
+ * of the engine only depends on the `Candle[]` shape.
  */
 
 interface PairConfig {
@@ -101,13 +105,35 @@ function bucketSeed(pair: Pair, timeframeSeconds: number, bucketIndex: number): 
   return cached;
 }
 
-const WARMUP_BUCKETS = 300;
+// Bounded-memory windows for the recursive state below (local walk sum, vol
+// clustering EWMA, momentum EWMA). WARMUP_BUCKETS is kept far larger than all
+// of them so that, regardless of how many candles a caller asks for, every
+// bucket's state has fully converged by the time it reaches the requested
+// range — two callers requesting different numCandles for the same
+// pair/timeframe/timestamp always see identical values for any bucket they
+// both cover (this is what keeps the live chart and the signal engine's own
+// analysis window in agreement).
+const LOCAL_WALK_WINDOW = 60;
+const VOL_EWMA_HALFLIFE = 18;
+const MOMENTUM_EWMA_HALFLIFE = 6;
+const WARMUP_BUCKETS = 400;
+const BASELINE_ABS_SHOCK = 0.5; // E[|U(-1,1)|]
+
+function halflifeToAlpha(halflife: number): number {
+  return 1 - Math.pow(0.5, 1 / halflife);
+}
+
+const VOL_ALPHA = halflifeToAlpha(VOL_EWMA_HALFLIFE);
+const MOMENTUM_ALPHA = halflifeToAlpha(MOMENTUM_EWMA_HALFLIFE);
 
 /**
  * Generates `numCandles` deterministic candles of `timeframeSeconds` length,
  * ending at the candle boundary at-or-before `nowSeconds`. Calling this again
  * with the same arguments always returns identical candles (server and
- * client stay in sync).
+ * client stay in sync), and — because every recursive signal below has a
+ * short memory relative to the warmup window — different `numCandles`
+ * requests for the same pair/timeframe/timestamp agree on every bucket they
+ * overlap.
  */
 export function generateCandles(
   pair: Pair,
@@ -119,26 +145,73 @@ export function generateCandles(
   const endBucket = Math.floor(nowSeconds / timeframeSeconds);
   const startBucket = endBucket - numCandles - WARMUP_BUCKETS + 1;
 
-  let price = cfg.basePrice;
+  const shockRing: number[] = [];
+  let localWalkSum = 0;
+  let emaAbsShock = BASELINE_ABS_SHOCK;
+  let emaShock = 0;
+  let prevClose = cfg.basePrice;
+
   const out: Candle[] = [];
 
   for (let b = startBucket; b <= endBucket; b++) {
     const seed = bucketSeed(pair, timeframeSeconds, b);
     const rng = mulberry32(seed);
 
-    const trendBias = Math.sin(b * cfg.trendFreq + cfg.trendPhase) * cfg.trendAmplitude;
-    const noise = (rng() - 0.5) * 2;
-    const ret = noise * cfg.volatility + trendBias * cfg.volatility * 0.35;
-
-    const open = price;
-    const close = open + ret;
+    const shock = (rng() - 0.5) * 2;
     const wickA = rng();
     const wickB = rng();
-    const range = Math.abs(ret) + rng() * cfg.volatility * 0.8;
-    const high = Math.max(open, close) + wickA * range * 0.6;
-    const low = Math.min(open, close) - wickB * range * 0.6;
+    const wickB2 = rng();
+    const rejectionRoll = rng();
 
-    price = close;
+    // Bounded-memory local random walk: only the last LOCAL_WALK_WINDOW
+    // shocks contribute, so this never depends on where the loop started.
+    shockRing.push(shock);
+    localWalkSum += shock;
+    if (shockRing.length > LOCAL_WALK_WINDOW) {
+      localWalkSum -= shockRing.shift()!;
+    }
+
+    // Volatility clustering: calm/volatile regimes persist for a few candles
+    // instead of every candle drawing independent volatility.
+    emaAbsShock = VOL_ALPHA * Math.abs(shock) + (1 - VOL_ALPHA) * emaAbsShock;
+    const volMultiplier = Math.min(2.2, Math.max(0.4, emaAbsShock / BASELINE_ABS_SHOCK));
+
+    // Short-lived momentum: recent directional shocks bleed into the next
+    // few candles, producing believable momentum bursts and pullbacks.
+    emaShock = MOMENTUM_ALPHA * shock + (1 - MOMENTUM_ALPHA) * emaShock;
+
+    const longTermDrift =
+      (Math.sin(b * cfg.trendFreq + cfg.trendPhase) * cfg.trendAmplitude +
+        Math.sin(b * cfg.trendFreq * 2.7 + cfg.trendPhase * 1.3) * cfg.trendAmplitude * 0.4) *
+      cfg.volatility *
+      3;
+    const localWalk = localWalkSum * cfg.volatility * 0.12;
+    const momentumBoost = emaShock * cfg.volatility * 1.5;
+
+    const close = cfg.basePrice + longTermDrift + localWalk + momentumBoost;
+    const open = prevClose;
+    prevClose = close;
+
+    const bodyRange = Math.abs(close - open);
+    const range = bodyRange + rejectionRoll * cfg.volatility * volMultiplier * 1.2;
+
+    let high: number;
+    let low: number;
+    if (rejectionRoll < 0.18) {
+      // Occasional rejection candle: one long wick, one short wick.
+      const longWick = (0.5 + wickB * 1.5) * range * volMultiplier;
+      const shortWick = wickB2 * 0.25 * range * volMultiplier;
+      if (wickA > 0.5) {
+        high = Math.max(open, close) + longWick;
+        low = Math.min(open, close) - shortWick;
+      } else {
+        high = Math.max(open, close) + shortWick;
+        low = Math.min(open, close) - longWick;
+      }
+    } else {
+      high = Math.max(open, close) + wickA * range * 0.5 * volMultiplier;
+      low = Math.min(open, close) - wickB * range * 0.5 * volMultiplier;
+    }
 
     if (b > endBucket - numCandles) {
       out.push({ time: b * timeframeSeconds, open, high, low, close });
