@@ -18,15 +18,63 @@ interface PairConfig {
   trendAmplitude: number;
 }
 
-const PAIR_BASE: Record<Pair, { basePrice: number; volatility: number }> = {
-  "EUR/USD OTC": { basePrice: 1.085, volatility: 0.00028 },
-  "GBP/USD OTC": { basePrice: 1.265, volatility: 0.00035 },
-  "USD/JPY OTC": { basePrice: 151.2, volatility: 0.035 },
-  "EUR/JPY OTC": { basePrice: 164.1, volatility: 0.04 },
-  "GBP/JPY OTC": { basePrice: 191.3, volatility: 0.05 },
-  "AUD/CAD OTC": { basePrice: 0.912, volatility: 0.00026 },
-  "USD/CAD OTC": { basePrice: 1.362, volatility: 0.00024 },
-  "NZD/USD OTC": { basePrice: 0.605, volatility: 0.0003 },
+/**
+ * basePrice: approximate real-world quote level (only used to seed a
+ * plausible starting price for the simulated walk).
+ * volPct: per-candle volatility as a fraction of price. Actual volatility
+ * used is basePrice * volPct, so JPY-scale and exotic-scale pairs don't need
+ * separately tuned absolute numbers.
+ */
+const PAIR_BASE: Record<Pair, { basePrice: number; volPct: number }> = {
+  // Majors
+  "EUR/USD OTC": { basePrice: 1.085, volPct: 0.00026 },
+  "GBP/USD OTC": { basePrice: 1.265, volPct: 0.00028 },
+  "USD/JPY OTC": { basePrice: 151.2, volPct: 0.00023 },
+  "USD/CHF OTC": { basePrice: 0.905, volPct: 0.00024 },
+  "USD/CAD OTC": { basePrice: 1.362, volPct: 0.00022 },
+  "AUD/USD OTC": { basePrice: 0.655, volPct: 0.00027 },
+  "NZD/USD OTC": { basePrice: 0.605, volPct: 0.00028 },
+
+  // Crosses
+  "EUR/JPY OTC": { basePrice: 164.1, volPct: 0.00026 },
+  "GBP/JPY OTC": { basePrice: 191.3, volPct: 0.00032 },
+  "EUR/GBP OTC": { basePrice: 0.858, volPct: 0.00022 },
+  "EUR/CHF OTC": { basePrice: 0.982, volPct: 0.0002 },
+  "EUR/AUD OTC": { basePrice: 1.657, volPct: 0.00028 },
+  "EUR/CAD OTC": { basePrice: 1.478, volPct: 0.00027 },
+  "EUR/NZD OTC": { basePrice: 1.794, volPct: 0.0003 },
+  "GBP/AUD OTC": { basePrice: 1.932, volPct: 0.0003 },
+  "GBP/CAD OTC": { basePrice: 1.723, volPct: 0.00029 },
+  "GBP/CHF OTC": { basePrice: 1.145, volPct: 0.00026 },
+  "GBP/NZD OTC": { basePrice: 2.091, volPct: 0.00033 },
+  "AUD/CAD OTC": { basePrice: 0.912, volPct: 0.00026 },
+  "AUD/CHF OTC": { basePrice: 0.593, volPct: 0.00025 },
+  "AUD/JPY OTC": { basePrice: 99.1, volPct: 0.00027 },
+  "AUD/NZD OTC": { basePrice: 1.083, volPct: 0.00022 },
+  "CAD/CHF OTC": { basePrice: 0.665, volPct: 0.00023 },
+  "CAD/JPY OTC": { basePrice: 111.0, volPct: 0.00025 },
+  "CHF/JPY OTC": { basePrice: 167.0, volPct: 0.00027 },
+  "NZD/CAD OTC": { basePrice: 0.823, volPct: 0.00025 },
+  "NZD/CHF OTC": { basePrice: 0.548, volPct: 0.00024 },
+  "NZD/JPY OTC": { basePrice: 91.5, volPct: 0.00029 },
+
+  // Popular exotics (Quotex is known for these on weekends)
+  "USD/INR OTC": { basePrice: 83.4, volPct: 0.00045 },
+  "USD/BRL OTC": { basePrice: 5.42, volPct: 0.0006 },
+  "USD/MXN OTC": { basePrice: 18.1, volPct: 0.0005 },
+  "USD/ZAR OTC": { basePrice: 18.6, volPct: 0.00065 },
+  "USD/TRY OTC": { basePrice: 34.2, volPct: 0.0007 },
+  "USD/PHP OTC": { basePrice: 58.3, volPct: 0.00045 },
+  "USD/EGP OTC": { basePrice: 48.5, volPct: 0.0005 },
+  "USD/PKR OTC": { basePrice: 278.0, volPct: 0.00055 },
+  "USD/BDT OTC": { basePrice: 110.5, volPct: 0.0004 },
+  "USD/NGN OTC": { basePrice: 1520.0, volPct: 0.0007 },
+  "USD/COP OTC": { basePrice: 4020.0, volPct: 0.0006 },
+  "USD/DZD OTC": { basePrice: 134.5, volPct: 0.00045 },
+
+  // Metals
+  "XAU/USD OTC": { basePrice: 2340.0, volPct: 0.00035 },
+  "XAG/USD OTC": { basePrice: 27.5, volPct: 0.0006 },
 };
 
 function pairConfig(pair: Pair): PairConfig {
@@ -34,7 +82,7 @@ function pairConfig(pair: Pair): PairConfig {
   const h = hashString(pair);
   return {
     basePrice: base.basePrice,
-    volatility: base.volatility,
+    volatility: base.basePrice * base.volPct,
     trendFreq: 0.015 + ((h % 1000) / 1000) * 0.02,
     trendPhase: ((h >> 8) % 1000) / 1000 * Math.PI * 2,
     trendAmplitude: 0.5 + ((h >> 16) % 1000) / 1000,

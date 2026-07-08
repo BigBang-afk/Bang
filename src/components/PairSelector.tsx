@@ -1,6 +1,6 @@
 "use client";
 
-import { Pair, PAIRS } from "@/lib/types";
+import { Pair, PAIR_GROUPS } from "@/lib/types";
 
 export function PairSelector({
   value,
@@ -17,10 +17,14 @@ export function PairSelector({
         onChange={(e) => onChange(e.target.value as Pair)}
         className="rounded-lg border border-bg-border bg-bg-card px-4 py-2.5 text-sm font-medium text-white focus:border-accent focus:outline-none"
       >
-        {PAIRS.map((p) => (
-          <option key={p} value={p}>
-            {p}
-          </option>
+        {PAIR_GROUPS.map((group) => (
+          <optgroup key={group.label} label={group.label}>
+            {group.pairs.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </optgroup>
         ))}
       </select>
     </div>
