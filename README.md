@@ -101,6 +101,36 @@ Python development). Steps:
 4. Set the new environment as the active one for the project, then press
    **F5** (or Ctrl+F5) to run — `main.py` is already set as the startup file.
 
+If Visual Studio offers to "make non-functional changes to this project in
+order to enable [it] to open in released versions of Visual Studio newer
+than Visual Studio 2010 SP1" — that's just VS's one-time, harmless project
+upgrade prompt for older-style `.pyproj` files. Click OK; it does not
+change any app behavior. (The project file already declares
+`ToolsVersion="4.0"`, so current versions of Visual Studio should not show
+this prompt at all.)
+
+### Building a standalone .exe
+
+PyInstaller builds a native executable for whatever OS you run it on — it
+cannot cross-compile, so **build the `.exe` on Windows itself** (there is
+no way to produce a genuine Windows binary from Linux or macOS):
+
+```
+build_exe.bat
+```
+
+This creates a virtual environment, installs `requirements-build.txt`
+(runtime deps + PyInstaller), and runs `AurumTerminal.spec`. The result is
+a single windowed executable at `dist\AurumTerminal.exe` — no console
+window, no Python install required on the machine that runs it. On first
+launch it creates a `data\` folder next to the `.exe` for the SQLite
+database, screenshots, backups and exports, so keep the `.exe` in its own
+folder.
+
+On macOS/Linux, `./build_exe.sh` does the same thing and produces a native
+binary for that OS (useful for testing the packaging, not for a Windows
+target).
+
 ### Opening in VS Code
 
 The project also runs fine from any editor: activate your virtual

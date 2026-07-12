@@ -11,3 +11,6 @@ data/*.db-wal
 data/*.db-shm
 *.log
 .DS_Store
+build/
+dist/
+*.spec.bak
