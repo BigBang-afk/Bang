@@ -84,6 +84,29 @@ with a starter "Personal" account, a default strategy library (SMC, ICT,
 Liquidity Sweep, Supply & Demand, Breakout, Trend Following, EMA Pullback,
 Order Block, Fair Value Gap) and a default setup-tag library.
 
+### Opening in Visual Studio
+
+`AurumTerminal.sln` + `AurumTerminal.pyproj` are included for Visual Studio's
+**Python Development** workload (Visual Studio Installer → Workloads →
+Python development). Steps:
+
+1. Install the Python Development workload if you haven't already.
+2. Open `AurumTerminal.sln` in Visual Studio.
+3. In Solution Explorer, right-click **Python Environments** → *Add
+   Environment...* and point it at a virtual environment created from
+   `requirements.txt` (or right-click the project → *Create Virtual
+   Environment*, then `pip install -r requirements.txt` in the VS Python
+   Environments window). Make sure Python's Tk/Tcl support is installed —
+   the standard python.org Windows installer includes it by default.
+4. Set the new environment as the active one for the project, then press
+   **F5** (or Ctrl+F5) to run — `main.py` is already set as the startup file.
+
+### Opening in VS Code
+
+The project also runs fine from any editor: activate your virtual
+environment and run `python main.py`, or use VS Code's Python extension
+with `main.py` as the entry point.
+
 ### Keyboard shortcuts
 
 | Shortcut | Action |
