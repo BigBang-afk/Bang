@@ -2,7 +2,6 @@ using System.Windows;
 using TradingPortfolioDashboard.Data;
 using TradingPortfolioDashboard.Services;
 using TradingPortfolioDashboard.ViewModels;
-using TradingPortfolioDashboard.Views;
 
 namespace TradingPortfolioDashboard;
 
