@@ -1,3 +1,5 @@
+using System;
+
 namespace TradingPortfolioDashboard.Models;
 
 public class EquityPoint
