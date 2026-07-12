@@ -1,0 +1,124 @@
+<UserControl x:Class="TradingPortfolioDashboard.Views.DashboardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
+             xmlns:conv="clr-namespace:TradingPortfolioDashboard.Converters">
+
+    <UserControl.Resources>
+        <conv:PnLColorConverter x:Key="PnLColorConverter"/>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel>
+
+            <!-- KPI cards -->
+            <Grid Margin="0,0,0,20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="PORTFOLIO VALUE" Style="{StaticResource KpiLabel}"/>
+                        <TextBlock Text="{Binding TotalMarketValue, StringFormat={}{0:C2}}" Style="{StaticResource KpiValue}"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Column="2" Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="UNREALIZED P&amp;L" Style="{StaticResource KpiLabel}"/>
+                        <TextBlock Text="{Binding TotalUnrealizedPnL, StringFormat={}{0:C2}}" Style="{StaticResource KpiValue}"
+                                   Foreground="{Binding TotalUnrealizedPnL, Converter={StaticResource PnLColorConverter}}"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Column="4" Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="REALIZED P&amp;L" Style="{StaticResource KpiLabel}"/>
+                        <TextBlock Text="{Binding TotalRealizedPnL, StringFormat={}{0:C2}}" Style="{StaticResource KpiValue}"
+                                   Foreground="{Binding TotalRealizedPnL, Converter={StaticResource PnLColorConverter}}"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Column="6" Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="TOTAL P&amp;L" Style="{StaticResource KpiLabel}"/>
+                        <TextBlock Text="{Binding TotalPnL, StringFormat={}{0:C2}}" Style="{StaticResource KpiValue}"
+                                   Foreground="{Binding TotalPnL, Converter={StaticResource PnLColorConverter}}"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Column="8" Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="OPEN POSITIONS" Style="{StaticResource KpiLabel}"/>
+                        <TextBlock Text="{Binding OpenPositionCount}" Style="{StaticResource KpiValue}"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- Charts -->
+            <Grid Margin="0,0,0,20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="1*"/>
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Style="{StaticResource Card}">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top" Text="Realized P&amp;L Over Time" Style="{StaticResource SectionHeader}"/>
+                        <lvc:CartesianChart Series="{Binding EquitySeries}" XAxes="{Binding EquityXAxes}" Height="260"/>
+                    </DockPanel>
+                </Border>
+
+                <Border Grid.Column="2" Style="{StaticResource Card}">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top" Text="Allocation" Style="{StaticResource SectionHeader}"/>
+                        <lvc:PieChart Series="{Binding AllocationSeries}" Height="260" LegendPosition="Bottom"/>
+                    </DockPanel>
+                </Border>
+            </Grid>
+
+            <!-- Positions table -->
+            <Border Style="{StaticResource Card}">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="Open Positions" Style="{StaticResource SectionHeader}"/>
+                    <DataGrid x:Name="PositionsGrid" ItemsSource="{Binding Positions}" IsReadOnly="False" Height="280"
+                              CellEditEnding="PositionsGrid_CellEditEnding">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Symbol" Binding="{Binding Symbol}" Width="90" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Quantity" Binding="{Binding Quantity, StringFormat={}{0:N4}}" Width="100" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Avg Cost" Binding="{Binding AvgCost, StringFormat={}{0:C2}}" Width="100" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Current Price" Binding="{Binding CurrentPrice, StringFormat={}{0:C2}}" Width="110"/>
+                            <DataGridTextColumn Header="Market Value" Binding="{Binding MarketValue, StringFormat={}{0:C2}}" Width="120" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Unrealized P&amp;L" Binding="{Binding UnrealizedPnL, StringFormat={}{0:C2}}" Width="130" IsReadOnly="True">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{Binding UnrealizedPnL, Converter={StaticResource PnLColorConverter}}"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="Unrealized %" Binding="{Binding UnrealizedPnLPct, StringFormat={}{0:P2}}" Width="110" IsReadOnly="True">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{Binding UnrealizedPnLPct, Converter={StaticResource PnLColorConverter}}"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="Allocation" Binding="{Binding AllocationPct, StringFormat={}{0:P1}}" Width="100" IsReadOnly="True"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

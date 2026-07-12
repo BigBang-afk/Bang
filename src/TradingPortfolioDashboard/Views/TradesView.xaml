@@ -1,0 +1,43 @@
+<UserControl x:Class="TradingPortfolioDashboard.Views.TradesView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:TradingPortfolioDashboard.Converters">
+
+    <UserControl.Resources>
+        <conv:PnLColorConverter x:Key="PnLColorConverter"/>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+            <TextBlock Text="Trade Log" Style="{StaticResource SectionHeader}" VerticalAlignment="Center" Margin="0,0,20,0"/>
+            <Button Content="+ Add Trade" Style="{StaticResource PrimaryButton}" Command="{Binding AddTradeCommand}" Margin="0,0,8,0"/>
+            <Button Content="Edit" Style="{StaticResource SecondaryButton}" Command="{Binding EditTradeCommand}" Margin="0,0,8,0"/>
+            <Button Content="Delete" Style="{StaticResource SecondaryButton}" Command="{Binding DeleteTradeCommand}" Margin="0,0,8,0"/>
+            <Button Content="Import CSV" Style="{StaticResource SecondaryButton}" Command="{Binding ImportCsvCommand}"/>
+        </StackPanel>
+
+        <TextBlock Grid.Row="1" Text="{Binding StatusMessage}" Foreground="{StaticResource Brush.TextSecondary}" Margin="0,0,0,12"/>
+
+        <Border Grid.Row="2" Style="{StaticResource Card}">
+            <DataGrid ItemsSource="{Binding Trades}" SelectedItem="{Binding SelectedTrade}"
+                      IsReadOnly="True" SelectionMode="Single">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Date" Binding="{Binding Date, StringFormat={}{0:MM/dd/yyyy HH:mm}}" Width="150"/>
+                    <DataGridTextColumn Header="Symbol" Binding="{Binding Symbol}" Width="90"/>
+                    <DataGridTextColumn Header="Side" Binding="{Binding Side}" Width="70"/>
+                    <DataGridTextColumn Header="Quantity" Binding="{Binding Quantity, StringFormat={}{0:N4}}" Width="100"/>
+                    <DataGridTextColumn Header="Price" Binding="{Binding Price, StringFormat={}{0:C2}}" Width="100"/>
+                    <DataGridTextColumn Header="Fees" Binding="{Binding Fees, StringFormat={}{0:C2}}" Width="80"/>
+                    <DataGridTextColumn Header="Net Amount" Binding="{Binding NetAmount, StringFormat={}{0:C2}}" Width="120"/>
+                    <DataGridTextColumn Header="Notes" Binding="{Binding Notes}" Width="*"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+    </Grid>
+</UserControl>

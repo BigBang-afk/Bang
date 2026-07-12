@@ -1,0 +1,52 @@
+<Window x:Class="TradingPortfolioDashboard.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:TradingPortfolioDashboard.ViewModels"
+        xmlns:views="clr-namespace:TradingPortfolioDashboard.Views"
+        Title="Trading Portfolio Dashboard" Height="820" Width="1360"
+        WindowStartupLocation="CenterScreen">
+
+    <Window.Resources>
+        <DataTemplate DataType="{x:Type vm:DashboardViewModel}">
+            <views:DashboardView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:TradesViewModel}">
+            <views:TradesView/>
+        </DataTemplate>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="220"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Sidebar -->
+        <Border Grid.Column="0" Background="{StaticResource Brush.SidebarBackground}"
+                BorderBrush="{StaticResource Brush.Border}" BorderThickness="0,0,1,0">
+            <DockPanel LastChildFill="False">
+                <StackPanel DockPanel.Dock="Top" Margin="20,24,20,32">
+                    <TextBlock Text="📈 Bang Trading" FontSize="18" FontWeight="Bold"/>
+                    <TextBlock Text="Portfolio Dashboard" FontSize="12" Foreground="{StaticResource Brush.TextSecondary}" Margin="0,2,0,0"/>
+                </StackPanel>
+
+                <StackPanel DockPanel.Dock="Top" Margin="10,0">
+                    <Button Style="{StaticResource NavButton}" Command="{Binding ShowDashboardCommand}">
+                        <TextBlock Text="📊  Dashboard"/>
+                    </Button>
+                    <Button Style="{StaticResource NavButton}" Command="{Binding ShowTradesCommand}" Margin="0,4,0,0">
+                        <TextBlock Text="📜  Trade Log"/>
+                    </Button>
+                </StackPanel>
+
+                <StackPanel DockPanel.Dock="Bottom" Margin="20,0,20,20">
+                    <TextBlock Text="Data stored locally" FontSize="11" Foreground="{StaticResource Brush.TextSecondary}"/>
+                    <TextBlock Text="%AppData%\TradingPortfolioDashboard" FontSize="10" Foreground="{StaticResource Brush.TextSecondary}" TextWrapping="Wrap"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- Content -->
+        <ContentControl Grid.Column="1" Content="{Binding CurrentView}" Margin="24"/>
+    </Grid>
+</Window>
