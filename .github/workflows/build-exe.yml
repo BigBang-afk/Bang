@@ -19,7 +19,7 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
-      - name: Publish self-contained single-file EXE
+      - name: Publish self-contained single-file EXE (no .NET install needed, ~175 MB)
         run: >
           dotnet publish src/TradingPortfolioDashboard/TradingPortfolioDashboard.csproj
           -c Release
@@ -27,9 +27,23 @@ jobs:
           --self-contained true
           -p:PublishSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true
-          -o publish
+          -o publish-selfcontained
+
+      - name: Publish framework-dependent single-file EXE (needs .NET 8 Desktop Runtime, small)
+        run: >
+          dotnet publish src/TradingPortfolioDashboard/TradingPortfolioDashboard.csproj
+          -c Release
+          -r win-x64
+          --self-contained false
+          -p:PublishSingleFile=true
+          -o publish-framework-dependent
 
       - uses: actions/upload-artifact@v4
         with:
-          name: TradingPortfolioDashboard-win-x64
-          path: publish/TradingPortfolioDashboard.exe
+          name: TradingPortfolioDashboard-win-x64-selfcontained
+          path: publish-selfcontained/TradingPortfolioDashboard.exe
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TradingPortfolioDashboard-win-x64-framework-dependent
+          path: publish-framework-dependent/TradingPortfolioDashboard.exe
