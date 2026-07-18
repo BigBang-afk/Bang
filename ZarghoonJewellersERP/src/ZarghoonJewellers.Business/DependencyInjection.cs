@@ -27,6 +27,7 @@ public static class DependencyInjection
         services.AddScoped<IGoldLedgerService, GoldLedgerService>();
         services.AddScoped<IRepairOrderService, RepairOrderService>();
         services.AddScoped<IUserManagementService, UserManagementService>();
+        services.AddScoped<IImageService, ImageService>();
 
         // Generic CRUD service + repository for the simpler lookup-style entities.
         services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));

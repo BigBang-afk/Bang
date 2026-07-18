@@ -36,12 +36,15 @@ Run the scripts in `Database/Scripts/` **in order** against your SQL Server inst
 3. `03_Indexes.sql` - supporting indexes for the dashboard and common lookups
 4. `04_SeedData.sql` - roles, permissions, the default admin login, stock categories,
    a default bank account, application settings, and today's gold rate
+5. `05_StockModuleEnhancements.sql` - adds the full Stock Management module's columns
+   (identification, costing, lifecycle status) to `erp.Stock`; safe to run any time after 02
 
 ```powershell
 sqlcmd -S .\SQLEXPRESS -i Database\Scripts\01_CreateDatabase.sql
 sqlcmd -S .\SQLEXPRESS -i Database\Scripts\02_CreateTables.sql
 sqlcmd -S .\SQLEXPRESS -i Database\Scripts\03_Indexes.sql
 sqlcmd -S .\SQLEXPRESS -i Database\Scripts\04_SeedData.sql
+sqlcmd -S .\SQLEXPRESS -i Database\Scripts\05_StockModuleEnhancements.sql
 ```
 
 ### Default login
@@ -80,6 +83,20 @@ The account is flagged `MustChangePassword`, so change it immediately after firs
   a top ribbon (live gold/USD ticker, signed-in user, window controls), a dashboard with 14
   stat cards + a profit trend chart + three live data grids, full POS-style invoice entry,
   purchase entry (restock or new item), and management screens for every remaining module.
+- **Stock Management module** (`Forms/Stock/`): a three-tab workspace -
+  - *Inventory*: live search-while-typing, category/status filters, a real-sort/visually-
+    grouped professional grid, Excel/PDF export, printing, and per-item barcode + QR label
+    preview/print. The edit dialog has category -> subcategory, supplier/karigar, hallmark/
+    serial/batch/shelf, brand/collection/occasion/gender, a multi-photo gallery with live
+    webcam capture, and a live-calculating panel (net weight, purity-adjusted fine gold
+    weight, purchase value, projected profit) driven by the same formulas the server uses.
+  - *Bulk / Multiple Stock Entry*: an unbound, Excel-like grid for adding 100+ items without
+    reopening a form - Enter/Tab auto-advance (adding a new row at the end automatically),
+    Ctrl+D duplicates the row above, Ctrl+C/V copy-paste a whole row, Ctrl+Z/Y undo/redo
+    row-level actions, a 15-second local autosave draft (recoverable after a crash or
+    accidental close), and barcode+QR label printing for the whole batch right after saving.
+  - *Excel Import*: downloads a starter template, previews every parsed row with per-row
+    validation before anything is written to the database, then imports only the valid rows.
 
 ## Notable design decisions
 
@@ -95,3 +112,11 @@ The account is flagged `MustChangePassword`, so change it immediately after firs
 - **Gold ledger sign convention**: `CurrentGoldBalance` on Customer/Supplier/Karigar is
   positive when the shop owes the entity gold, negative when the entity owes the shop -
   documented on each entity and enforced centrally in `GoldLedgerService`.
+- **Camera capture via FlashCap**: the legacy AForge/DirectShow bindings don't target .NET 8,
+  so live webcam capture (`CameraCaptureSession`) is built on FlashCap, an actively maintained
+  library that does. Excel import/export uses ClosedXML; PDF export uses PDFsharp 6 (the
+  GDI-free, .NET 8-targeting rewrite) - both wrapped behind `Common/Helpers` so no
+  third-party namespace leaks into the Presentation layer.
+- **SubCategory reuses the existing category hierarchy**: rather than a new table,
+  `erp.StockCategories.ParentCategoryId` already supports parent/child categories, so a
+  "sub category" is just a category whose parent is another category.

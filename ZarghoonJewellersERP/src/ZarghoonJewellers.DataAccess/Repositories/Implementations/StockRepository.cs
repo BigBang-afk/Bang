@@ -48,4 +48,38 @@ public class StockRepository : GenericRepository<Stock>, IStockRepository
             .Take(50)
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<string> GenerateNextSerialNumberAsync(CancellationToken cancellationToken = default)
+    {
+        int nextId = await Context.Stock.CountAsync(cancellationToken) + 1;
+        string serial;
+        do
+        {
+            serial = $"SN-{DateTime.Now:yyMM}-{nextId:D6}";
+            nextId++;
+        } while (await Context.Stock.AnyAsync(s => s.SerialNumber == serial, cancellationToken));
+
+        return serial;
+    }
+
+    public async Task<IReadOnlyList<Stock>> GetAllWithDetailsAsync(CancellationToken cancellationToken = default)
+        => await DbSet.AsNoTracking()
+            .Include(s => s.Category)
+            .Include(s => s.Karigar)
+            .Include(s => s.Supplier)
+            .Include(s => s.Barcodes)
+            .OrderByDescending(s => s.CreatedDate)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<string>> GetDistinctBrandsAsync(CancellationToken cancellationToken = default)
+        => await DbSet.Where(s => s.Brand != null && s.Brand != string.Empty)
+            .Select(s => s.Brand!).Distinct().OrderBy(b => b).ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<string>> GetDistinctCollectionsAsync(CancellationToken cancellationToken = default)
+        => await DbSet.Where(s => s.Collection != null && s.Collection != string.Empty)
+            .Select(s => s.Collection!).Distinct().OrderBy(c => c).ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<string>> GetDistinctOccasionsAsync(CancellationToken cancellationToken = default)
+        => await DbSet.Where(s => s.Occasion != null && s.Occasion != string.Empty)
+            .Select(s => s.Occasion!).Distinct().OrderBy(o => o).ToListAsync(cancellationToken);
 }

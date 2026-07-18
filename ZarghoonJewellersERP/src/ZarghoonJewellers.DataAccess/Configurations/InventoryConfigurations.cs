@@ -52,6 +52,43 @@ public class StockConfiguration : IEntityTypeConfiguration<Stock>
         builder.HasIndex(s => s.ItemCode).IsUnique();
         builder.Ignore(s => s.IsLowStock);
 
+        // ---- Identification ----
+        builder.Property(s => s.DesignNumber).HasMaxLength(50);
+        builder.Property(s => s.Brand).HasMaxLength(100);
+        builder.Property(s => s.Collection).HasMaxLength(100);
+        builder.Property(s => s.Occasion).HasMaxLength(50);
+        builder.Property(s => s.Gender).HasMaxLength(20).IsRequired();
+        builder.Property(s => s.HallmarkNumber).HasMaxLength(50);
+        builder.Property(s => s.SerialNumber).HasMaxLength(50);
+        builder.Property(s => s.BatchNumber).HasMaxLength(50);
+        builder.Property(s => s.ShelfNumber).HasMaxLength(50);
+        builder.HasIndex(s => s.SerialNumber).IsUnique().HasFilter("[SerialNumber] IS NOT NULL");
+        builder.HasIndex(s => s.HallmarkNumber);
+        builder.HasIndex(s => s.BatchNumber);
+        builder.HasIndex(s => s.DesignNumber);
+        builder.HasIndex(s => s.Brand);
+        builder.HasIndex(s => s.Collection);
+        builder.HasIndex(s => s.ItemStatus);
+
+        // ---- Costing ----
+        builder.Property(s => s.LaborCharges).HasColumnType("decimal(18,2)");
+        builder.Property(s => s.LossPercentage).HasColumnType("decimal(5,2)");
+
+        // Database-computed persisted column: purity- and loss-adjusted fine gold weight.
+        builder.Property(s => s.FineGoldWeight)
+            .HasColumnType("decimal(18,3)")
+            .HasComputedColumnSql(
+                "(CASE [Purity] " +
+                "WHEN '24K' THEN [NetWeight] " +
+                "WHEN '22K' THEN [NetWeight]*0.9166 " +
+                "WHEN '21K' THEN [NetWeight]*0.8750 " +
+                "WHEN '18K' THEN [NetWeight]*0.7500 " +
+                "ELSE [NetWeight]*0.9166 END) * (1+[LossPercentage]/100.0)",
+                stored: true)
+            .ValueGeneratedOnAddOrUpdate();
+
+        builder.Property(s => s.ItemStatus).HasMaxLength(20).IsRequired();
+
         builder.HasOne(s => s.Category)
             .WithMany(c => c.StockItems)
             .HasForeignKey(s => s.CategoryId)
