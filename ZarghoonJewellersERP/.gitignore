@@ -1,0 +1,15 @@
+# Build artifacts
+[Bb]in/
+[Oo]bj/
+*.user
+
+# Visual Studio
+.vs/
+*.suo
+
+# NuGet
+*.nupkg
+**/packages/*
+
+# EF Core migrations bundle output (if published)
+*.dacpac

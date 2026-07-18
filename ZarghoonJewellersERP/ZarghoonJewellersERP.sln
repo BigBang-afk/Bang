@@ -1,0 +1,57 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.9.34728.123
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZarghoonJewellers.Domain", "src\ZarghoonJewellers.Domain\ZarghoonJewellers.Domain.csproj", "{8CEFA596-9C9D-4251-A98C-14DE5F77570E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZarghoonJewellers.DataAccess", "src\ZarghoonJewellers.DataAccess\ZarghoonJewellers.DataAccess.csproj", "{481BF5A7-518D-4C85-A3AB-BD3FD48C6B33}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZarghoonJewellers.Business", "src\ZarghoonJewellers.Business\ZarghoonJewellers.Business.csproj", "{C61B1BBE-5D02-44A4-B22E-2A39C5E2F549}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZarghoonJewellers.Common", "src\ZarghoonJewellers.Common\ZarghoonJewellers.Common.csproj", "{0F4B1CE9-94ED-49E2-B8E8-93B65F3FEB54}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZarghoonJewellers.Presentation", "src\ZarghoonJewellers.Presentation\ZarghoonJewellers.Presentation.csproj", "{FBEBA69A-B260-44AB-8B50-B4EF40238EE7}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Database", "Database", "{1A2B3C4D-0000-4000-8000-000000000001}"
+	ProjectSection(SolutionItems) = preProject
+		Database\Scripts\01_CreateDatabase.sql = Database\Scripts\01_CreateDatabase.sql
+		Database\Scripts\02_CreateTables.sql = Database\Scripts\02_CreateTables.sql
+		Database\Scripts\03_Indexes.sql = Database\Scripts\03_Indexes.sql
+		Database\Scripts\04_SeedData.sql = Database\Scripts\04_SeedData.sql
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8CEFA596-9C9D-4251-A98C-14DE5F77570E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8CEFA596-9C9D-4251-A98C-14DE5F77570E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8CEFA596-9C9D-4251-A98C-14DE5F77570E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8CEFA596-9C9D-4251-A98C-14DE5F77570E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{481BF5A7-518D-4C85-A3AB-BD3FD48C6B33}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{481BF5A7-518D-4C85-A3AB-BD3FD48C6B33}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{481BF5A7-518D-4C85-A3AB-BD3FD48C6B33}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{481BF5A7-518D-4C85-A3AB-BD3FD48C6B33}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C61B1BBE-5D02-44A4-B22E-2A39C5E2F549}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C61B1BBE-5D02-44A4-B22E-2A39C5E2F549}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C61B1BBE-5D02-44A4-B22E-2A39C5E2F549}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C61B1BBE-5D02-44A4-B22E-2A39C5E2F549}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0F4B1CE9-94ED-49E2-B8E8-93B65F3FEB54}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0F4B1CE9-94ED-49E2-B8E8-93B65F3FEB54}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0F4B1CE9-94ED-49E2-B8E8-93B65F3FEB54}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0F4B1CE9-94ED-49E2-B8E8-93B65F3FEB54}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FBEBA69A-B260-44AB-8B50-B4EF40238EE7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FBEBA69A-B260-44AB-8B50-B4EF40238EE7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FBEBA69A-B260-44AB-8B50-B4EF40238EE7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FBEBA69A-B260-44AB-8B50-B4EF40238EE7}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {26538133-E2BE-4EFC-8DDA-12E2D892AB57}
+	EndGlobalSection
+EndGlobal

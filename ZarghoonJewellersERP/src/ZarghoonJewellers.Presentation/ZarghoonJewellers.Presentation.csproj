@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>ZarghoonJewellers.Presentation</RootNamespace>
+    <AssemblyName>ZarghoonJewellers</AssemblyName>
+    <Company>Zarghoon Jewellers</Company>
+    <Product>Zarghoon Jewellers ERP</Product>
+    <AssemblyTitle>Zarghoon Jewellers ERP</AssemblyTitle>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Guna.UI2.WinForms" Version="2.0.4.8" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.1" />
+    <PackageReference Include="WinForms.DataVisualization" Version="1.10.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ZarghoonJewellers.Domain\ZarghoonJewellers.Domain.csproj" />
+    <ProjectReference Include="..\ZarghoonJewellers.DataAccess\ZarghoonJewellers.DataAccess.csproj" />
+    <ProjectReference Include="..\ZarghoonJewellers.Business\ZarghoonJewellers.Business.csproj" />
+    <ProjectReference Include="..\ZarghoonJewellers.Common\ZarghoonJewellers.Common.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>
