@@ -50,9 +50,9 @@ export interface WebsiteSettings {
   gold_rate_disclaimer: string;
   product_price_disclaimer: string;
   custom_order_info: string;
-  about_content: string | null;
-  privacy_policy: string | null;
-  terms_conditions: string | null;
+  about_content: string;
+  privacy_policy: string;
+  terms_conditions: string;
   footer_about: string;
   seo_default_title: string;
   seo_default_description: string;
