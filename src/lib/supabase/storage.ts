@@ -32,8 +32,8 @@ function safeExtension(file: File): string {
   return map[file.type] ?? "jpg";
 }
 
-/** Uploads a validated image to the public zarghoon-media bucket and returns its public URL. */
-export async function uploadPublicImage(file: File, folder: UploadFolder): Promise<UploadResult> {
+/** Uploads a validated image to the public zarghoon-media bucket, records it in the media library, and returns its public URL. */
+export async function uploadPublicImage(file: File, folder: UploadFolder, uploadedBy?: string | null): Promise<UploadResult> {
   assertValidImage(file);
 
   const db = createAdminClient();
@@ -46,6 +46,16 @@ export async function uploadPublicImage(file: File, folder: UploadFolder): Promi
   if (error) throw new Error(`Image upload failed: ${error.message}`);
 
   const { data } = db.storage.from("zarghoon-media").getPublicUrl(path);
+
+  await db.from("media_files").insert({
+    file_name: file.name || path.split("/").pop(),
+    file_path: path,
+    url: data.publicUrl,
+    file_type: file.type,
+    file_size_bytes: file.size,
+    uploaded_by: uploadedBy ?? null,
+  });
+
   return { url: data.publicUrl, path };
 }
 
@@ -72,7 +82,13 @@ export async function getSignedReferenceUrl(path: string, expiresInSeconds = 360
   return data.signedUrl;
 }
 
-export async function deletePublicImage(path: string): Promise<void> {
+/** Accepts either a storage path ("products/uuid.jpg") or a full public URL and deletes the underlying object. */
+export async function deletePublicImage(pathOrUrl: string): Promise<void> {
+  const marker = "/zarghoon-media/";
+  const idx = pathOrUrl.indexOf(marker);
+  const path = idx !== -1 ? pathOrUrl.slice(idx + marker.length) : pathOrUrl;
+
   const db = createAdminClient();
   await db.storage.from("zarghoon-media").remove([path]);
+  await db.from("media_files").delete().eq("file_path", path);
 }
