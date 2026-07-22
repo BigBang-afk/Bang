@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <rect width="400" height="400" fill="#f0ead9"/>
+  <circle cx="200" cy="170" r="60" fill="none" stroke="#c9a24b" stroke-width="3"/>
+  <path d="M170 220 L230 220 L245 260 L155 260 Z" fill="none" stroke="#c9a24b" stroke-width="3"/>
+  <text x="200" y="330" font-family="Georgia, serif" font-size="18" fill="#9c7a2e" text-anchor="middle">Zarghoon Jewellers</text>
+</svg>
