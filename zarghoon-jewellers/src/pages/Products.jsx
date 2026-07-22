@@ -40,10 +40,12 @@ export default function Products() {
 
   return (
     <div>
-      <section className="bg-ink text-cream">
+      <section className="bg-ink-radial text-cream">
         <div className="mx-auto max-w-6xl px-6 py-16 text-center">
           <p className="text-xs uppercase tracking-[0.3em] text-gold">Our Collections</p>
-          <h1 className="mt-3 font-serif-display text-4xl md:text-5xl">All Jewellery</h1>
+          <h1 className="mt-3 font-serif-display text-4xl md:text-5xl">
+            <span className="text-gold-gradient">All Jewellery</span>
+          </h1>
           <p className="mx-auto mt-3 max-w-xl text-cream/70">
             Browse rings, necklaces, earrings, and bangles crafted with care by Zarghoon
             Jewellers.
@@ -59,7 +61,7 @@ export default function Products() {
               onClick={() => handleSelectCategory(cat)}
               className={`rounded-full border px-5 py-2 text-sm uppercase tracking-wide transition-colors ${
                 activeCategory === cat
-                  ? "border-gold bg-gold text-ink"
+                  ? "border-gold bg-gold-gradient text-ink shadow-gold-glow"
                   : "border-gold/30 text-ink/70 hover:border-gold"
               }`}
             >

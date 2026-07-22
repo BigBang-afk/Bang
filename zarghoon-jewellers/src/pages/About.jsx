@@ -1,6 +1,6 @@
 import SectionHeading from "../components/SectionHeading";
-import PlaceholderImage from "../components/PlaceholderImage";
 import { Link } from "react-router-dom";
+import goldsmith from "../assets/photos/goldsmith.jpg";
 
 const values = [
   {
@@ -24,20 +24,23 @@ const values = [
 export default function About() {
   return (
     <div>
-      <section className="bg-ink text-cream">
+      <section className="bg-ink-radial text-cream">
         <div className="mx-auto max-w-6xl px-6 py-16 text-center">
           <p className="text-xs uppercase tracking-[0.3em] text-gold">About Us</p>
-          <h1 className="mt-3 font-serif-display text-4xl md:text-5xl">Our Story</h1>
+          <h1 className="mt-3 font-serif-display text-4xl md:text-5xl">
+            <span className="text-gold-gradient">Our Story</span>
+          </h1>
         </div>
       </section>
 
       <section className="mx-auto grid max-w-6xl items-center gap-10 px-6 py-16 md:grid-cols-2">
-        <PlaceholderImage
-          id="about-hero"
-          category="Bangles"
-          name="Our Workshop"
-          className="aspect-[4/3] w-full rounded-lg"
-        />
+        <div className="aspect-[4/3] w-full overflow-hidden rounded-lg shadow-gold-glow">
+          <img
+            src={goldsmith}
+            alt="Goldsmith hand-finishing a gold jewellery piece — placeholder stock photography"
+            className="h-full w-full object-cover"
+          />
+        </div>
         <div>
           <SectionHeading eyebrow="Since Generations" title="Rooted in Tradition, Made for Today" />
           <p className="mt-4 text-ink/70">
@@ -59,7 +62,10 @@ export default function About() {
           <SectionHeading eyebrow="Why Choose Us" title="What We Stand For" center />
           <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {values.map((v) => (
-              <div key={v.title} className="rounded-lg border border-gold/15 bg-white p-6">
+              <div
+                key={v.title}
+                className="rounded-lg border border-gold/15 bg-white p-6 transition-shadow hover:shadow-gold-glow"
+              >
                 <h3 className="font-serif-display text-lg text-ink">{v.title}</h3>
                 <p className="mt-2 text-sm text-ink/60">{v.body}</p>
               </div>
@@ -79,7 +85,7 @@ export default function About() {
         <div className="mt-8 flex flex-wrap justify-center gap-4">
           <Link
             to="/products"
-            className="rounded-full bg-gold px-6 py-3 text-sm uppercase tracking-wide text-ink transition-colors hover:bg-gold-light"
+            className="rounded-full bg-gold-gradient px-6 py-3 text-sm uppercase tracking-wide text-ink shadow-gold-glow transition-transform hover:scale-105"
           >
             Explore Collections
           </Link>

@@ -61,7 +61,7 @@ export default function ProductDetail() {
               href={`https://wa.me/${shop.whatsapp}?text=${whatsappMessage}`}
               target="_blank"
               rel="noreferrer"
-              className="rounded-full bg-gold px-6 py-3 text-sm uppercase tracking-wide text-ink transition-colors hover:bg-gold-light"
+              className="rounded-full bg-gold-gradient px-6 py-3 text-sm uppercase tracking-wide text-ink shadow-gold-glow transition-transform hover:scale-105"
             >
               Enquire on WhatsApp
             </a>

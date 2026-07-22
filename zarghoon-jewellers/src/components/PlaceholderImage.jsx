@@ -58,6 +58,13 @@ const ICONS = {
   ),
 };
 
+const CATEGORY_TINTS = {
+  Rings: "rgba(201, 162, 75, 0.4)",
+  Necklaces: "rgba(14, 59, 48, 0.55)",
+  Earrings: "rgba(110, 31, 46, 0.5)",
+  Bangles: "rgba(201, 162, 75, 0.4)",
+};
+
 function hashHue(str) {
   let hash = 0;
   for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) % 360;
@@ -67,12 +74,13 @@ function hashHue(str) {
 export default function PlaceholderImage({ id = "", category, name, className = "" }) {
   const angle = 45 + (hashHue(id) % 60);
   const icon = ICONS[category] ?? ICONS.Rings;
+  const tint = CATEGORY_TINTS[category] ?? CATEGORY_TINTS.Rings;
 
   return (
     <div
       className={`relative flex items-center justify-center overflow-hidden ${className}`}
       style={{
-        background: `linear-gradient(${angle}deg, #17161a 0%, #0b0b0c 55%, #2a2313 100%)`,
+        background: `linear-gradient(${angle}deg, #18171d 0%, #0a0a0d 55%, ${tint} 130%)`,
       }}
       role="img"
       aria-label={`${name ?? category} — photo placeholder`}

@@ -6,7 +6,7 @@ export default function ProductCard({ product }) {
   return (
     <Link
       to={`/products/${product.id}`}
-      className="group block overflow-hidden rounded-lg border border-gold/15 bg-white transition-shadow hover:shadow-lg hover:shadow-gold/10"
+      className="group block overflow-hidden rounded-lg border border-gold/15 bg-white transition-shadow hover:shadow-gold-glow"
     >
       <PlaceholderImage
         id={product.id}

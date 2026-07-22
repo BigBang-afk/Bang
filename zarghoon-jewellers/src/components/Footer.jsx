@@ -42,7 +42,19 @@ export default function Footer() {
       </div>
 
       <div className="border-t border-gold/10 px-6 py-5 text-center text-xs text-cream/40">
-        © {new Date().getFullYear()} {shop.name}. All rights reserved.
+        <p>© {new Date().getFullYear()} {shop.name}. All rights reserved.</p>
+        <p className="mt-1">
+          Model &amp; lifestyle photography: placeholder stock images via{" "}
+          <a
+            href="https://www.pexels.com"
+            target="_blank"
+            rel="noreferrer"
+            className="underline hover:text-gold"
+          >
+            Pexels
+          </a>
+          , to be replaced with real Zarghoon photography.
+        </p>
       </div>
     </footer>
   );

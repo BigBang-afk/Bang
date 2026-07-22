@@ -2,8 +2,12 @@ import { Link } from "react-router-dom";
 import SectionHeading from "../components/SectionHeading";
 import ProductCard from "../components/ProductCard";
 import PlaceholderImage from "../components/PlaceholderImage";
+import Divider from "../components/Divider";
 import { categories, products } from "../data/products";
 import { shop } from "../data/shop";
+import heroModel from "../assets/photos/hero-model.jpg";
+import goldsmith from "../assets/photos/goldsmith.jpg";
+import bridalMehndi from "../assets/photos/bridal-mehndi.jpg";
 
 const featured = products.filter((p) => p.featured).slice(0, 4);
 
@@ -28,14 +32,14 @@ const testimonials = [
 export default function Home() {
   return (
     <div>
-      <section className="relative overflow-hidden bg-ink text-cream">
+      <section className="relative overflow-hidden bg-ink-radial text-cream">
         <div className="mx-auto grid max-w-6xl items-center gap-10 px-6 py-20 md:grid-cols-2 md:py-28">
           <div>
             <p className="text-xs uppercase tracking-[0.3em] text-gold">{shop.tagline}</p>
             <h1 className="mt-4 font-serif-display text-4xl leading-tight md:text-6xl">
               Timeless Jewellery,
               <br />
-              Crafted for Generations
+              <span className="text-gold-gradient">Crafted for Generations</span>
             </h1>
             <p className="mt-5 max-w-md text-cream/70">
               Zarghoon Jewellers brings you handcrafted gold, diamond, and gemstone pieces
@@ -44,7 +48,7 @@ export default function Home() {
             <div className="mt-8 flex flex-wrap gap-4">
               <Link
                 to="/products"
-                className="rounded-full bg-gold px-6 py-3 text-sm uppercase tracking-wide text-ink transition-colors hover:bg-gold-light"
+                className="rounded-full bg-gold-gradient px-6 py-3 text-sm uppercase tracking-wide text-ink shadow-gold-glow transition-transform hover:scale-105"
               >
                 Explore Collections
               </Link>
@@ -56,12 +60,14 @@ export default function Home() {
               </Link>
             </div>
           </div>
-          <PlaceholderImage
-            id="hero"
-            category="Necklaces"
-            name="Zarghoon Jewellers"
-            className="aspect-[4/5] w-full rounded-lg border border-gold/20"
-          />
+          <div className="relative aspect-[4/5] w-full overflow-hidden rounded-lg border border-gold/20 shadow-gold-glow">
+            <img
+              src={heroModel}
+              alt="Bridal model wearing a traditional gold jewellery set — placeholder stock photography"
+              className="h-full w-full object-cover"
+            />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink/50 via-transparent to-transparent" />
+          </div>
         </div>
       </section>
 
@@ -71,7 +77,7 @@ export default function Home() {
             <Link
               key={cat}
               to={`/products?category=${encodeURIComponent(cat)}`}
-              className="group overflow-hidden rounded-lg border border-gold/15"
+              className="group overflow-hidden rounded-lg border border-gold/15 transition-shadow hover:shadow-gold-glow"
             >
               <PlaceholderImage
                 id={cat}
@@ -84,6 +90,8 @@ export default function Home() {
           ))}
         </div>
       </section>
+
+      <Divider />
 
       <section className="mx-auto max-w-6xl px-6 py-16">
         <SectionHeading
@@ -106,14 +114,44 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="relative isolate overflow-hidden">
+        <img
+          src={bridalMehndi}
+          alt="Bride's hands with mehndi and gold bangles — placeholder stock photography"
+          className="h-[420px] w-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-ink/85 via-ink/40 to-transparent" />
+        <div className="absolute inset-0 flex items-center">
+          <div className="mx-auto w-full max-w-6xl px-6">
+            <div className="max-w-md text-cream">
+              <p className="text-xs uppercase tracking-[0.3em] text-gold">Bridal Edit</p>
+              <h2 className="mt-2 font-serif-display text-3xl md:text-4xl">
+                Dressed in Gold, Ready for Forever
+              </h2>
+              <p className="mt-4 text-cream/80">
+                From engagement to walima, our bridal sets are designed to be heirlooms —
+                bold, detailed, and built to be handed down.
+              </p>
+              <Link
+                to="/products?tag=Kundan"
+                className="mt-6 inline-block rounded-full bg-gold-gradient px-6 py-3 text-sm uppercase tracking-wide text-ink shadow-gold-glow transition-transform hover:scale-105"
+              >
+                Shop Bridal
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="bg-parchment">
         <div className="mx-auto grid max-w-6xl items-center gap-10 px-6 py-16 md:grid-cols-2">
-          <PlaceholderImage
-            id="about-teaser"
-            category="Rings"
-            name="Our Craft"
-            className="aspect-[4/3] w-full rounded-lg"
-          />
+          <div className="aspect-[4/3] w-full overflow-hidden rounded-lg shadow-gold-glow">
+            <img
+              src={goldsmith}
+              alt="Goldsmith hand-finishing a gold jewellery piece — placeholder stock photography"
+              className="h-full w-full object-cover"
+            />
+          </div>
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-gold-dark">Our Story</p>
             <h2 className="mt-2 font-serif-display text-3xl text-ink md:text-4xl">
@@ -135,14 +173,13 @@ export default function Home() {
       </section>
 
       <section className="mx-auto max-w-6xl px-6 py-16">
-        <SectionHeading
-          eyebrow="Testimonials"
-          title="What Our Customers Say"
-          center
-        />
+        <SectionHeading eyebrow="Testimonials" title="What Our Customers Say" center />
         <div className="mt-10 grid gap-6 md:grid-cols-3">
           {testimonials.map((t) => (
-            <div key={t.name} className="rounded-lg border border-gold/15 bg-white p-6">
+            <div
+              key={t.name}
+              className="rounded-lg border border-gold/15 bg-white p-6 transition-shadow hover:shadow-gold-glow"
+            >
               <p className="text-gold">★★★★★</p>
               <p className="mt-3 text-ink/70">&ldquo;{t.quote}&rdquo;</p>
               <p className="mt-4 font-serif-display text-ink">{t.name}</p>
@@ -151,7 +188,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="bg-ink">
+      <section className="bg-ink-radial">
         <div className="mx-auto max-w-6xl px-6 py-16 text-center text-cream">
           <h2 className="font-serif-display text-3xl md:text-4xl">
             Visit Zarghoon Jewellers Today
@@ -162,7 +199,7 @@ export default function Home() {
           </p>
           <Link
             to="/contact"
-            className="mt-8 inline-block rounded-full bg-gold px-6 py-3 text-sm uppercase tracking-wide text-ink transition-colors hover:bg-gold-light"
+            className="mt-8 inline-block rounded-full bg-gold-gradient px-6 py-3 text-sm uppercase tracking-wide text-ink shadow-gold-glow transition-transform hover:scale-105"
           >
             Get in Touch
           </Link>

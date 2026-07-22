@@ -22,10 +22,12 @@ export default function Contact() {
 
   return (
     <div>
-      <section className="bg-ink text-cream">
+      <section className="bg-ink-radial text-cream">
         <div className="mx-auto max-w-6xl px-6 py-16 text-center">
           <p className="text-xs uppercase tracking-[0.3em] text-gold">Get in Touch</p>
-          <h1 className="mt-3 font-serif-display text-4xl md:text-5xl">Contact Us</h1>
+          <h1 className="mt-3 font-serif-display text-4xl md:text-5xl">
+            <span className="text-gold-gradient">Contact Us</span>
+          </h1>
         </div>
       </section>
 
@@ -71,7 +73,7 @@ export default function Contact() {
             </div>
             <button
               type="submit"
-              className="rounded-full bg-gold px-6 py-3 text-sm uppercase tracking-wide text-ink transition-colors hover:bg-gold-light"
+              className="rounded-full bg-gold-gradient px-6 py-3 text-sm uppercase tracking-wide text-ink shadow-gold-glow transition-transform hover:scale-105"
             >
               Send Message
             </button>
