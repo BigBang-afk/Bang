@@ -15,6 +15,7 @@ import { getActiveGoldRates, getActiveRateMap } from "@/lib/data/gold-rates";
 import { listCollections, getCollectionProductCounts } from "@/lib/data/collections";
 import { listProducts } from "@/lib/data/products";
 import { listTestimonials } from "@/lib/data/testimonials";
+import { listActiveBanners } from "@/lib/data/banners";
 
 export const metadata: Metadata = {
   title: "Home",
@@ -35,7 +36,7 @@ const WHY_US = [
 ];
 
 export default async function HomePage() {
-  const [settings, goldRates, activeRates, collections, collectionCounts, hours, featured, newArrivals, testimonials] =
+  const [settings, goldRates, activeRates, collections, collectionCounts, hours, featured, newArrivals, testimonials, banners] =
     await Promise.all([
       getWebsiteSettings(),
       getActiveGoldRates(),
@@ -46,6 +47,7 @@ export default async function HomePage() {
       listProducts({ filters: { isFeatured: true }, sort: "featured", pageSize: 8 }),
       listProducts({ filters: { isNewArrival: true }, sort: "newest", pageSize: 4 }),
       listTestimonials(true),
+      listActiveBanners(),
     ]);
 
   const featuredTestimonials = testimonials.filter((t) => t.is_featured).slice(0, 6);
@@ -87,6 +89,24 @@ export default async function HomePage() {
       </section>
 
       <GoldRateBar rates={goldRates} disclaimer={settings.gold_rate_disclaimer} />
+
+      {banners.length > 0 && (
+        <section className="mx-auto max-w-7xl px-4 pt-10 sm:px-6 lg:px-8">
+          {banners.slice(0, 1).map((b) => (
+            <Link key={b.id} href={b.button_url || "#"} className="group relative block overflow-hidden rounded-sm">
+              <div className="relative aspect-[21/9] w-full sm:aspect-[3/1]">
+                <Image src={b.image_url} alt={b.title} fill className="object-cover transition-transform duration-700 group-hover:scale-105" />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/20 to-transparent" />
+              </div>
+              <div className="absolute inset-y-0 left-0 flex max-w-md flex-col justify-center gap-2 p-6 sm:p-10">
+                <h3 className="font-serif text-2xl text-ivory sm:text-3xl">{b.title}</h3>
+                {b.subtitle && <p className="text-sm text-ivory/80">{b.subtitle}</p>}
+                {b.button_text && <span className="mt-2 inline-block w-fit rounded-sm bg-gold px-4 py-2 text-xs font-medium text-black">{b.button_text}</span>}
+              </div>
+            </Link>
+          ))}
+        </section>
+      )}
 
       {/* Featured Collections */}
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
