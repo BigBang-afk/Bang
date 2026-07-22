@@ -88,6 +88,7 @@ export interface Category {
   id: string;
   name: string;
   slug: string;
+  code: string;
   description: string | null;
   image_url: string | null;
   seo_title: string | null;

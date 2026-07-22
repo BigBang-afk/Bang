@@ -64,7 +64,7 @@ export const productSchema = z
 
 export type ProductInput = z.infer<typeof productSchema>;
 
-export const categorySchema = z.object({
+const taxonomyBaseSchema = z.object({
   name: z.string().trim().min(2).max(100),
   slug: z.string().trim().min(2).max(120).regex(/^[a-z0-9-]+$/),
   description: z.string().trim().max(1000).optional().or(z.literal("")),
@@ -74,7 +74,17 @@ export const categorySchema = z.object({
   display_order: z.coerce.number().int().default(0),
   is_active: z.boolean().default(true),
 });
+
+export const categorySchema = taxonomyBaseSchema.extend({
+  code: z
+    .string()
+    .trim()
+    .min(2, "Code must be 2-6 characters")
+    .max(6, "Code must be 2-6 characters")
+    .regex(/^[A-Z0-9]+$/, "Use uppercase letters and numbers only")
+    .transform((v) => v.toUpperCase()),
+});
 export type CategoryInput = z.infer<typeof categorySchema>;
 
-export const collectionSchema = categorySchema;
+export const collectionSchema = taxonomyBaseSchema;
 export type CollectionInput = z.infer<typeof collectionSchema>;

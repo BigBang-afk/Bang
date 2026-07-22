@@ -106,6 +106,7 @@ create table categories (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   slug text not null unique,
+  code text not null unique, -- short uppercase prefix used for product code generation, e.g. RNG
   description text,
   image_url text,
   seo_title text,
@@ -113,7 +114,8 @@ create table categories (
   display_order integer not null default 0,
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  constraint chk_category_code check (code ~ '^[A-Z0-9]{2,6}$')
 );
 create index idx_categories_active_order on categories (is_active, display_order);
 

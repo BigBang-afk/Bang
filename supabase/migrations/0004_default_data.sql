@@ -14,19 +14,19 @@ insert into business_hours (day_of_week, open_time, close_time, is_closed) value
   (6, '10:00', '21:00', false)  -- Saturday
 on conflict (day_of_week) do nothing;
 
-insert into categories (name, slug, display_order) values
-  ('Rings', 'rings', 1),
-  ('Earrings', 'earrings', 2),
-  ('Necklaces', 'necklaces', 3),
-  ('Bangles', 'bangles', 4),
-  ('Bracelets', 'bracelets', 5),
-  ('Chains', 'chains', 6),
-  ('Pendants', 'pendants', 7),
-  ('Bridal Sets', 'bridal-sets', 8),
-  ('Men''s Jewelry', 'mens-jewelry', 9),
-  ('Kids Jewelry', 'kids-jewelry', 10),
-  ('New Arrivals', 'new-arrivals', 11),
-  ('Custom Designs', 'custom-designs', 12)
+insert into categories (name, slug, code, display_order) values
+  ('Rings', 'rings', 'RNG', 1),
+  ('Earrings', 'earrings', 'EAR', 2),
+  ('Necklaces', 'necklaces', 'NCK', 3),
+  ('Bangles', 'bangles', 'BNG', 4),
+  ('Bracelets', 'bracelets', 'BRC', 5),
+  ('Chains', 'chains', 'CHN', 6),
+  ('Pendants', 'pendants', 'PND', 7),
+  ('Bridal Sets', 'bridal-sets', 'BRD', 8),
+  ('Men''s Jewelry', 'mens-jewelry', 'MEN', 9),
+  ('Kids Jewelry', 'kids-jewelry', 'KID', 10),
+  ('New Arrivals', 'new-arrivals', 'NEW', 11),
+  ('Custom Designs', 'custom-designs', 'CUS', 12)
 on conflict (slug) do nothing;
 
 insert into collections (name, slug, description, display_order) values
