@@ -1,4 +1,5 @@
 export const categories = ["Rings", "Necklaces", "Earrings", "Bangles"];
+export const stoneTags = ["Diamond", "Gemstone", "Pearl", "Kundan"];
 
 export const products = [
   {
@@ -7,6 +8,7 @@ export const products = [
     category: "Rings",
     price: 185000,
     material: "22K Gold, Diamond Halo",
+    tags: ["Gold", "Diamond"],
     featured: true,
     description:
       "A brilliant center stone encircled by a halo of pavé diamonds, set in warm 22K gold. A timeless choice for engagements and anniversaries.",
@@ -17,6 +19,7 @@ export const products = [
     category: "Rings",
     price: 96000,
     material: "21K Gold",
+    tags: ["Gold"],
     featured: false,
     description:
       "Delicate hand-engraved leaf motifs wrap around a comfort-fit band, finished with a soft polished glow.",
@@ -27,6 +30,7 @@ export const products = [
     category: "Rings",
     price: 245000,
     material: "18K Gold, Natural Emerald",
+    tags: ["Gold", "Gemstone"],
     featured: true,
     description:
       "A deep-green natural emerald takes center stage on a sleek 18K gold band, framed by a thin diamond border.",
@@ -37,6 +41,7 @@ export const products = [
     category: "Rings",
     price: 112000,
     material: "22K Gold",
+    tags: ["Gold"],
     featured: false,
     description:
       "Inspired by heritage motifs, this ring features intricate rose filigree work true to classic Zarghoon craftsmanship.",
@@ -47,6 +52,7 @@ export const products = [
     category: "Necklaces",
     price: 420000,
     material: "22K Gold, Kundan Stones",
+    tags: ["Gold", "Kundan"],
     featured: true,
     description:
       "A statement bridal necklace featuring traditional Kundan stone-setting and hand-finished gold work, passed down in style for generations.",
@@ -57,6 +63,7 @@ export const products = [
     category: "Necklaces",
     price: 365000,
     material: "18K White Gold, Diamonds",
+    tags: ["Gold", "Diamond"],
     featured: true,
     description:
       "Graduated diamonds cascade along a delicate white gold chain for a look that moves effortlessly from day to evening.",
@@ -67,6 +74,7 @@ export const products = [
     category: "Necklaces",
     price: 138000,
     material: "21K Gold",
+    tags: ["Gold"],
     featured: false,
     description:
       "Three finely layered chains of varying lengths create a modern, versatile piece that pairs with everything.",
@@ -77,6 +85,7 @@ export const products = [
     category: "Necklaces",
     price: 156000,
     material: "18K Gold, Freshwater Pearl",
+    tags: ["Gold", "Pearl"],
     featured: false,
     description:
       "A single luminous freshwater pearl suspended from a fine gold chain — understated elegance for everyday wear.",
@@ -87,6 +96,7 @@ export const products = [
     category: "Earrings",
     price: 175000,
     material: "22K Gold, Ruby Accents",
+    tags: ["Gold", "Gemstone"],
     featured: true,
     description:
       "Cascading tiers of gold and ruby create dramatic movement — a showpiece for weddings and celebrations.",
@@ -97,6 +107,7 @@ export const products = [
     category: "Earrings",
     price: 68000,
     material: "21K Gold",
+    tags: ["Gold"],
     featured: false,
     description:
       "Perfectly weighted hoops with a mirror-polish finish, designed for everyday elegance.",
@@ -107,6 +118,7 @@ export const products = [
     category: "Earrings",
     price: 132000,
     material: "18K Gold, Diamond",
+    tags: ["Gold", "Diamond"],
     featured: false,
     description:
       "Brilliant-cut diamonds set in a classic four-prong mount — a wardrobe essential that never goes out of style.",
@@ -117,6 +129,7 @@ export const products = [
     category: "Earrings",
     price: 98000,
     material: "22K Gold",
+    tags: ["Gold"],
     featured: true,
     description:
       "Intricately domed jhumkas with fine bead detailing, handcrafted by our master artisans in the traditional style.",
@@ -127,6 +140,7 @@ export const products = [
     category: "Bangles",
     price: 210000,
     material: "22K Gold",
+    tags: ["Gold"],
     featured: true,
     description:
       "A bold, solid kada with hand-engraved geometric patterns — substantial, striking, and built to last generations.",
@@ -137,6 +151,7 @@ export const products = [
     category: "Bangles",
     price: 265000,
     material: "21K Gold",
+    tags: ["Gold"],
     featured: false,
     description:
       "Four slim bangles designed to be worn together or separately, each with a subtly different textured finish.",
@@ -147,6 +162,7 @@ export const products = [
     category: "Bangles",
     price: 188000,
     material: "18K Gold, Mixed Gemstones",
+    tags: ["Gold", "Gemstone"],
     featured: false,
     description:
       "An open cuff bangle set with a colorful row of natural gemstones for a modern, expressive statement.",
@@ -157,6 +173,7 @@ export const products = [
     category: "Bangles",
     price: 142000,
     material: "22K Gold",
+    tags: ["Gold"],
     featured: false,
     description:
       "Lacelike openwork filigree gives this bangle a light, airy feel without compromising on gold weight.",

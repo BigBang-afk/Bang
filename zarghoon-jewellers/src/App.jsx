@@ -1,4 +1,5 @@
 import { Routes, Route } from "react-router-dom";
+import RateTicker from "./components/RateTicker";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import Home from "./pages/Home";
@@ -11,6 +12,7 @@ import NotFound from "./pages/NotFound";
 function App() {
   return (
     <div className="flex min-h-screen flex-col bg-cream text-ink">
+      <RateTicker />
       <Navbar />
       <main className="flex-1">
         <Routes>

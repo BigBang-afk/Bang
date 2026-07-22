@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import ProductCard from "../components/ProductCard";
 import { categories, products } from "../data/products";
@@ -8,23 +8,34 @@ const ALL = "All";
 export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams();
   const categoryParam = searchParams.get("category");
-  const [active, setActive] = useState(
-    categories.includes(categoryParam) ? categoryParam : ALL
-  );
+  const tagParam = searchParams.get("tag");
+  const activeCategory = categories.includes(categoryParam) ? categoryParam : ALL;
 
   const filtered = useMemo(
-    () => (active === ALL ? products : products.filter((p) => p.category === active)),
-    [active]
+    () =>
+      products.filter(
+        (p) =>
+          (activeCategory === ALL || p.category === activeCategory) &&
+          (!tagParam || p.tags.includes(tagParam))
+      ),
+    [activeCategory, tagParam]
   );
 
-  function handleSelect(cat) {
-    setActive(cat);
+  function handleSelectCategory(cat) {
+    const next = new URLSearchParams(searchParams);
+    next.delete("tag");
     if (cat === ALL) {
-      searchParams.delete("category");
+      next.delete("category");
     } else {
-      searchParams.set("category", cat);
+      next.set("category", cat);
     }
-    setSearchParams(searchParams, { replace: true });
+    setSearchParams(next, { replace: true });
+  }
+
+  function clearTag() {
+    const next = new URLSearchParams(searchParams);
+    next.delete("tag");
+    setSearchParams(next, { replace: true });
   }
 
   return (
@@ -45,9 +56,9 @@ export default function Products() {
           {[ALL, ...categories].map((cat) => (
             <button
               key={cat}
-              onClick={() => handleSelect(cat)}
+              onClick={() => handleSelectCategory(cat)}
               className={`rounded-full border px-5 py-2 text-sm uppercase tracking-wide transition-colors ${
-                active === cat
+                activeCategory === cat
                   ? "border-gold bg-gold text-ink"
                   : "border-gold/30 text-ink/70 hover:border-gold"
               }`}
@@ -56,6 +67,18 @@ export default function Products() {
             </button>
           ))}
         </div>
+
+        {tagParam && (
+          <div className="mt-6 flex justify-center">
+            <button
+              onClick={clearTag}
+              className="inline-flex items-center gap-2 rounded-full border border-gold-dark bg-parchment px-4 py-1.5 text-sm text-gold-dark"
+            >
+              Stone: {tagParam}
+              <span aria-hidden="true">✕</span>
+            </button>
+          </div>
+        )}
 
         {filtered.length > 0 ? (
           <div className="mt-10 grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4">
