@@ -4,6 +4,7 @@ import { detectPatterns } from "./patterns";
 import { buildLevels } from "./levels";
 import { buildTrend } from "./trend";
 import { buildSignal } from "./signal";
+import { buildProjection } from "./projection";
 
 export async function analyzeChartImage(buffer: Buffer): Promise<AnalysisResult> {
   const image = await decodeImage(buffer);
@@ -33,6 +34,7 @@ export async function analyzeChartImage(buffer: Buffer): Promise<AnalysisResult>
       factors: [],
       signal: "WAIT",
       confidence: 50,
+      projection: [],
       warnings,
     };
   }
@@ -43,6 +45,7 @@ export async function analyzeChartImage(buffer: Buffer): Promise<AnalysisResult>
   const levels = buildLevels(trimmed);
   const trend = buildTrend(trimmed);
   const { factors, signal, confidence } = buildSignal(trimmed, patterns, levels, trend);
+  const projection = buildProjection(trimmed, levels, trend, signal, confidence);
 
   return {
     candleCount: trimmed.length,
@@ -55,6 +58,7 @@ export async function analyzeChartImage(buffer: Buffer): Promise<AnalysisResult>
     factors,
     signal,
     confidence,
+    projection,
     warnings,
   };
 }

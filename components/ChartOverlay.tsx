@@ -20,12 +20,33 @@ export default function ChartOverlay({ imageUrl, result, showOverlay }: ChartOve
 
     const img = new window.Image();
     img.onload = () => {
-      canvas.width = result.imageWidth;
-      canvas.height = result.imageHeight;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const hasProjection = showOverlay && result.projection.length > 0;
+      const projectionWidth = hasProjection
+        ? Math.max(0, result.projection[result.projection.length - 1].xEnd - result.imageWidth) + 70
+        : 0;
 
-      if (!showOverlay) return;
+      // A projected move can extend above/below the chart's visible range —
+      // pad the canvas so it never gets clipped at the edge.
+      const projectedYs = hasProjection
+        ? result.projection.flatMap((c) => [c.highY, c.lowY])
+        : [];
+      const topPadding = Math.max(0, -Math.min(0, ...projectedYs)) + (projectedYs.length ? 10 : 0);
+      const bottomPadding =
+        Math.max(0, ...projectedYs.map((y) => y - result.imageHeight)) + (projectedYs.length ? 10 : 0);
+
+      canvas.width = result.imageWidth + projectionWidth;
+      canvas.height = result.imageHeight + topPadding + bottomPadding;
+
+      ctx.fillStyle = "#05070d";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      ctx.translate(0, topPadding);
+      ctx.drawImage(img, 0, 0, result.imageWidth, result.imageHeight);
+
+      if (!showOverlay) {
+        ctx.restore();
+        return;
+      }
 
       const patternIndices = new Set(result.patterns.map((p) => p.atIndex));
 
@@ -88,14 +109,58 @@ export default function ChartOverlay({ imageUrl, result, showOverlay }: ChartOve
           ctx.strokeRect(c.xStart - 1, top - 1, c.xEnd - c.xStart + 3, height + 2);
         }
       }
+
+      if (hasProjection) {
+        // Divider between real data and the illustrative projection. Drawn
+        // in translated space, so span the full visible canvas height by
+        // undoing the topPadding offset at each end.
+        ctx.beginPath();
+        ctx.setLineDash([4, 4]);
+        ctx.strokeStyle = "rgba(148,163,184,0.6)";
+        ctx.lineWidth = 1;
+        ctx.moveTo(result.imageWidth, -topPadding);
+        ctx.lineTo(result.imageWidth, canvas.height - topPadding);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.fillStyle = "rgba(148,163,184,0.9)";
+        ctx.font = "10px sans-serif";
+        ctx.fillText("projected →", result.imageWidth + 4, -topPadding + 12);
+
+        for (const c of result.projection) {
+          const isBullish = c.color === "bullish";
+          const color = isBullish ? "rgba(52,211,153,0.9)" : "rgba(248,113,113,0.9)";
+
+          ctx.strokeStyle = color;
+          ctx.setLineDash([3, 3]);
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(c.xCenter, c.highY);
+          ctx.lineTo(c.xCenter, c.lowY);
+          ctx.stroke();
+
+          const top = Math.min(c.bodyTopY, c.bodyBottomY);
+          const height = Math.max(1, Math.abs(c.bodyBottomY - c.bodyTopY));
+          ctx.strokeRect(c.xStart, top, c.xEnd - c.xStart + 1, height);
+          ctx.setLineDash([]);
+        }
+      }
+
+      ctx.restore();
     };
     img.src = imageUrl;
   }, [imageUrl, result, showOverlay]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="w-full rounded-xl border border-slate-800 bg-black"
-    />
+    <div>
+      <canvas ref={canvasRef} className="w-full rounded-xl border border-slate-800 bg-black" />
+      {result.projection.length > 0 && (
+        <p className="mt-2 text-[11px] text-slate-500">
+          Dashed outline candles are an illustrative sketch of the current signal drawn forward
+          (same {result.confidence}% confidence read, not a separate or more certain forecast).{" "}
+          {result.projection.map((c) => c.note).join(" ")}
+        </p>
+      )}
+    </div>
   );
 }

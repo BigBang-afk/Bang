@@ -72,6 +72,11 @@ export interface SignalFactor {
   detail: string;
 }
 
+export interface ProjectedCandle extends PixelCandle {
+  /** why this projected candle looks the way it does */
+  note: string;
+}
+
 export interface AnalysisResult {
   candleCount: number;
   candles: PixelCandle[];
@@ -83,6 +88,11 @@ export interface AnalysisResult {
   factors: SignalFactor[];
   signal: SignalDirection;
   confidence: number;
+  /** Illustrative 2-candle sketch of where the signal + trend + nearest
+   * level would point next. This is the same read as `signal`/`confidence`
+   * drawn forward, not a separate or more certain prediction — it is not
+   * a guarantee of what the market will do. */
+  projection: ProjectedCandle[];
   narrative?: string;
   narrativeError?: string;
   warnings: string[];
