@@ -12,8 +12,37 @@ export default async function PublicLayout({ children }: { children: React.React
     getSocialLinks(true),
   ]);
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+  const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "JewelryStore",
+    name: settings.business_name,
+    description: settings.seo_default_description,
+    url: siteUrl,
+    telephone: settings.phone_number,
+    email: settings.email,
+    image: settings.logo_url ?? undefined,
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: settings.address_line1,
+      addressLocality: settings.address_line2,
+      addressCountry: "PK",
+    },
+    openingHoursSpecification: hours
+      .filter((h) => !h.is_closed && h.open_time && h.close_time)
+      .map((h) => ({
+        "@type": "OpeningHoursSpecification",
+        dayOfWeek: dayNames[h.day_of_week],
+        opens: h.open_time?.slice(0, 5),
+        closes: h.close_time?.slice(0, 5),
+      })),
+    sameAs: socialLinks.map((s) => s.url),
+  };
+
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <Header
         businessName={settings.business_name}
         logoUrl={settings.logo_url}

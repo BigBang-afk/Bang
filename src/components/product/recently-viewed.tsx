@@ -41,9 +41,13 @@ export function RecentlyViewedList({ excludeSlug }: { excludeSlug?: string }) {
   const [items, setItems] = useState<RecentlyViewedEntry[]>([]);
 
   useEffect(() => {
+    // Reading localStorage (an external system unavailable during SSR) on
+    // mount and syncing it into state is the documented exception to this
+    // lint rule — there is no way to read it during the render pass itself.
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       const list: RecentlyViewedEntry[] = raw ? JSON.parse(raw) : [];
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setItems(list.filter((item) => item.slug !== excludeSlug).slice(0, 4));
     } catch {
       setItems([]);

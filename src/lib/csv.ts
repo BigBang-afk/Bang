@@ -5,7 +5,9 @@ export function toCsv(rows: Record<string, unknown>[], columns?: { key: string; 
 
   const escape = (value: unknown): string => {
     if (value === null || value === undefined) return "";
-    const str = String(value);
+    let str = String(value);
+    // Neutralize CSV formula injection (Excel/Sheets execute leading =,+,-,@ as formulas).
+    if (/^[=+\-@]/.test(str)) str = `'${str}`;
     if (/[",\n]/.test(str)) return `"${str.replace(/"/g, '""')}"`;
     return str;
   };

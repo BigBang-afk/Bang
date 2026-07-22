@@ -76,10 +76,23 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
       : {}),
   };
 
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: siteUrl || "/" },
+      { "@type": "ListItem", position: 2, name: "All Products", item: `${siteUrl}/products` },
+      ...(product.category
+        ? [{ "@type": "ListItem", position: 3, name: product.category.name, item: `${siteUrl}/collections/${product.category.slug}` }]
+        : []),
+      { "@type": "ListItem", position: product.category ? 4 : 3, name: product.name, item: productUrl },
+    ],
+  };
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-      {/* eslint-disable-next-line react/no-danger */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       <RecentlyViewedTracker
         entry={{
           slug: product.slug,

@@ -102,6 +102,12 @@ h1, h2, h3, h4, h5, h6, .font-serif {
   color: transparent;
 }
 
+@media print {
+  header, footer, .no-print {
+    display: none !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import {
   Gem, CheckCircle2, XCircle, Star, Sparkles, PackageX, FolderTree, Layers,
-  Coins, MessageSquare, Mail, Inbox,
+  Coins, MessageSquare, Inbox,
 } from "lucide-react";
 import { Card, CardHeader, CardBody } from "@/components/ui/card";
 import { StatCard } from "@/components/admin/stat-card";

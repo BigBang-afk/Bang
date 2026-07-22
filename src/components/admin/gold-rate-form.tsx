@@ -16,7 +16,6 @@ function useToastOnResult(state: ActionState) {
   useEffect(() => {
     if (state.success) toast.success(state.success);
     if (state.error) toast.error(state.error);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
 }
 

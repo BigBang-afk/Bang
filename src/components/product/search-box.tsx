@@ -19,6 +19,9 @@ export function SearchBox({ initialQuery = "" }: { initialQuery?: string }) {
 
   useEffect(() => {
     if (query.trim().length < 2) {
+      // Clearing stale results when the query is too short to search is a
+      // direct consequence of the query prop changing, not derivable state.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setResults([]);
       return;
     }
