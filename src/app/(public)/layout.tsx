@@ -1,6 +1,7 @@
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { WhatsAppFloatButton } from "@/components/layout/whatsapp-float-button";
+import { SetupPending } from "@/components/layout/setup-pending";
 import { getWebsiteSettings, getBusinessHours, getSocialLinks } from "@/lib/data/settings";
 import { listCategories } from "@/lib/data/categories";
 
@@ -10,12 +11,20 @@ import { listCategories } from "@/lib/data/categories";
 export const dynamic = "force-dynamic";
 
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
-  const [settings, categories, hours, socialLinks] = await Promise.all([
-    getWebsiteSettings(),
-    listCategories(true),
-    getBusinessHours(),
-    getSocialLinks(true),
-  ]);
+  let settings, categories, hours, socialLinks;
+  try {
+    [settings, categories, hours, socialLinks] = await Promise.all([
+      getWebsiteSettings(),
+      listCategories(true),
+      getBusinessHours(),
+      getSocialLinks(true),
+    ]);
+  } catch {
+    // Database not reachable yet (e.g. Supabase env vars still placeholders
+    // right after deployment) — show a friendly holding page instead of a
+    // hard 500, so the site is never simply "down" while it's being set up.
+    return <SetupPending />;
+  }
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "";
   const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
