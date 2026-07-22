@@ -4,6 +4,11 @@ import { WhatsAppFloatButton } from "@/components/layout/whatsapp-float-button";
 import { getWebsiteSettings, getBusinessHours, getSocialLinks } from "@/lib/data/settings";
 import { listCategories } from "@/lib/data/categories";
 
+// Gold rates, product prices, and availability must always reflect the
+// current database state, never a build-time snapshot — render every public
+// page dynamically rather than statically caching stale prices.
+export const dynamic = "force-dynamic";
+
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
   const [settings, categories, hours, socialLinks] = await Promise.all([
     getWebsiteSettings(),
