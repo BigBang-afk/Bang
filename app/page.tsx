@@ -8,6 +8,7 @@ import BreakdownPanel from "@/components/BreakdownPanel";
 import NarrativeCard from "@/components/NarrativeCard";
 import Disclaimer from "@/components/Disclaimer";
 import HistoryPanel from "@/components/HistoryPanel";
+import Link from "next/link";
 import type { AnalysisResult } from "@/lib/analysis/types";
 import { addHistoryEntry, loadHistory, clearHistory, makeThumbnail, type HistoryEntry } from "@/lib/history";
 
@@ -88,7 +89,15 @@ export default function Home() {
   return (
     <main className="mx-auto max-w-6xl px-4 py-10">
       <header className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-100">Quotex Signal Scanner</h1>
+        <div className="flex items-start justify-between gap-4">
+          <h1 className="text-2xl font-bold text-slate-100">Quotex Signal Scanner</h1>
+          <Link
+            href="/backtest"
+            className="shrink-0 rounded-md border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:border-slate-500"
+          >
+            Check real accuracy →
+          </Link>
+        </div>
         <p className="mt-1 text-sm text-slate-400">
           Upload a 1-minute candlestick chart screenshot. The engine reads candle patterns,
           support/resistance, and momentum to give a CALL/PUT read with an honest confidence score.
