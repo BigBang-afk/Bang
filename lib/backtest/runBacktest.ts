@@ -3,7 +3,8 @@ import { detectPatterns } from "../analysis/patterns";
 import { buildLevels } from "../analysis/levels";
 import { buildTrend } from "../analysis/trend";
 import { buildSignal } from "../analysis/signal";
-import type { BacktestResult, ConfidenceBucket, OhlcBar } from "./types";
+import { detectNamedStrategies } from "../analysis/namedStrategies";
+import type { BacktestResult, ConfidenceBucket, OhlcBar, StrategyStat } from "./types";
 
 const MIN_HISTORY = 20;
 const WINDOW = 120;
@@ -54,6 +55,7 @@ export function runBacktest(bars: OhlcBar[], sourceLabel: string): BacktestResul
       losses: 0,
       winRatePct: null,
       buckets: [],
+      namedStrategies: [],
       baseline: [],
       expectancyPerTrade: null,
       warnings: [`Need at least ${MIN_HISTORY + 2} bars, got ${bars.length}.`],
@@ -73,11 +75,14 @@ export function runBacktest(bars: OhlcBar[], sourceLabel: string): BacktestResul
   let alwaysPutWins = 0;
   let evaluated = 0;
 
+  const strategyStats = new Map<string, { trades: number; wins: number }>();
+
   for (let i = MIN_HISTORY; i < bars.length - 1; i++) {
     const windowBars = bars.slice(Math.max(0, i - WINDOW + 1), i + 1);
     const candles = windowBars.map(toPixelCandle);
 
-    const patterns = detectPatterns(candles, 5);
+    const namedHits = detectNamedStrategies(candles);
+    const patterns = [...detectPatterns(candles, 5), ...namedHits];
     const levels = buildLevels(candles);
     const trend = buildTrend(candles);
     const { signal, confidence } = buildSignal(candles, patterns, levels, trend);
@@ -87,6 +92,19 @@ export function runBacktest(bars: OhlcBar[], sourceLabel: string): BacktestResul
     const actualUp = next.close > current.close;
     const actualDown = next.close < current.close;
     const actualFlat = next.close === current.close;
+
+    // Named strategies are scored standalone here — independent of the
+    // blended engine signal below — so each one's real hit rate is visible
+    // on its own, not diluted or hidden inside the overall number.
+    if (!actualFlat) {
+      for (const hit of namedHits) {
+        const stat = strategyStats.get(hit.name) ?? { trades: 0, wins: 0 };
+        const strategyCorrect = hit.direction === "bullish" ? actualUp : actualDown;
+        stat.trades++;
+        if (strategyCorrect) stat.wins++;
+        strategyStats.set(hit.name, stat);
+      }
+    }
 
     if (signal === "WAIT") {
       waits++;
@@ -136,6 +154,21 @@ export function runBacktest(bars: OhlcBar[], sourceLabel: string): BacktestResul
   const expectancyPerTrade =
     winRatePct !== null ? (winRatePct / 100) * PAYOUT - (1 - winRatePct / 100) * 1 : null;
 
+  const namedStrategies: StrategyStat[] = Array.from(strategyStats.entries())
+    .map(([name, s]) => ({
+      name,
+      trades: s.trades,
+      wins: s.wins,
+      winRatePct: s.trades > 0 ? (s.wins / s.trades) * 100 : null,
+    }))
+    .sort((a, b) => b.trades - a.trades);
+
+  for (const s of namedStrategies) {
+    if (s.trades > 0 && s.trades < 20) {
+      warnings.push(`"${s.name}" only fired ${s.trades} time(s) in this sample — too few to trust its win rate.`);
+    }
+  }
+
   if (tradesTaken < 30) {
     warnings.push(
       `Only ${tradesTaken} trades were taken in this sample — too few to draw a real conclusion. Use a longer history for a meaningful read.`,
@@ -157,6 +190,7 @@ export function runBacktest(bars: OhlcBar[], sourceLabel: string): BacktestResul
     losses,
     winRatePct,
     buckets,
+    namedStrategies,
     baseline: [
       { label: "Coin flip (theoretical)", winRatePct: 50, trades: evaluated },
       {

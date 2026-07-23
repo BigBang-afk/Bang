@@ -5,6 +5,7 @@ import { buildLevels } from "./levels";
 import { buildTrend } from "./trend";
 import { buildSignal } from "./signal";
 import { buildProjection } from "./projection";
+import { detectNamedStrategies } from "./namedStrategies";
 
 export async function analyzeChartImage(buffer: Buffer): Promise<AnalysisResult> {
   const image = await decodeImage(buffer);
@@ -41,7 +42,7 @@ export async function analyzeChartImage(buffer: Buffer): Promise<AnalysisResult>
 
   const trimmed = candles.slice(-120);
 
-  const patterns = detectPatterns(trimmed, 5);
+  const patterns = [...detectPatterns(trimmed, 5), ...detectNamedStrategies(trimmed)];
   const levels = buildLevels(trimmed);
   const trend = buildTrend(trimmed);
   const { factors, signal, confidence } = buildSignal(trimmed, patterns, levels, trend);

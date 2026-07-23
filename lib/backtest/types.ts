@@ -13,6 +13,13 @@ export interface ConfidenceBucket {
   winRatePct: number | null;
 }
 
+export interface StrategyStat {
+  name: string;
+  trades: number;
+  wins: number;
+  winRatePct: number | null;
+}
+
 export interface BacktestResult {
   source: string;
   barsUsed: number;
@@ -23,6 +30,10 @@ export interface BacktestResult {
   losses: number;
   winRatePct: number | null;
   buckets: ConfidenceBucket[];
+  /** Each named strategy's own standalone accuracy, independent of whether
+   * the blended engine signal was CALL/PUT/WAIT — this is what answers
+   * "does this specific strategy actually work" directly. */
+  namedStrategies: StrategyStat[];
   baseline: {
     label: string;
     winRatePct: number | null;

@@ -226,6 +226,39 @@ function Results({ result }: { result: BacktestResult }) {
         </table>
       </section>
 
+      {result.namedStrategies.length > 0 && (
+        <section className="rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
+          <h3 className="text-sm font-semibold text-slate-200">
+            Named strategy performance (&quot;sure shot&quot; / &quot;magic&quot; patterns)
+          </h3>
+          <p className="mt-1 text-xs text-slate-500">
+            Standalone accuracy for each specific rule, measured independently of the blended
+            engine signal above — this is the direct answer to &quot;does this exact strategy
+            work,&quot; not diluted by anything else.
+          </p>
+          <table className="mt-3 w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs text-slate-500">
+                <th className="pb-1">Strategy</th>
+                <th className="pb-1">Times fired</th>
+                <th className="pb-1">Win rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              {result.namedStrategies.map((s) => (
+                <tr key={s.name} className="border-t border-slate-800">
+                  <td className="py-1.5">{s.name}</td>
+                  <td className="py-1.5 text-slate-400">{s.trades}</td>
+                  <td className="py-1.5">
+                    {s.winRatePct !== null ? `${s.winRatePct.toFixed(1)}%` : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
+
       <section className="rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
         <h3 className="text-sm font-semibold text-slate-200">Compared to doing something dumber</h3>
         <p className="mt-1 text-xs text-slate-500">
