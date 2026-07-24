@@ -1,0 +1,15 @@
+{
+  "name": "quotex-m1-analyzer",
+  "version": "1.0.0",
+  "description": "Upload a Quotex M1 chart screenshot and get a structured SMC/ICT-based 1-minute trade signal from Claude.",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.68.0",
+    "express": "^4.21.2",
+    "multer": "^2.0.1"
+  }
+}
