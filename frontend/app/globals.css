@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background-color: #0a0a0b;
+  color: #f2f0e9;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #131316;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2a2a31;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #d4af37;
+}
+
+@layer components {
+  .card {
+    @apply bg-obsidian border border-graphite rounded-xl p-5;
+  }
+
+  .card-glow {
+    @apply card shadow-gold border-gold/30;
+  }
+
+  .btn-primary {
+    @apply bg-gold text-void font-semibold px-4 py-2 rounded-lg hover:bg-gold-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply bg-charcoal text-gold border border-gold/40 font-medium px-4 py-2 rounded-lg hover:bg-graphite transition-colors;
+  }
+
+  .input-field {
+    @apply bg-charcoal border border-graphite rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-gold/60 focus:ring-1 focus:ring-gold/40;
+  }
+
+  .badge-long {
+    @apply bg-bull/10 text-bull border border-bull/30 px-2 py-0.5 rounded text-xs font-semibold;
+  }
+
+  .badge-short {
+    @apply bg-bear/10 text-bear border border-bear/30 px-2 py-0.5 rounded text-xs font-semibold;
+  }
+
+  .label-muted {
+    @apply text-xs uppercase tracking-wider text-gray-400;
+  }
+}
