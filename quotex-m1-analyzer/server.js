@@ -1,6 +1,6 @@
 const express = require("express");
 const multer = require("multer");
-const Anthropic = require("@anthropic-ai/sdk");
+const { GoogleGenAI } = require("@google/genai");
 const { SYSTEM_PROMPT } = require("./systemPrompt");
 
 const app = express();
@@ -19,7 +19,9 @@ const upload = multer({
   },
 });
 
-const client = new Anthropic();
+// Reads GEMINI_API_KEY (or GOOGLE_API_KEY) from the environment automatically.
+const ai = new GoogleGenAI({});
+const MODEL = process.env.GEMINI_MODEL || "gemini-3.6-flash";
 
 app.use(express.static("public"));
 app.use(express.json());
@@ -32,43 +34,31 @@ app.post("/api/analyze", upload.single("screenshot"), async (req, res) => {
   const base64Image = req.file.buffer.toString("base64");
 
   try {
-    const response = await client.messages.create({
-      model: "claude-opus-4-8",
-      max_tokens: 4096,
-      system: SYSTEM_PROMPT,
-      messages: [
+    const interaction = await ai.interactions.create({
+      model: MODEL,
+      system_instruction: SYSTEM_PROMPT,
+      input: [
         {
-          role: "user",
-          content: [
-            {
-              type: "image",
-              source: {
-                type: "base64",
-                media_type: req.file.mimetype,
-                data: base64Image,
-              },
-            },
-            {
-              type: "text",
-              text: "Analyze this Quotex M1 chart screenshot and produce the signal output exactly per your instructions.",
-            },
-          ],
+          type: "image",
+          data: base64Image,
+          mime_type: req.file.mimetype,
+        },
+        {
+          type: "text",
+          text: "Analyze this Quotex M1 chart screenshot and produce the signal output exactly per your instructions.",
         },
       ],
     });
 
-    const textBlock = response.content.find((b) => b.type === "text");
-    if (response.stop_reason === "refusal" || !textBlock) {
-      return res.status(422).json({ error: "The model declined to analyze this image." });
+    const text = interaction.output_text;
+    if (!text) {
+      return res.status(422).json({ error: "The model returned no analysis for this image." });
     }
 
-    res.json({ analysis: textBlock.text });
+    res.json({ analysis: text });
   } catch (err) {
     console.error(err);
-    if (err instanceof Anthropic.APIError) {
-      return res.status(err.status || 500).json({ error: err.message });
-    }
-    res.status(500).json({ error: "Analysis failed. Please try again." });
+    res.status(err.status || 500).json({ error: err.message || "Analysis failed. Please try again." });
   }
 });
 
