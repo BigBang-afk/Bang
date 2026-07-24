@@ -8,7 +8,8 @@ const PORT = process.env.PORT || 3000;
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 },
+  // Kept under Vercel's ~4.5MB serverless function request body limit.
+  limits: { fileSize: 4 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowed = ["image/png", "image/jpeg", "image/webp"];
     if (!allowed.includes(file.mimetype)) {
@@ -71,6 +72,12 @@ app.post("/api/analyze", upload.single("screenshot"), async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Quotex M1 Analyzer running at http://localhost:${PORT}`);
-});
+// Only bind a port for local/Render-style runtimes. On Vercel the app is
+// imported as a serverless function handler instead of run directly.
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Quotex M1 Analyzer running at http://localhost:${PORT}`);
+  });
+}
+
+module.exports = app;

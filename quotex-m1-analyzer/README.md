@@ -4,16 +4,20 @@ A minimal web app: upload a Quotex 1-minute chart screenshot, and Claude (with v
 
 The full analyzer system prompt lives in `systemPrompt.js` — it drives market structure, liquidity, order block, candlestick, and probability-scoring analysis exactly as specified, and only emits a BUY/SELL signal when the confluence score is 85/100 or higher.
 
-## Deploy it live (Render, one click)
+## Deploy it live (Vercel)
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/BigBang-afk/Bang/tree/claude/quotex-m1-analyzer-bhz9bx)
+The app runs as a Vercel serverless function — `vercel.json` routes every request to `server.js`, which is exported as a handler (it only calls `app.listen()` when run directly, e.g. locally).
 
-1. Click the button above (or go to [Render](https://dashboard.render.com/blueprints) → **New Blueprint Instance** → point it at this repo).
-2. Render reads `render.yaml` at the repo root and provisions the `quotex-m1-analyzer` web service automatically (`rootDir: quotex-m1-analyzer`, free plan).
-3. When prompted, paste your **`ANTHROPIC_API_KEY`** (get one at [console.anthropic.com](https://console.anthropic.com/)) — it's the only value you need to supply. It's stored as a Render secret and never exposed to the browser.
-4. Wait for the build to finish, then open the `.onrender.com` URL Render gives you. That's your live site.
+```bash
+npm install -g vercel
+cd quotex-m1-analyzer
+vercel --prod
+vercel env add ANTHROPIC_API_KEY   # paste your key when prompted, then redeploy
+```
 
-The free plan spins down after 15 minutes of inactivity and takes ~30–60s to wake back up on the next request — upgrade the plan in Render if you want it always-on.
+Or from the [Vercel dashboard](https://vercel.com/new): import this repo, set the project root to `quotex-m1-analyzer`, and add `ANTHROPIC_API_KEY` under Project Settings → Environment Variables before the first deploy.
+
+Note: Vercel serverless functions cap request bodies at ~4.5MB, so the upload limit here is set to 4MB (see `server.js`).
 
 ## Local setup
 
