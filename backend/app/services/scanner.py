@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 TRADING_MODE_TIMEFRAMES = {
     "scalping": {"primary": "5m", "higher": "15m"},
-    "intraday": {"primary": "1h", "higher": "4h"},
+    "intraday": {"primary": "60m", "higher": "4h"},
 }
 
 

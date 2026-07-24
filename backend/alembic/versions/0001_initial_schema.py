@@ -14,12 +14,12 @@ down_revision = None
 branch_labels = None
 depends_on = None
 
-user_role = postgresql.ENUM("admin", "trader", "viewer", name="userrole")
-trade_side = postgresql.ENUM("long", "short", name="tradeside")
-trade_status = postgresql.ENUM("open", "closed", "cancelled", name="tradestatus")
-signal_direction = postgresql.ENUM("long", "short", name="signaldirection")
-signal_status = postgresql.ENUM("active", "invalidated", "tp_hit", "sl_hit", "expired", name="signalstatus")
-subscription_status = postgresql.ENUM("active", "cancelled", "expired", "past_due", name="subscriptionstatus")
+user_role = postgresql.ENUM("admin", "trader", "viewer", name="userrole", create_type=False)
+trade_side = postgresql.ENUM("long", "short", name="tradeside", create_type=False)
+trade_status = postgresql.ENUM("open", "closed", "cancelled", name="tradestatus", create_type=False)
+signal_direction = postgresql.ENUM("long", "short", name="signaldirection", create_type=False)
+signal_status = postgresql.ENUM("active", "invalidated", "tp_hit", "sl_hit", "expired", name="signalstatus", create_type=False)
+subscription_status = postgresql.ENUM("active", "cancelled", "expired", "past_due", name="subscriptionstatus", create_type=False)
 
 
 def upgrade() -> None:

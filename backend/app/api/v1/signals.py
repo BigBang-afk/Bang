@@ -17,7 +17,7 @@ router = APIRouter(prefix="/signals", tags=["signals"])
 # Curated list of liquid USDT pairs scanned by default; a full exchangeInfo pull can replace this.
 DEFAULT_SCAN_UNIVERSE = [
     "BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT",
-    "DOGEUSDT", "ADAUSDT", "AVAXUSDT", "LINKUSDT", "TONUSDT",
+    "DOGEUSDT", "ADAUSDT", "AVAXUSDT", "LINKUSDT", "TRXUSDT",
 ]
 
 

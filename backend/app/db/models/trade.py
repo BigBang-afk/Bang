@@ -30,8 +30,11 @@ class Trade(Base):
 
     exchange_order_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     symbol: Mapped[str] = mapped_column(String(50), index=True)
-    side: Mapped[TradeSide] = mapped_column(Enum(TradeSide))
-    status: Mapped[TradeStatus] = mapped_column(Enum(TradeStatus), default=TradeStatus.OPEN)
+    side: Mapped[TradeSide] = mapped_column(Enum(TradeSide, values_callable=lambda enum_cls: [e.value for e in enum_cls]))
+    status: Mapped[TradeStatus] = mapped_column(
+        Enum(TradeStatus, values_callable=lambda enum_cls: [e.value for e in enum_cls]),
+        default=TradeStatus.OPEN,
+    )
 
     entry_price: Mapped[float] = mapped_column(Numeric(20, 8))
     exit_price: Mapped[float | None] = mapped_column(Numeric(20, 8), nullable=True)

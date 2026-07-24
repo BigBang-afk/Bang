@@ -29,8 +29,13 @@ class Signal(Base):
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
 
     symbol: Mapped[str] = mapped_column(String(50), index=True)
-    direction: Mapped[SignalDirection] = mapped_column(Enum(SignalDirection))
-    status: Mapped[SignalStatus] = mapped_column(Enum(SignalStatus), default=SignalStatus.ACTIVE)
+    direction: Mapped[SignalDirection] = mapped_column(
+        Enum(SignalDirection, values_callable=lambda enum_cls: [e.value for e in enum_cls])
+    )
+    status: Mapped[SignalStatus] = mapped_column(
+        Enum(SignalStatus, values_callable=lambda enum_cls: [e.value for e in enum_cls]),
+        default=SignalStatus.ACTIVE,
+    )
 
     trading_mode: Mapped[str] = mapped_column(String(20))  # scalping | intraday
     timeframe: Mapped[str] = mapped_column(String(10))

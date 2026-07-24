@@ -22,7 +22,10 @@ class Subscription(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
 
     tier: Mapped[str] = mapped_column(String(50))  # free | pro | institutional
-    status: Mapped[SubscriptionStatus] = mapped_column(Enum(SubscriptionStatus), default=SubscriptionStatus.ACTIVE)
+    status: Mapped[SubscriptionStatus] = mapped_column(
+        Enum(SubscriptionStatus, values_callable=lambda enum_cls: [e.value for e in enum_cls]),
+        default=SubscriptionStatus.ACTIVE,
+    )
     price: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
     billing_cycle: Mapped[str] = mapped_column(String(20), default="monthly")
 
