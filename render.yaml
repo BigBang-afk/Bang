@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: quotex-m1-analyzer
+    runtime: node
+    plan: free
+    rootDir: quotex-m1-analyzer
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: NODE_VERSION
+        value: 20.18.0
