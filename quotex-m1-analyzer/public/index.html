@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Quotex AI Elite M1 Analyzer</title>
+<style>
+  :root {
+    --bg: #0b0e14;
+    --panel: #141922;
+    --border: #232a38;
+    --text: #e6e9ef;
+    --muted: #8a94a6;
+    --accent: #d4af37;
+    --buy: #22c55e;
+    --sell: #ef4444;
+    --wait: #94a3b8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: radial-gradient(circle at top, #131722 0%, #0b0e14 60%);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  header {
+    text-align: center;
+    padding: 32px 16px 16px;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 1.6rem;
+    letter-spacing: 0.06em;
+    background: linear-gradient(90deg, var(--accent), #f5e08a);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  header p {
+    color: var(--muted);
+    margin: 8px 0 0;
+    font-size: 0.9rem;
+  }
+  main {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 24px 16px 64px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+  }
+  #dropzone {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 32px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  #dropzone.dragover {
+    border-color: var(--accent);
+    background: rgba(212, 175, 55, 0.06);
+  }
+  #dropzone p { margin: 4px 0; color: var(--muted); }
+  #dropzone strong { color: var(--text); }
+  #preview {
+    display: none;
+    max-width: 100%;
+    border-radius: 10px;
+    margin-top: 16px;
+    border: 1px solid var(--border);
+  }
+  #fileInput { display: none; }
+  button#analyzeBtn {
+    width: 100%;
+    margin-top: 16px;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    background: var(--accent);
+    color: #14171f;
+    font-weight: 700;
+    font-size: 0.95rem;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+  }
+  button#analyzeBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  #status {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.85rem;
+    min-height: 20px;
+  }
+  #result {
+    display: none;
+    white-space: pre-wrap;
+    font-size: 0.92rem;
+    line-height: 1.6;
+    background: #0e1219;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+  }
+  #result strong {
+    color: var(--accent);
+    font-weight: 700;
+  }
+  #result ul {
+    margin: 4px 0 10px;
+    padding-left: 20px;
+  }
+  #result li {
+    margin: 3px 0;
+  }
+  #result .badge-buy { color: var(--buy); font-weight: 700; }
+  #result .badge-sell { color: var(--sell); font-weight: 700; }
+  #result .badge-wait { color: var(--wait); font-weight: 700; }
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.75rem;
+    padding-bottom: 24px;
+  }
+  .spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    vertical-align: -2px;
+    margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<header>
+  <h1>QUOTEX AI ELITE M1 ANALYZER</h1>
+  <p>Upload a Quotex 1-minute chart screenshot for an SMC / ICT / Wyckoff signal read</p>
+</header>
+<main>
+  <div class="panel">
+    <div id="dropzone">
+      <p><strong>Click to upload</strong> or drag a screenshot here</p>
+      <p>PNG, JPG, or WEBP · max 4MB</p>
+      <img id="preview" alt="Screenshot preview" />
+    </div>
+    <input type="file" id="fileInput" accept="image/png,image/jpeg,image/webp" />
+    <button id="analyzeBtn" disabled>Analyze Chart</button>
+    <div id="status"></div>
+  </div>
+
+  <div class="panel" id="resultPanel" style="display:none;">
+    <div id="result"></div>
+  </div>
+</main>
+<footer>Educational analysis only. Not financial advice — trade at your own risk.</footer>
+
+<script>
+  const dropzone = document.getElementById("dropzone");
+  const fileInput = document.getElementById("fileInput");
+  const preview = document.getElementById("preview");
+  const analyzeBtn = document.getElementById("analyzeBtn");
+  const statusEl = document.getElementById("status");
+  const resultPanel = document.getElementById("resultPanel");
+  const resultEl = document.getElementById("result");
+
+  let selectedFile = null;
+
+  dropzone.addEventListener("click", () => fileInput.click());
+
+  ["dragover", "dragenter"].forEach((evt) =>
+    dropzone.addEventListener(evt, (e) => {
+      e.preventDefault();
+      dropzone.classList.add("dragover");
+    })
+  );
+  ["dragleave", "drop"].forEach((evt) =>
+    dropzone.addEventListener(evt, (e) => {
+      e.preventDefault();
+      dropzone.classList.remove("dragover");
+    })
+  );
+  dropzone.addEventListener("drop", (e) => {
+    if (e.dataTransfer.files.length) {
+      handleFile(e.dataTransfer.files[0]);
+    }
+  });
+
+  fileInput.addEventListener("change", () => {
+    if (fileInput.files.length) handleFile(fileInput.files[0]);
+  });
+
+  function handleFile(file) {
+    if (!file.type.startsWith("image/")) {
+      statusEl.textContent = "Please select an image file.";
+      return;
+    }
+    selectedFile = file;
+    preview.src = URL.createObjectURL(file);
+    preview.style.display = "block";
+    analyzeBtn.disabled = false;
+    statusEl.textContent = "";
+    resultPanel.style.display = "none";
+  }
+
+  function colorizeSignal(text) {
+    return text
+      .replace(/\bBUY\b/g, '<span class="badge-buy">BUY</span>')
+      .replace(/\bSELL\b/g, '<span class="badge-sell">SELL</span>')
+      .replace(/\bWAIT\b/g, '<span class="badge-wait">WAIT</span>')
+      .replace(/\bNO TRADE[^\n]*/g, (m) => `<span class="badge-wait">${m}</span>`);
+  }
+
+  function escapeHtml(str) {
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  // Minimal markdown renderer for the model's output: **bold** labels and
+  // "* " bullet lines. Everything else stays as plain text (line breaks are
+  // handled by the #result element's white-space: pre-wrap).
+  function markdownToHtml(raw) {
+    const escaped = escapeHtml(raw).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    const lines = escaped.split("\n");
+    const out = [];
+    let inList = false;
+
+    for (const line of lines) {
+      const bulletMatch = line.match(/^(\s*)\*\s+(.*)$/);
+      if (bulletMatch) {
+        if (!inList) {
+          out.push("<ul>");
+          inList = true;
+        }
+        out.push(`<li>${bulletMatch[2]}</li>`);
+      } else {
+        if (inList) {
+          out.push("</ul>");
+          inList = false;
+        }
+        out.push(line);
+      }
+    }
+    if (inList) out.push("</ul>");
+
+    return out.join("\n");
+  }
+
+  analyzeBtn.addEventListener("click", async () => {
+    if (!selectedFile) return;
+    analyzeBtn.disabled = true;
+    statusEl.innerHTML = '<span class="spinner"></span>Analyzing chart structure, liquidity, and candles…';
+    resultPanel.style.display = "none";
+
+    const formData = new FormData();
+    formData.append("screenshot", selectedFile);
+
+    try {
+      const res = await fetch("/api/analyze", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Analysis failed.");
+
+      resultEl.innerHTML = colorizeSignal(markdownToHtml(data.analysis));
+      resultPanel.style.display = "block";
+      statusEl.textContent = "";
+    } catch (err) {
+      statusEl.textContent = err.message;
+    } finally {
+      analyzeBtn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>
