@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
-import { api } from "@/lib/api";
 
 interface TickerRow {
   symbol: string;
@@ -22,7 +21,11 @@ export default function ScannerPage() {
 
     const poll = async () => {
       const results = await Promise.allSettled(
-        SCAN_UNIVERSE.map((symbol) => api.get<{ symbol: string; price: string }>(`/mexc/ticker/${symbol}`))
+        SCAN_UNIVERSE.map(async (symbol) => {
+          const res = await fetch(`/api/mexc/ticker/${symbol}`, { cache: "no-store" });
+          if (!res.ok) throw new Error(await res.text());
+          return (await res.json()) as { symbol: string; price: string };
+        })
       );
       if (cancelled) return;
       setRows((prev) => {

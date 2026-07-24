@@ -27,59 +27,6 @@ export interface Signal {
   expires_at: string | null;
 }
 
-export interface Trade {
-  id: string;
-  symbol: string;
-  side: "long" | "short";
-  status: "open" | "closed" | "cancelled";
-  entry_price: number;
-  exit_price: number | null;
-  stop_loss: number | null;
-  take_profit_1: number | null;
-  take_profit_2: number | null;
-  take_profit_3: number | null;
-  quantity: number;
-  leverage: number;
-  risk_percent: number;
-  risk_reward_ratio: number | null;
-  pnl: number | null;
-  pnl_percent: number | null;
-  trading_mode: string;
-  timeframe: string;
-  screenshot_url: string | null;
-  mistakes: string | null;
-  notes: string | null;
-  reasons: string | null;
-  opened_at: string;
-  closed_at: string | null;
-}
-
-export interface User {
-  id: string;
-  email: string;
-  full_name: string | null;
-  role: "admin" | "trader" | "viewer";
-  is_active: boolean;
-  is_verified: boolean;
-  totp_enabled: boolean;
-  subscription_tier: string;
-  subscription_expires_at: string | null;
-  created_at: string;
-}
-
-export interface PerformanceSummary {
-  total_trades: number;
-  win_rate: number;
-  profit_factor: number;
-  expectancy: number;
-  sharpe_ratio: number;
-  average_win: number;
-  average_loss: number;
-  max_drawdown_pct: number;
-  best_pairs: { symbol: string; pnl: number }[];
-  best_hours: { hour: number; pnl: number }[];
-}
-
 export interface RiskProfileConfig {
   account_size: number;
   risk_per_trade_pct: number;

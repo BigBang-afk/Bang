@@ -59,8 +59,11 @@ def _score_trend(ind: dict) -> tuple[float, str]:
     return 0.0, "No clear trend alignment"
 
 
+_DIRECTION_TO_TREND = {"long": "bullish", "short": "bearish"}
+
+
 def _score_structure(structure: dict, direction: str) -> tuple[float, str]:
-    if structure["current_trend"] == direction:
+    if structure["current_trend"] == _DIRECTION_TO_TREND[direction]:
         events = [e["event"] for e in structure["events"][-3:]]
         return WEIGHTS["market_structure"], f"Market structure confirms {direction} bias ({', '.join(events) or 'stable'})"
     return WEIGHTS["market_structure"] * 0.3, "Market structure not yet confirming direction"
@@ -144,7 +147,7 @@ def _score_liquidity(pools: list[dict], direction: str, current_price: float) ->
 
 
 def _score_higher_timeframe(htf_ind: dict, direction: str) -> tuple[float, str, bool]:
-    aligned = htf_ind["long_term_trend"] == direction
+    aligned = htf_ind["long_term_trend"] == _DIRECTION_TO_TREND[direction]
     if aligned:
         return WEIGHTS["higher_timeframe"], "Higher timeframe trend confirms direction", True
     return 0.0, "Higher timeframe trend does NOT confirm — reduced confidence", False

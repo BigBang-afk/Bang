@@ -8,20 +8,30 @@ import { StatCard } from "@/components/ui/StatCard";
 import { SignalCard } from "@/components/signals/SignalCard";
 import { TradingViewWidget } from "@/components/charts/TradingViewWidget";
 import { useSessionStore } from "@/lib/sessionStore";
-import { api } from "@/lib/api";
-import type { PerformanceSummary, Signal } from "@/lib/types";
+import type { Signal } from "@/lib/types";
 
 export default function DashboardPage() {
   const { tradingMode, riskConfig, setTradingMode, setRiskConfig } = useSessionStore();
   const [step, setStep] = useState<"mode" | "risk" | "done">(tradingMode ? (riskConfig ? "done" : "risk") : "mode");
-  const [performance, setPerformance] = useState<PerformanceSummary | null>(null);
+  const [btcPrice, setBtcPrice] = useState<string | null>(null);
   const [signals, setSignals] = useState<Signal[]>([]);
+  const [loadingSignals, setLoadingSignals] = useState(false);
 
   useEffect(() => {
     if (step !== "done") return;
-    api.get<PerformanceSummary>("/analytics/performance").then(setPerformance).catch(() => {});
-    api.get<Signal[]>("/signals?limit=6").then(setSignals).catch(() => {});
-  }, [step]);
+
+    fetch("/api/mexc/ticker/BTCUSDT", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => setBtcPrice(d.price))
+      .catch(() => {});
+
+    setLoadingSignals(true);
+    fetch(`/api/signals/scan?mode=${tradingMode ?? "intraday"}`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((data: Signal[]) => setSignals(data.slice(0, 6)))
+      .catch(() => {})
+      .finally(() => setLoadingSignals(false));
+  }, [step, tradingMode]);
 
   if (step === "mode") {
     return (
@@ -51,13 +61,9 @@ export default function DashboardPage() {
     <AppShell title="Dashboard">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <StatCard label="Account Size" value={`$${riskConfig?.account_size.toLocaleString() ?? "-"}`} />
-        <StatCard
-          label="Win Rate"
-          value={performance ? `${performance.win_rate}%` : "—"}
-          accent={performance && performance.win_rate >= 50 ? "text-bull" : "text-bear"}
-        />
-        <StatCard label="Profit Factor" value={performance ? `${performance.profit_factor}` : "—"} />
-        <StatCard label="Max Drawdown" value={performance ? `${performance.max_drawdown_pct}%` : "—"} accent="text-bear" />
+        <StatCard label="BTC / USDT" value={btcPrice ? `$${Number(btcPrice).toLocaleString()}` : "—"} accent="text-gold" />
+        <StatCard label="Risk Per Trade" value={`${riskConfig?.risk_per_trade_pct ?? "-"}%`} />
+        <StatCard label="Active Signals" value={loadingSignals ? "…" : `${signals.length}`} accent="text-bull" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -92,7 +98,7 @@ export default function DashboardPage() {
 
       <h2 className="text-lg font-semibold text-white mt-8 mb-4">Today&apos;s Signals</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {signals.length === 0 && <p className="text-gray-400 text-sm">No high-confidence signals yet.</p>}
+        {!loadingSignals && signals.length === 0 && <p className="text-gray-400 text-sm">No high-confidence signals yet.</p>}
         {signals.map((s) => (
           <SignalCard key={s.id} signal={s} />
         ))}
