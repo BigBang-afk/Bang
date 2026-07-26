@@ -1,0 +1,22 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:vm="clr-namespace:FXVolumeTrader.App.ViewModels"
+                    xmlns:views="clr-namespace:FXVolumeTrader.App.Views">
+
+    <!--
+        View-model-first navigation: MainWindow's ContentControl binds to
+        CurrentViewModel, and WPF picks the matching DataTemplate below by
+        the bound object's type. PlaceholderViewModelBase is matched by
+        every one of its subclasses via WPF's implicit base-type fallback,
+        so all 13 not-yet-implemented pages share one template/view.
+    -->
+
+    <DataTemplate DataType="{x:Type vm:DashboardViewModel}">
+        <views:DashboardView />
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type vm:PlaceholderViewModelBase}">
+        <views:PlaceholderView />
+    </DataTemplate>
+
+</ResourceDictionary>

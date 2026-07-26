@@ -1,0 +1,46 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34330.188
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FXVolumeTrader.App", "FXVolumeTrader.App\FXVolumeTrader.App.csproj", "{80ECF038-CF37-41EF-AB77-ADD2F837DF06}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FXVolumeTrader.Core", "FXVolumeTrader.Core\FXVolumeTrader.Core.csproj", "{CE562F32-3156-472B-B27B-CC32A14B28D4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FXVolumeTrader.Infrastructure", "FXVolumeTrader.Infrastructure\FXVolumeTrader.Infrastructure.csproj", "{E64A6B81-C797-4E47-9D02-12B7D33078D1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FXVolumeTrader.Backtesting", "FXVolumeTrader.Backtesting\FXVolumeTrader.Backtesting.csproj", "{0DE848DA-2E62-4539-BEA8-16B44EF7E1BD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FXVolumeTrader.Tests", "FXVolumeTrader.Tests\FXVolumeTrader.Tests.csproj", "{CF98F7DD-A9E3-4308-9D1D-52057E76883E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{80ECF038-CF37-41EF-AB77-ADD2F837DF06}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{80ECF038-CF37-41EF-AB77-ADD2F837DF06}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{80ECF038-CF37-41EF-AB77-ADD2F837DF06}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{80ECF038-CF37-41EF-AB77-ADD2F837DF06}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CE562F32-3156-472B-B27B-CC32A14B28D4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CE562F32-3156-472B-B27B-CC32A14B28D4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CE562F32-3156-472B-B27B-CC32A14B28D4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CE562F32-3156-472B-B27B-CC32A14B28D4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E64A6B81-C797-4E47-9D02-12B7D33078D1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E64A6B81-C797-4E47-9D02-12B7D33078D1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E64A6B81-C797-4E47-9D02-12B7D33078D1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E64A6B81-C797-4E47-9D02-12B7D33078D1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0DE848DA-2E62-4539-BEA8-16B44EF7E1BD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0DE848DA-2E62-4539-BEA8-16B44EF7E1BD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0DE848DA-2E62-4539-BEA8-16B44EF7E1BD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0DE848DA-2E62-4539-BEA8-16B44EF7E1BD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CF98F7DD-A9E3-4308-9D1D-52057E76883E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CF98F7DD-A9E3-4308-9D1D-52057E76883E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CF98F7DD-A9E3-4308-9D1D-52057E76883E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CF98F7DD-A9E3-4308-9D1D-52057E76883E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
