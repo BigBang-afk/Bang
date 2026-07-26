@@ -2,32 +2,75 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FXVolumeTrader.Core.Enums;
+using FXVolumeTrader.Core.Interfaces;
+using FXVolumeTrader.Core.MarketData;
+using FXVolumeTrader.Core.Models;
 using LiveChartsCore;
 using LiveChartsCore.Defaults;
 using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using SkiaSharp;
 
 namespace FXVolumeTrader.App.ViewModels;
 
 /// <summary>
-/// Backing view model for the main dashboard. In Phase 1 this only hosts
-/// the shell state (chart placeholders, default/neutral stat values, and
-/// correctly wired but inert commands) - the live tick feed, candle
-/// builder, and signal engine are connected in later phases without any
-/// changes to this class's public surface.
+/// Backing view model for the main dashboard. Start Analysis connects the
+/// active IMarketDataProvider, streams ticks through a FeedHealthMonitor
+/// and a CandleBuilder, and renders the selected timeframe's candles and
+/// tick volume live. Signal generation itself (CALL/PUT confidence,
+/// market structure, indicators) is still Phase 3 - this phase proves the
+/// data pipeline end to end.
 /// </summary>
 public sealed partial class DashboardViewModel : ViewModelBase
 {
-    private readonly ILogger<DashboardViewModel> _logger;
-    private readonly List<DateTime> _candleTimestamps = new();
+    private const int MaxVisibleCandles = 90;
 
-    public DashboardViewModel(ILogger<DashboardViewModel> logger)
+    private readonly ILogger<DashboardViewModel> _logger;
+    private readonly IMarketDataProvider _marketDataProvider;
+    private readonly FeedHealthMonitorOptions _feedHealthOptions;
+
+    private readonly List<DateTime> _candleTimestamps = new();
+    private readonly ObservableCollection<FinancialPointI> _candlePoints = new();
+    private readonly ObservableCollection<double> _volumePoints = new();
+
+    private CancellationTokenSource? _analysisCts;
+    private CandleBuilder? _candleBuilder;
+    private FeedHealthMonitor? _feedHealthMonitor;
+
+    public DashboardViewModel(
+        ILogger<DashboardViewModel> logger,
+        IMarketDataProvider marketDataProvider,
+        IOptions<FeedHealthMonitorOptions> feedHealthOptions)
     {
         _logger = logger;
-        CandleSeries = BuildPlaceholderCandleSeries(_candleTimestamps);
-        VolumeSeries = BuildPlaceholderVolumeSeries();
+        _marketDataProvider = marketDataProvider;
+        _feedHealthOptions = feedHealthOptions.Value;
+
+        SeedPlaceholderChartData();
+
+        CandleSeries = new ObservableCollection<ISeries>
+        {
+            new CandlesticksSeries<FinancialPointI>
+            {
+                Values = _candlePoints,
+                UpFill = new SolidColorPaint(new SKColor(0x1F, 0xB8, 0x74)),
+                UpStroke = new SolidColorPaint(new SKColor(0x1F, 0xB8, 0x74)),
+                DownFill = new SolidColorPaint(new SKColor(0xE5, 0x48, 0x4D)),
+                DownStroke = new SolidColorPaint(new SKColor(0xE5, 0x48, 0x4D))
+            }
+        };
+
+        VolumeSeries = new ObservableCollection<ISeries>
+        {
+            new ColumnSeries<double>
+            {
+                Values = _volumePoints,
+                Fill = new SolidColorPaint(new SKColor(0x3D, 0x8B, 0xFD)),
+                MaxBarWidth = 18
+            }
+        };
 
         CandleXAxes = new[]
         {
@@ -93,6 +136,14 @@ public sealed partial class DashboardViewModel : ViewModelBase
 
     [ObservableProperty] private bool _isEmergencyStopActive;
 
+    partial void OnSelectedTimeframeChanged(TimeframeType value)
+    {
+        // Only the selected timeframe's history is rendered - switching
+        // timeframes mid-session starts a fresh visible window rather than
+        // mixing candles from two different bucket sizes on one chart.
+        ResetChartSeries();
+    }
+
     // ---- Chart series (LiveCharts2) ----
 
     public ObservableCollection<ISeries> CandleSeries { get; }
@@ -119,14 +170,26 @@ public sealed partial class DashboardViewModel : ViewModelBase
     // ---- Commands ----
 
     [RelayCommand(CanExecute = nameof(CanStartAnalysis))]
-    private void StartAnalysis()
+    private Task StartAnalysis()
     {
         IsAnalysisRunning = true;
         ConnectionStatus = ConnectionStatus.Connecting;
         SignalExplanation = "Analysis started. Waiting for a healthy data feed and enough candles to evaluate.";
         _logger.LogInformation("Analysis started by user for {Asset}", CurrentAsset);
+
+        _candleBuilder = new CandleBuilder(CurrentAsset);
+        _candleBuilder.CandleClosed += OnCandleClosed;
+        _feedHealthMonitor = new FeedHealthMonitor(_feedHealthOptions);
+        ResetChartSeries();
+
+        _analysisCts = new CancellationTokenSource();
         StartAnalysisCommand.NotifyCanExecuteChanged();
         StopAnalysisCommand.NotifyCanExecuteChanged();
+
+        // Runs until Stop Analysis / Emergency Stop cancels the token; the
+        // command itself returns immediately so the UI stays responsive.
+        _ = RunFeedLoopAsync(_analysisCts.Token);
+        return Task.CompletedTask;
     }
 
     private bool CanStartAnalysis() => !IsAnalysisRunning && !IsEmergencyStopActive;
@@ -134,6 +197,7 @@ public sealed partial class DashboardViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanStopAnalysis))]
     private void StopAnalysis()
     {
+        _analysisCts?.Cancel();
         IsAnalysisRunning = false;
         ConnectionStatus = ConnectionStatus.Disconnected;
         SignalExplanation = "Analysis stopped.";
@@ -168,6 +232,7 @@ public sealed partial class DashboardViewModel : ViewModelBase
     [RelayCommand]
     private void EmergencyStop()
     {
+        _analysisCts?.Cancel();
         IsEmergencyStopActive = true;
         IsAnalysisRunning = false;
         CurrentSignal = SignalType.NoTrade;
@@ -181,11 +246,108 @@ public sealed partial class DashboardViewModel : ViewModelBase
         RejectSignalCommand.NotifyCanExecuteChanged();
     }
 
-    private static ObservableCollection<ISeries> BuildPlaceholderCandleSeries(List<DateTime> timestamps)
+    // ---- Live feed pipeline ----
+
+    private async Task RunFeedLoopAsync(CancellationToken token)
+    {
+        try
+        {
+            await _marketDataProvider.ConnectAsync(token);
+            ConnectionStatus = ConnectionStatus.Connected;
+
+            await foreach (var tick in _marketDataProvider.StreamTicksAsync(CurrentAsset, token))
+            {
+                ProcessTick(tick);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected when Stop Analysis / Emergency Stop cancels the token.
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Market data feed loop failed for {Asset}", CurrentAsset);
+            ConnectionStatus = ConnectionStatus.Faulted;
+            SignalExplanation = "The data feed encountered an error and stopped. Check Application Logs for details.";
+            IsAnalysisRunning = false;
+            StartAnalysisCommand.NotifyCanExecuteChanged();
+            StopAnalysisCommand.NotifyCanExecuteChanged();
+        }
+        finally
+        {
+            _feedHealthMonitor?.MarkDisconnected();
+            await _marketDataProvider.DisconnectAsync();
+        }
+    }
+
+    private void ProcessTick(Tick tick)
+    {
+        var anomalies = _feedHealthMonitor?.Evaluate(tick) ?? Array.Empty<TickAnomaly>();
+        if (_feedHealthMonitor is not null)
+        {
+            ConnectionStatus = _feedHealthMonitor.Status;
+        }
+
+        foreach (var anomaly in anomalies)
+        {
+            _logger.LogWarning("Feed anomaly [{Type}]: {Message}", anomaly.Type, anomaly.Message);
+        }
+
+        CurrentPrice = tick.Last;
+
+        _candleBuilder?.ApplyTick(tick);
+        UpdateChartFromOpenCandle();
+    }
+
+    private void OnCandleClosed(object? sender, CandleClosedEventArgs e)
+    {
+        _logger.LogDebug(
+            "Candle closed: {Timeframe} {Start:HH:mm:ss} O={Open} H={High} L={Low} C={Close} Vol={Volume}",
+            e.Timeframe, e.Candle.StartTimeUtc, e.Candle.Open, e.Candle.High, e.Candle.Low, e.Candle.Close, e.Candle.TickVolume);
+    }
+
+    private void UpdateChartFromOpenCandle()
+    {
+        if (_candleBuilder is null || !_candleBuilder.OpenCandles.TryGetValue(SelectedTimeframe, out var candle))
+        {
+            return;
+        }
+
+        var point = new FinancialPointI((double)candle.High, (double)candle.Open, (double)candle.Close, (double)candle.Low);
+        var volume = (double)candle.TickVolume;
+
+        var isSameOpenCandle = _candleTimestamps.Count > 0 && _candleTimestamps[^1] == candle.StartTimeUtc;
+        if (isSameOpenCandle)
+        {
+            _candlePoints[^1] = point;
+            _volumePoints[^1] = volume;
+        }
+        else
+        {
+            _candlePoints.Add(point);
+            _volumePoints.Add(volume);
+            _candleTimestamps.Add(candle.StartTimeUtc);
+
+            while (_candlePoints.Count > MaxVisibleCandles)
+            {
+                _candlePoints.RemoveAt(0);
+                _volumePoints.RemoveAt(0);
+                _candleTimestamps.RemoveAt(0);
+            }
+        }
+    }
+
+    private void ResetChartSeries()
+    {
+        _candlePoints.Clear();
+        _volumePoints.Clear();
+        _candleTimestamps.Clear();
+    }
+
+    private void SeedPlaceholderChartData()
     {
         var start = DateTime.UtcNow.AddMinutes(-10);
-        var points = new List<FinancialPointI>();
-        var price = 1.0875;
+        var price = (double)CurrentPrice;
         var random = new Random(42);
 
         for (var i = 0; i < 10; i++)
@@ -194,37 +356,12 @@ public sealed partial class DashboardViewModel : ViewModelBase
             var close = open + (random.NextDouble() - 0.5) * 0.0006;
             var high = Math.Max(open, close) + random.NextDouble() * 0.0003;
             var low = Math.Min(open, close) - random.NextDouble() * 0.0003;
-            points.Add(new FinancialPointI(high, open, close, low));
-            timestamps.Add(start.AddMinutes(i));
+
+            _candlePoints.Add(new FinancialPointI(high, open, close, low));
+            _volumePoints.Add(random.Next(20, 200));
+            _candleTimestamps.Add(start.AddMinutes(i));
+
             price = close;
         }
-
-        return new ObservableCollection<ISeries>
-        {
-            new CandlesticksSeries<FinancialPointI>
-            {
-                Values = points,
-                UpFill = new SolidColorPaint(new SKColor(0x1F, 0xB8, 0x74)),
-                UpStroke = new SolidColorPaint(new SKColor(0x1F, 0xB8, 0x74)),
-                DownFill = new SolidColorPaint(new SKColor(0xE5, 0x48, 0x4D)),
-                DownStroke = new SolidColorPaint(new SKColor(0xE5, 0x48, 0x4D))
-            }
-        };
-    }
-
-    private static ObservableCollection<ISeries> BuildPlaceholderVolumeSeries()
-    {
-        var random = new Random(7);
-        var values = Enumerable.Range(0, 10).Select(_ => (double)random.Next(20, 200)).ToArray();
-
-        return new ObservableCollection<ISeries>
-        {
-            new ColumnSeries<double>
-            {
-                Values = values,
-                Fill = new SolidColorPaint(new SKColor(0x3D, 0x8B, 0xFD)),
-                MaxBarWidth = 18
-            }
-        };
     }
 }

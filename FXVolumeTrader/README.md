@@ -16,7 +16,7 @@ candles, tick volume, candle pressure, market structure, and momentum to generat
 > signal-assistant workflow with an explicit user confirmation button. Automatic trade
 > execution is only ever wired to brokers that expose an official, authorized trading API.
 
-This repository currently contains **Phase 1** of the build plan described below.
+This repository currently contains **Phase 1 and Phase 2** of the build plan described below.
 
 ---
 
@@ -38,6 +38,9 @@ FXVolumeTrader/
 │   ├── Enums                          TradeDirection, SignalType, TradingMode, ...
 │   ├── Interfaces                     IMarketDataProvider, ITradeExecutionProvider,
 │   │                                  INavigationService, IRepository<T>
+│   ├── MarketData                     CandleBuilder (7 timeframes, non-repainting),
+│   │                                  FeedHealthMonitor (duplicate/out-of-order/
+│   │                                  invalid/gap/delay detection), TickAnomaly
 │   ├── Strategies                     (Phase 3: Volume Pressure Strategy)
 │   ├── Indicators                     (Phase 3: EMA/RSI/ATR/ADX/Bollinger)
 │   └── Risk                           (Phase 4: risk-management engine)
@@ -47,7 +50,9 @@ FXVolumeTrader/
 │   │   ├── Entities                   12 EF Core entities (see ERD below)
 │   │   └── Configurations             IEntityTypeConfiguration<T> per entity
 │   ├── Repositories                   Repository<T> (generic, IRepository<T>)
-│   ├── MarketData                     (Phase 2: Mock/CsvReplay/OfficialApi providers)
+│   ├── MarketData                     MockMarketDataProvider (tick simulator),
+│   │                                  CsvReplayMarketDataProvider,
+│   │                                  OfficialApiMarketDataProvider (placeholder)
 │   ├── Execution                      (Phase 4: Paper/Manual/OfficialApi execution)
 │   ├── Logging                        SerilogConfigurator
 │   └── Security                       SensitiveDataMasker
@@ -121,8 +126,9 @@ ApplicationLog (standalone, optional DB mirror of Serilog output)
 ```
 MainWindow
  └─ Sidebar (14 items) → ContentControl bound to INavigationService.CurrentViewModel
-     ├─ Dashboard                 ✅ fully built in Phase 1 (shell + live chart placeholders)
-     ├─ Live Chart                🚧 placeholder (Phase 2)
+     ├─ Dashboard                 ✅ live: streams the active IMarketDataProvider through
+     │                              CandleBuilder + FeedHealthMonitor onto real charts
+     ├─ Live Chart                🚧 placeholder (a dedicated full-screen chart page - Phase 3+)
      ├─ Signal History            🚧 placeholder (Phase 3)
      ├─ Paper Trading             🚧 placeholder (Phase 4)
      ├─ Quotex Assistant          🚧 placeholder (Phase 4) - manual confirmation only
@@ -131,7 +137,8 @@ MainWindow
      ├─ Performance Analytics     🚧 placeholder (Phase 6)
      ├─ Strategy Settings         🚧 placeholder (Phase 6)
      ├─ Risk Settings             🚧 placeholder (Phase 4/6)
-     ├─ Data Provider Settings    🚧 placeholder (Phase 2)
+     ├─ Data Provider Settings    🚧 placeholder (UI still Phase 6; Mock/CsvReplay/OfficialApi
+     │                              providers themselves already exist - see §1)
      ├─ Application Logs          🚧 placeholder (Phase 6) - logs already write to disk
      ├─ Backup & Restore          🚧 placeholder (Phase 6)
      └─ About & Risk Warning      🚧 placeholder - shows the full risk disclaimer today
@@ -163,8 +170,23 @@ in each real page later is additive, not a rewrite.
       suggested amount, daily P/L, win rate, consecutive W/L, trades today, daily loss limit,
       Start/Stop Analysis, Confirm CALL/PUT, Reject Signal, Emergency Stop
 - [x] xUnit test project with real, passing tests (candle math, tick validation, DbContext
-      seeding, repository CRUD) - 12/12 passing
-- [ ] Phase 2: Mock/CsvReplay market data providers, tick simulator, candle builder, live charts
+      seeding, repository CRUD)
+- [x] `MockMarketDataProvider` (bounded random-walk tick simulator, configurable via
+      `MarketData:Mock` in appsettings.json)
+- [x] `CsvReplayMarketDataProvider` (replays a local CSV of ticks, optional real-time pacing)
+      and `OfficialApiMarketDataProvider` (clearly-labeled, non-functional placeholder - throws
+      until wired to a real, authorized broker API)
+- [x] `CandleBuilder`: builds all 7 timeframes simultaneously from one tick stream, boundaries
+      aligned to fixed UTC epoch buckets (not "first tick seen"), closed candles are never
+      mutated again (no repainting), `CandleClosed` event per timeframe
+- [x] `FeedHealthMonitor`: detects duplicate ticks, out-of-order ticks, missing timestamps,
+      invalid prices, large price gaps, and delayed feeds; drives the dashboard's
+      connection-status indicator (green/yellow/red/gray via `ConnectionStatusToBrushConverter`)
+- [x] Dashboard's Start/Stop Analysis now actually connect the active provider, stream ticks
+      through the health monitor and candle builder, and render the selected timeframe's
+      candlesticks/volume live (bounded to the most recent 90 bars)
+- [x] 28/28 xUnit tests passing (candle boundary/finalize/no-repaint math, all 6 tick-anomaly
+      types, mock provider sequencing/cancellation, CSV parsing incl. malformed-row handling)
 - [ ] Phase 3: Volume/indicator/market-structure/confidence-score engines, signal generation
 - [ ] Phase 4: Paper trading, Quotex manual assistant, expiry timer, risk-management engine
 - [ ] Phase 5: Backtesting engine, CSV import, performance reports, walk-forward testing
@@ -185,16 +207,19 @@ This container has no Visual Studio and no Windows, but it does have network acc
   benign `NU1701` notices from LiveCharts2's WPF package pulling in a couple of transitive
   .NET Framework-targeted dependencies (OpenTK, SkiaSharp.Views.WPF) - a known, harmless
   characteristic of the current LiveCharts2 WPF release.
-- All 12 xUnit tests pass.
+- All 28 xUnit tests pass, including the Phase 2 additions (candle boundary math across all 7
+  timeframes, all 6 `TickAnomalyType`s, mock provider sequencing/cancellation, CSV parsing).
 - `dotnet ef migrations add InitialCreate` was run against `ApplicationDbContext` and the
   generated migration was applied to a real SQLite file: all 12 tables were created and the
   seed data (16 `AppSettings` rows, 1 `StrategyConfiguration` row) landed correctly. The
   generated migration is committed under
   `FXVolumeTrader.Infrastructure/Data/Migrations/`, so you do **not** need to run
-  `Add-Migration` again unless you change the entity model.
+  `Add-Migration` again unless you change the entity model. (Phase 2 did not change the
+  entity model, so no new migration was needed.)
 
 What was **not** verified here (requires actual Windows + Visual Studio): rendering/visual
-layout of the XAML, LiveCharts2 chart interaction, and running the compiled `.exe`.
+layout of the XAML, LiveCharts2 chart interaction/live updates, and running the compiled
+`.exe` to watch the mock feed animate the dashboard in real time.
 
 ---
 
@@ -268,9 +293,14 @@ dotnet build FXVolumeTrader.sln -c Debug
 ### 7.7 Run the application
 
 Set **FXVolumeTrader.App** as the startup project (right-click it in Solution Explorer →
-**Set as Startup Project**), then press **F5**. The dashboard opens with a dark theme, a
-14-item sidebar, and a placeholder candlestick/volume chart with sample data - nothing is
-connected to a live feed yet (that's Phase 2).
+**Set as Startup Project**), then press **F5**. The dashboard opens with a dark theme and a
+14-item sidebar, showing a few seconds of sample candles before you press anything. Click
+**Start Analysis**: the dashboard connects `MockMarketDataProvider` (a bounded random walk
+around 1.08750, ticking every 400ms by default) and streams it through the candle builder and
+feed-health monitor - the status dot turns green, "Price" starts moving, and the candlestick
+/ volume charts begin updating live for the selected 1-minute timeframe. **Stop Analysis**
+disconnects the feed. CALL/PUT confidence and the signal panel stay inert (0/NO TRADE) since
+signal generation is Phase 3 - only the data pipeline is live in Phase 2.
 
 ### 7.8 Common build errors and fixes
 
@@ -291,20 +321,27 @@ Run the automated tests from **Test → Run All Tests** (Test Explorer), or:
 dotnet test FXVolumeTrader.Tests/FXVolumeTrader.Tests.csproj
 ```
 
-You should see 12/12 passing (Candle volume-analysis math, Tick validation, DbContext seed
-data, and Repository CRUD).
+You should see 28/28 passing (Candle volume-analysis math, candle-builder boundary/finalize
+behavior across all 7 timeframes, tick validation, all 6 feed-anomaly types, mock provider
+sequencing/cancellation, CSV replay parsing, DbContext seed data, and Repository CRUD).
 
 For manual UI testing of this phase: launch the app, confirm the dark theme renders, click
 through all 14 sidebar items (Dashboard shows the full shell; the other 13 show their
-"not implemented yet" placeholder with a phase note), and on the Dashboard verify Start
-Analysis / Stop Analysis toggle correctly and Emergency Stop disables everything (Confirm
-CALL/PUT/Reject stay disabled throughout Phase 1 since there is no signal engine yet - that's
-expected and intentional, not a bug).
+"not implemented yet" placeholder with a phase note). On the Dashboard, press **Start
+Analysis** and confirm: the status dot turns green within ~1 second, "Price" updates roughly
+every 400ms, and the candlestick/volume charts animate live. Press **Stop Analysis** and
+confirm the feed stops and the status dot goes gray. Press **Start Analysis** again then
+**Emergency Stop** and confirm the feed halts immediately and Start Analysis stays disabled
+until the app restarts (clearing the emergency-stop flag is a Risk Settings feature - Phase
+4/6). Confirm CALL/PUT/Reject stay disabled throughout Phase 2 since there is no signal engine
+yet - that's expected and intentional, not a bug.
 
 ---
 
 ## 8. Next steps
 
-Phase 2 (mock market data provider, tick simulator, candle builder, live chart wiring,
-connection-status system) builds directly on top of this scaffold without changing any of the
-Phase 1 public interfaces (`IMarketDataProvider`, `Candle`, `Tick`, `INavigationService`, etc.).
+Phase 3 (volume-analysis engine, optional indicators, market-structure engine,
+confidence-score engine, no-trade filters, and signal generation) builds directly on top of
+this scaffold: `CandleClosed` events from `CandleBuilder` are the natural trigger point for
+evaluating a finalized candle, and `Signal`/`SignalScoreComponent` already exist in the data
+layer waiting to be populated. No Phase 1/2 public interfaces should need to change.

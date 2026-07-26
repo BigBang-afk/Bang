@@ -4,8 +4,10 @@ using System.Windows.Threading;
 using FXVolumeTrader.App.ViewModels;
 using FXVolumeTrader.App.Views;
 using FXVolumeTrader.Core.Interfaces;
+using FXVolumeTrader.Core.MarketData;
 using FXVolumeTrader.Infrastructure.Data;
 using FXVolumeTrader.Infrastructure.Logging;
+using FXVolumeTrader.Infrastructure.MarketData;
 using FXVolumeTrader.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -83,6 +85,18 @@ public partial class App : System.Windows.Application
         services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(connectionString));
 
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+
+        // Market data providers (Phase 2). MockMarketDataProvider is the active
+        // IMarketDataProvider until Data Provider Settings (Phase 6) lets the user
+        // choose per TradingMode. CsvReplay/OfficialApi are registered so they can
+        // already be resolved directly where needed.
+        services.Configure<MockMarketDataProviderOptions>(configuration.GetSection("MarketData:Mock"));
+        services.Configure<CsvReplayMarketDataProviderOptions>(configuration.GetSection("MarketData:CsvReplay"));
+        services.Configure<FeedHealthMonitorOptions>(configuration.GetSection("MarketData:FeedHealth"));
+        services.AddSingleton<MockMarketDataProvider>();
+        services.AddSingleton<CsvReplayMarketDataProvider>();
+        services.AddSingleton<OfficialApiMarketDataProvider>();
+        services.AddSingleton<IMarketDataProvider>(sp => sp.GetRequiredService<MockMarketDataProvider>());
 
         // Navigation
         services.AddSingleton<INavigationService, NavigationService>();
