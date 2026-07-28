@@ -104,6 +104,7 @@ public static class DependencyInjection
         services.AddSingleton<CsvMarketDataProvider>();
         services.AddSingleton<AuthorizedWebSocketDataProvider>();
         services.AddHttpClient<AuthorizedRestDataProvider>();
+        services.AddHttpClient<QuotexMarketDataProvider>();
         services.AddScoped<IMarketDataProviderResolver, MarketDataProviderResolver>();
 
         services.AddSingleton<ITradingStrategy, MomentumContinuationStrategy>();

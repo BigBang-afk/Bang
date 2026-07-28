@@ -23,6 +23,7 @@ public sealed class MarketDataProviderResolver : IMarketDataProviderResolver
     private readonly CsvMarketDataProvider _csv;
     private readonly AuthorizedWebSocketDataProvider _webSocket;
     private readonly AuthorizedRestDataProvider _rest;
+    private readonly QuotexMarketDataProvider _quotex;
     private readonly IApiKeyProtector _apiKeyProtector;
 
     public MarketDataProviderResolver(
@@ -31,6 +32,7 @@ public sealed class MarketDataProviderResolver : IMarketDataProviderResolver
         CsvMarketDataProvider csv,
         AuthorizedWebSocketDataProvider webSocket,
         AuthorizedRestDataProvider rest,
+        QuotexMarketDataProvider quotex,
         IApiKeyProtector apiKeyProtector)
     {
         _db = db;
@@ -38,6 +40,7 @@ public sealed class MarketDataProviderResolver : IMarketDataProviderResolver
         _csv = csv;
         _webSocket = webSocket;
         _rest = rest;
+        _quotex = quotex;
         _apiKeyProtector = apiKeyProtector;
     }
 
@@ -66,6 +69,13 @@ public sealed class MarketDataProviderResolver : IMarketDataProviderResolver
                     ConnectionTimeoutSeconds = config.ConnectionTimeoutSeconds
                 });
                 return _rest;
+            case MarketDataProviderType.Quotex:
+                _quotex.Configure(new QuotexProviderOptions
+                {
+                    BaseUrl = config.ApiEndpoint,
+                    ConnectionTimeoutSeconds = config.ConnectionTimeoutSeconds
+                });
+                return _quotex;
             case MarketDataProviderType.Csv:
                 return _csv;
             case MarketDataProviderType.Demo:

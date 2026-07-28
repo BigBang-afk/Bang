@@ -8,7 +8,7 @@ import { Modal } from "../../components/ui/Modal";
 import { useToastStore } from "../../store/uiStore";
 import type { ProviderConfigurationDto } from "../../types/domain";
 
-const PROVIDER_TYPES = ["Demo", "CSV Import", "Authorized WebSocket", "Authorized REST"];
+const PROVIDER_TYPES = ["Demo", "CSV Import", "Authorized WebSocket", "Authorized REST", "Quotex (Read-Only)"];
 const STATUS = ["Disconnected", "Connecting", "Connected", "Reconnecting", "Faulted"];
 
 const emptyForm = {
@@ -68,8 +68,8 @@ export default function DataProviderSettingsPage() {
               {PROVIDER_TYPES.map((t, i) => <option key={t} value={i}>{t}</option>)}
             </select>
           </div>
-          <div><label className="label-text">API endpoint</label><input className="input-field" {...register("apiEndpoint")} placeholder="wss:// or https://" /></div>
-          <div><label className="label-text">API key</label><input type="password" className="input-field" {...register("apiKey")} placeholder="Leave blank to keep existing key" /></div>
+          <div><label className="label-text">API endpoint</label><input className="input-field" {...register("apiEndpoint")} placeholder="wss://, https://, or the quotex-sidecar internal URL" /></div>
+          <div><label className="label-text">API key</label><input type="password" className="input-field" {...register("apiKey")} placeholder="Not used for Quotex — credentials live only in the sidecar" /></div>
           <div className="grid grid-cols-3 gap-3">
             <div><label className="label-text">Timeout (s)</label><input type="number" className="input-field" {...register("connectionTimeoutSeconds", { valueAsNumber: true })} /></div>
             <div><label className="label-text">Reconnect (s)</label><input type="number" className="input-field" {...register("reconnectIntervalSeconds", { valueAsNumber: true })} /></div>

@@ -237,6 +237,30 @@ To activate one:
 Neither template will ever request or store a *trading platform's* login credentials — only a market
 data vendor's API key.
 
+## Optional: Quotex read-only quotes sidecar
+
+`quotex-sidecar/` is a small, separately deployed Python service wrapping the unofficial
+[`pyquotex`](https://github.com/cleitonleonel/pyquotex) client. It exists to answer one specific,
+opt-in need: seeing real Quotex prices instead of demo data. Its scope is intentionally narrow:
+
+- It is the **only** component that ever holds a Quotex account login, and holds it only as its
+  own process environment variables (`QUOTEX_EMAIL` / `QUOTEX_PASSWORD`) — never in this
+  application's database, logs, or API responses.
+- It exposes exactly two read-only HTTP endpoints (`GET /candles`, `GET /candles/latest`) and a
+  `/health` check. It does **not** import or expose `pyquotex`'s buy/sell/trade methods at all.
+- `QuotexMarketDataProvider` (in `src/FlexXSignal.Infrastructure/MarketDataProviders/`) talks to
+  the sidecar over plain HTTP the same way `AuthorizedRestDataProvider` talks to any other vendor —
+  it has no knowledge of your Quotex credentials.
+- Because `pyquotex` is an unofficial, reverse-engineered client, using it against your own account
+  is against Quotex's terms of service. This is why it ships disabled by default, gated behind an
+  explicit opt-in.
+
+To enable it locally: set `QUOTEX_EMAIL` / `QUOTEX_PASSWORD` in `.env`, then run
+`docker compose --profile quotex up -d`. In Admin → Data Provider Settings, add a provider of type
+**Quotex (Read-Only)** with the API endpoint set to the sidecar's address (e.g.
+`http://quotex-sidecar:8090` in Docker Compose), and mark it active. No API key is needed — the
+sidecar itself holds the credentials.
+
 ## Adding a new strategy
 
 1. Implement `ITradingStrategy` in `src/FlexXSignal.SignalEngine/Strategies/` (see the 7 existing

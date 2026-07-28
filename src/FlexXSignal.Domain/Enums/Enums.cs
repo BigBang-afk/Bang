@@ -43,7 +43,10 @@ public enum MarketDataProviderType
     Demo = 0,
     Csv = 1,
     AuthorizedWebSocket = 2,
-    AuthorizedRest = 3
+    AuthorizedRest = 3,
+    /// <summary>Read-only quotes via the quotex-sidecar service. Never places trades; the sidecar
+    /// holds the Quotex account credentials, not this application.</summary>
+    Quotex = 4
 }
 
 public enum ProviderConnectionStatus

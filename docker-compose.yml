@@ -62,6 +62,28 @@ services:
       retries: 5
       start_period: 20s
 
+  # Optional. Only starts with `docker compose --profile quotex up`. Holds your Quotex account
+  # credentials as its own process env vars (never written to the database or logs) and exposes
+  # read-only candle data on the internal Docker network only — no trade execution is implemented
+  # or reachable. Requires QUOTEX_EMAIL / QUOTEX_PASSWORD in .env; leave unset to skip entirely.
+  quotex-sidecar:
+    build:
+      context: ./quotex-sidecar
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    profiles: ["quotex"]
+    environment:
+      QUOTEX_EMAIL: ${QUOTEX_EMAIL:?QUOTEX_EMAIL must be set in .env to use the quotex profile}
+      QUOTEX_PASSWORD: ${QUOTEX_PASSWORD:?QUOTEX_PASSWORD must be set in .env to use the quotex profile}
+      QUOTEX_LANG: ${QUOTEX_LANG:-en}
+      QUOTEX_ACCOUNT_MODE: ${QUOTEX_ACCOUNT_MODE:-PRACTICE}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health', timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
   client:
     build:
       context: ./flexxsignal-client
