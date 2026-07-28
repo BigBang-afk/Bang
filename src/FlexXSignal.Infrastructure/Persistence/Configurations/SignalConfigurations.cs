@@ -12,7 +12,6 @@ public class SignalConfiguration : IEntityTypeConfiguration<Signal>
         builder.HasIndex(x => x.TradingPairId);
         builder.HasIndex(x => x.Status);
         builder.HasIndex(x => x.TradeNumber).IsUnique();
-        builder.Property(x => x.TradeNumber).UseIdentityAlwaysColumn();
 
         builder.HasOne(x => x.TradingPair).WithMany().HasForeignKey(x => x.TradingPairId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(x => x.StrategyVersion).WithMany().HasForeignKey(x => x.StrategyVersionId).OnDelete(DeleteBehavior.Restrict);

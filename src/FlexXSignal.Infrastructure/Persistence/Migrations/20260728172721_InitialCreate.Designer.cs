@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FlexXSignal.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260728170955_InitialCreate")]
+    [Migration("20260728172721_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -952,10 +952,7 @@ namespace FlexXSignal.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer");
 
                     b.Property<long>("TradeNumber")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("TradeNumber"));
 
                     b.Property<Guid>("TradingPairId")
                         .HasColumnType("uuid");

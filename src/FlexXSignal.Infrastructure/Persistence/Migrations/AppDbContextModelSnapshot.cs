@@ -949,10 +949,7 @@ namespace FlexXSignal.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer");
 
                     b.Property<long>("TradeNumber")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("TradeNumber"));
 
                     b.Property<Guid>("TradingPairId")
                         .HasColumnType("uuid");

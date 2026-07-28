@@ -692,8 +692,7 @@ namespace FlexXSignal.Infrastructure.Persistence.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    TradeNumber = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityAlwaysColumn),
+                    TradeNumber = table.Column<long>(type: "bigint", nullable: false),
                     TradingPairId = table.Column<Guid>(type: "uuid", nullable: false),
                     StrategyVersionId = table.Column<Guid>(type: "uuid", nullable: false),
                     Timeframe = table.Column<int>(type: "integer", nullable: false),
