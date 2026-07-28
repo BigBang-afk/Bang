@@ -21,8 +21,12 @@ public sealed class CsvMarketDataProvider : IMarketDataProvider
     public ProviderConnectionStatus ConnectionStatus => _status;
     public bool IsDemoData => true;
 
+    // Required by IMarketDataProvider; this provider is a passive historical importer and never
+    // pushes live ticks or faults, so neither event is ever raised.
+#pragma warning disable CS0067
     public event EventHandler<ProviderDataReceivedEventArgs>? DataReceived;
     public event EventHandler<ProviderDataErrorEventArgs>? DataError;
+#pragma warning restore CS0067
 
     public CsvMarketDataProvider(ILogger<CsvMarketDataProvider> logger) => _logger = logger;
 

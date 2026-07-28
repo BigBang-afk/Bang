@@ -35,7 +35,11 @@ public sealed class AuthorizedRestDataProvider : IMarketDataProvider
     public ProviderConnectionStatus ConnectionStatus => _status;
     public bool IsDemoData => false;
 
+    // Required by IMarketDataProvider; this provider is pull-based (historical backfill only), so
+    // it never pushes live ticks and DataReceived is never raised (DataError is used).
+#pragma warning disable CS0067
     public event EventHandler<ProviderDataReceivedEventArgs>? DataReceived;
+#pragma warning restore CS0067
     public event EventHandler<ProviderDataErrorEventArgs>? DataError;
 
     public AuthorizedRestDataProvider(HttpClient httpClient, ILogger<AuthorizedRestDataProvider> logger)

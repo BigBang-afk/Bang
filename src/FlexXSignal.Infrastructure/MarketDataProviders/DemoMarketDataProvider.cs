@@ -22,8 +22,12 @@ public sealed class DemoMarketDataProvider : IMarketDataProvider
     public ProviderConnectionStatus ConnectionStatus => _status;
     public bool IsDemoData => true;
 
-    public event EventHandler<ProviderDataReceivedEventArgs>? DataReceived;
+    // Required by IMarketDataProvider; the synthetic generator never faults, so DataError is
+    // never raised (DataReceived is used, from GetLatestCandleAsync).
+#pragma warning disable CS0067
     public event EventHandler<ProviderDataErrorEventArgs>? DataError;
+#pragma warning restore CS0067
+    public event EventHandler<ProviderDataReceivedEventArgs>? DataReceived;
 
     public DemoMarketDataProvider(ILogger<DemoMarketDataProvider> logger) => _logger = logger;
 
