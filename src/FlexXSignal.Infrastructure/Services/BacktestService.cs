@@ -181,9 +181,7 @@ public sealed class BacktestService : IBacktestService
                 if (outcome.Published)
                 {
                     var direction = outcome.StrategyResult.Direction == StrategyDirectionVote.Up ? SignalDirection.Up : SignalDirection.Down;
-                    var isWin = direction == SignalDirection.Up ? expirationCandle.Close > entryCandle.Open : expirationCandle.Close < entryCandle.Open;
-                    var isTie = expirationCandle.Close == entryCandle.Open;
-                    var result = isTie ? SignalStatus.Tie : isWin ? SignalStatus.Win : SignalStatus.Loss;
+                    var result = ResultVerifier.Verify(direction, entryCandle.Open, expirationCandle.Close);
                     var isOutOfSample = backtest.OutOfSampleStartUtc.HasValue && entryCandle.OpenTimeUtc >= backtest.OutOfSampleStartUtc;
 
                     trades.Add(new BacktestTrade

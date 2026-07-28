@@ -12,7 +12,7 @@ public sealed record FilterOutcome(bool Blocked, string? Code, string? Reason)
 
 /// <summary>Environmental facts the pure engine cannot compute itself (rate limits, provider state, strategy
 /// enablement) but that no-trade filters must consider. Populated by the orchestrating Application service.</summary>
-public sealed class NoTradeEnvironment
+public sealed record NoTradeEnvironment
 {
     public required bool StrategyEnabled { get; init; }
     public required bool ProviderConnected { get; init; }

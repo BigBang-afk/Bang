@@ -1,4 +1,5 @@
 using System.Threading.RateLimiting;
+using FlexXSignal.Api.BackgroundServices;
 using FlexXSignal.Api.Hubs;
 using FlexXSignal.Api.Middleware;
 using FlexXSignal.Api.Services;
@@ -95,6 +96,16 @@ try
     builder.Services.AddHealthChecks()
         .AddNpgSql(builder.Configuration.GetConnectionString("Default")!, name: "postgres");
 
+    builder.Services.AddHostedService<MarketDataIngestionService>();
+    builder.Services.AddHostedService<CandleAggregationService>();
+    builder.Services.AddHostedService<SignalScanningService>();
+    builder.Services.AddHostedService<SignalActivationService>();
+    builder.Services.AddHostedService<ResultVerificationService>();
+    builder.Services.AddHostedService<ProviderReconnectionService>();
+    builder.Services.AddHostedService<DataHealthMonitoringService>();
+    builder.Services.AddHostedService<OldDataCleanupService>();
+    builder.Services.AddHostedService<DailyStatisticsService>();
+
     var app = builder.Build();
 
     using (var scope = app.Services.CreateScope())
@@ -133,3 +144,6 @@ finally
 {
     Log.CloseAndFlush();
 }
+
+/// <summary>Exposes the implicit top-level Program class to WebApplicationFactory in integration tests.</summary>
+public partial class Program { }
