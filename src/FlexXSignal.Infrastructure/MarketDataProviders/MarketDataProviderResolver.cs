@@ -73,6 +73,7 @@ public sealed class MarketDataProviderResolver : IMarketDataProviderResolver
                 _quotex.Configure(new QuotexProviderOptions
                 {
                     BaseUrl = config.ApiEndpoint,
+                    ApiKey = DecryptApiKey(config.ApiKeyEncrypted),
                     ConnectionTimeoutSeconds = config.ConnectionTimeoutSeconds
                 });
                 return _quotex;

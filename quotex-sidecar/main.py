@@ -1,10 +1,11 @@
 import asyncio
+import hmac
 import logging
 import os
 import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from pyquotex.stable_api import Quotex
 
 logging.basicConfig(level=logging.INFO)
@@ -14,6 +15,18 @@ QUOTEX_EMAIL = os.environ.get("QUOTEX_EMAIL")
 QUOTEX_PASSWORD = os.environ.get("QUOTEX_PASSWORD")
 QUOTEX_LANG = os.environ.get("QUOTEX_LANG", "en")
 QUOTEX_ACCOUNT_MODE = os.environ.get("QUOTEX_ACCOUNT_MODE", "PRACTICE")  # PRACTICE | REAL
+
+# When this sidecar is reachable over the public internet (e.g. tunneled from a home network
+# rather than sitting on Railway's private network), set this so requests need a shared secret.
+# Left unset, the sidecar assumes it's only reachable on a private/internal network.
+SIDECAR_API_KEY = os.environ.get("QUOTEX_SIDECAR_API_KEY")
+
+
+async def require_api_key(x_sidecar_key: str | None = Header(default=None)) -> None:
+    if not SIDECAR_API_KEY:
+        return
+    if not x_sidecar_key or not hmac.compare_digest(x_sidecar_key, SIDECAR_API_KEY):
+        raise HTTPException(status_code=401, detail="Missing or invalid X-Sidecar-Key header.")
 
 client: Quotex | None = None
 _connect_lock = asyncio.Lock()
@@ -93,7 +106,7 @@ def _normalize_candle(raw: dict, period: int) -> dict:
     }
 
 
-@app.get("/candles")
+@app.get("/candles", dependencies=[Depends(require_api_key)])
 async def get_candles(
     asset: str = Query(...),
     period: int = Query(60, description="Candle period in seconds"),
@@ -112,7 +125,7 @@ async def get_candles(
     return {"asset": asset, "candles": candles}
 
 
-@app.get("/candles/latest")
+@app.get("/candles/latest", dependencies=[Depends(require_api_key)])
 async def get_latest_candle(asset: str = Query(...), period: int = Query(60)):
     result = await get_candles(asset=asset, period=period, offsetSeconds=period * 3)
     if not result["candles"]:

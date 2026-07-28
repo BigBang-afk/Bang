@@ -7,8 +7,12 @@ namespace FlexXSignal.Infrastructure.MarketDataProviders;
 
 public sealed class QuotexProviderOptions
 {
-    /// <summary>Base URL of the internal quotex-sidecar service (e.g. http://quotex-sidecar:8090). Never a public URL.</summary>
+    /// <summary>Base URL of the quotex-sidecar service — either an internal Docker/Railway address,
+    /// or a public tunnel URL if the sidecar is self-hosted outside this deployment's network.</summary>
     public string? BaseUrl { get; set; }
+    /// <summary>Shared secret sent as X-Sidecar-Key. Required when BaseUrl is publicly reachable
+    /// (e.g. a tunnel); the sidecar itself decides whether to enforce it.</summary>
+    public string? ApiKey { get; set; }
     public int ConnectionTimeoutSeconds { get; set; } = 15;
 }
 
@@ -46,6 +50,9 @@ public sealed class QuotexMarketDataProvider : IMarketDataProvider
         _options = options;
         if (!string.IsNullOrWhiteSpace(options.BaseUrl)) _httpClient.BaseAddress = new Uri(options.BaseUrl);
         _httpClient.Timeout = TimeSpan.FromSeconds(options.ConnectionTimeoutSeconds);
+        _httpClient.DefaultRequestHeaders.Remove("X-Sidecar-Key");
+        if (!string.IsNullOrEmpty(options.ApiKey))
+            _httpClient.DefaultRequestHeaders.Add("X-Sidecar-Key", options.ApiKey);
     }
 
     public async Task ConnectAsync(CancellationToken ct = default)

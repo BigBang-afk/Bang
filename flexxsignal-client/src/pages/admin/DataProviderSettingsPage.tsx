@@ -69,7 +69,7 @@ export default function DataProviderSettingsPage() {
             </select>
           </div>
           <div><label className="label-text">API endpoint</label><input className="input-field" {...register("apiEndpoint")} placeholder="wss://, https://, or the quotex-sidecar internal URL" /></div>
-          <div><label className="label-text">API key</label><input type="password" className="input-field" {...register("apiKey")} placeholder="Not used for Quotex — credentials live only in the sidecar" /></div>
+          <div><label className="label-text">API key</label><input type="password" className="input-field" {...register("apiKey")} placeholder="For Quotex: the sidecar's shared tunnel secret, not your Quotex password" /></div>
           <div className="grid grid-cols-3 gap-3">
             <div><label className="label-text">Timeout (s)</label><input type="number" className="input-field" {...register("connectionTimeoutSeconds", { valueAsNumber: true })} /></div>
             <div><label className="label-text">Reconnect (s)</label><input type="number" className="input-field" {...register("reconnectIntervalSeconds", { valueAsNumber: true })} /></div>

@@ -258,8 +258,30 @@ opt-in need: seeing real Quotex prices instead of demo data. Its scope is intent
 To enable it locally: set `QUOTEX_EMAIL` / `QUOTEX_PASSWORD` in `.env`, then run
 `docker compose --profile quotex up -d`. In Admin → Data Provider Settings, add a provider of type
 **Quotex (Read-Only)** with the API endpoint set to the sidecar's address (e.g.
-`http://quotex-sidecar:8090` in Docker Compose), and mark it active. No API key is needed — the
-sidecar itself holds the credentials.
+`http://quotex-sidecar:8090` in Docker Compose), and mark it active. Leave the API key blank when
+the sidecar sits on a private/internal network — it isn't needed there.
+
+### Where you can run it
+
+Quotex blocks connections at the network level from many hosting regions, independent of whether
+your login is valid — this was confirmed against three different cloud regions (US: explicit
+country block; EU: explicit block, binary options are ESMA-banned for retail there; Southeast
+Asia: flat 403, consistent with datacenter-IP/anti-bot filtering). In practice this means the
+sidecar generally only works from a residential or mobile network connection — the same kind of
+network you'd normally use to log into Quotex yourself — not from typical cloud/VPS datacenter IPs.
+
+If your main deployment (e.g. Railway) is in a datacenter Quotex blocks, run the sidecar yourself
+on a network Quotex accepts, and connect it to your deployed API over a tunnel:
+
+1. On that machine: `cd quotex-sidecar && docker build -t quotex-sidecar . && docker run --rm -p 8090:8090 -e QUOTEX_EMAIL=... -e QUOTEX_PASSWORD=... -e QUOTEX_SIDECAR_API_KEY=$(openssl rand -hex 32) quotex-sidecar`
+2. Expose port 8090 with a tunnel that gives you a stable public HTTPS URL — e.g.
+   [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) (`cloudflared tunnel --url http://localhost:8090`) or `ngrok http 8090`.
+3. In Admin → Data Provider Settings, set the API endpoint to that tunnel URL and the API key to
+   the same `QUOTEX_SIDECAR_API_KEY` value — the sidecar rejects requests without it once it's
+   publicly reachable.
+
+This keeps your Quotex credentials on a machine and network you control; the deployed API never
+sees them, only candle data over an authenticated HTTPS connection.
 
 ## Adding a new strategy
 
