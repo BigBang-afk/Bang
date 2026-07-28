@@ -74,13 +74,24 @@ public static class TechnicalIndicators
         return lastN.Count == 0 ? null : lastN.Average();
     }
 
-    /// <summary>Standard deviation of closes over the given window, a simple volatility proxy.</summary>
+    /// <summary>
+    /// Standard deviation of bar-to-bar close changes over the given window. Deliberately measures
+    /// dispersion of returns rather than of raw price levels: a level-based stdev grows with a
+    /// sustained trend's cumulative range regardless of window size, which would make any steadily
+    /// trending market look "abnormally volatile" on longer windows purely because of drift, not
+    /// actual choppiness. Returns-based dispersion stays comparable across window sizes for a
+    /// consistent trend and only spikes when bar-to-bar moves actually become erratic.
+    /// </summary>
     public static decimal Volatility(IReadOnlyList<CandleData> candles, int period = 20)
     {
-        var window = candles.Skip(Math.Max(0, candles.Count - period)).ToList();
-        if (window.Count < 2) return 0;
-        var mean = window.Average(c => c.Close);
-        var variance = window.Sum(c => (c.Close - mean) * (c.Close - mean)) / window.Count;
+        var window = candles.Skip(Math.Max(0, candles.Count - period - 1)).ToList();
+        if (window.Count < 3) return 0;
+
+        var changes = new List<decimal>(window.Count - 1);
+        for (var i = 1; i < window.Count; i++) changes.Add(window[i].Close - window[i - 1].Close);
+
+        var mean = changes.Average();
+        var variance = changes.Sum(c => (c - mean) * (c - mean)) / changes.Count;
         return (decimal)Math.Sqrt((double)variance);
     }
 
