@@ -1,0 +1,23 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+## Node
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+## Env
+.env
+.env.local
+
+## Logs
+logs/
+*.log
+
+## OS
+.DS_Store
