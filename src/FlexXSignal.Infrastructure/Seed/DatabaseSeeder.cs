@@ -31,6 +31,7 @@ public static class DatabaseSeeder
         if (premiumUser is not null) await SeedPremiumSubscriptionAsync(db, premiumUser.Id, plans);
         var pairs = await SeedTradingPairsAsync(db);
         var strategyVersions = await SeedStrategiesAsync(db);
+        await SeedMarketDataProviderAsync(db);
         await SeedCandlesAsync(db, pairs);
         await SeedSignalsAsync(db, pairs, strategyVersions);
         if (premiumUser is not null) await SeedNotificationsAsync(db, premiumUser.Id);
@@ -214,6 +215,27 @@ public static class DatabaseSeeder
 
         await db.SaveChangesAsync();
         return result;
+    }
+
+    private static async Task SeedMarketDataProviderAsync(AppDbContext db)
+    {
+        if (await db.MarketDataProviderConfigurations.AnyAsync()) return;
+
+        db.MarketDataProviderConfigurations.Add(new MarketDataProviderConfiguration
+        {
+            Name = "Demo Data Generator",
+            ProviderType = MarketDataProviderType.Demo,
+            IsActive = true,
+            ConnectionTimeoutSeconds = 15,
+            ReconnectIntervalSeconds = 5,
+            MaxReconnectAttempts = 10,
+            TimeZoneId = "UTC",
+            CandleAlignmentMode = "ExchangeClock",
+            LastKnownStatus = ProviderConnectionStatus.Connected,
+            LastConnectedAtUtc = DateTime.UtcNow
+        });
+
+        await db.SaveChangesAsync();
     }
 
     private static async Task SeedCandlesAsync(AppDbContext db, List<TradingPair> pairs)
