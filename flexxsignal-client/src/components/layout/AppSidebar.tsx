@@ -62,11 +62,19 @@ export function AppSidebar({ mode }: { mode: "app" | "admin" }) {
           </NavLink>
         ))}
       </nav>
-      {mode === "app" && isStaffRole(roles) && (
-        <div className="p-3 border-t border-white/10">
+      <div className="p-3 border-t border-white/10 space-y-2">
+        <a
+          href="https://market-qx.trade/en/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm text-slate-300 hover:bg-white/5 border border-white/10"
+        >
+          Quotex Live Chart <span aria-hidden>&#8599;</span>
+        </a>
+        {mode === "app" && isStaffRole(roles) && (
           <NavLink to="/admin" className="btn-secondary w-full">Admin Panel</NavLink>
-        </div>
-      )}
+        )}
+      </div>
     </aside>
   );
 }

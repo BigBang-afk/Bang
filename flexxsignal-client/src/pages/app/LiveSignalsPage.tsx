@@ -13,9 +13,19 @@ export default function LiveSignalsPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="page-heading">Live Signals</h1>
-        <p className="text-slate-400 text-sm mt-1">Updates in real time via SignalR as signals are created, activated and resolved.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="page-heading">Live Signals</h1>
+          <p className="text-slate-400 text-sm mt-1">Updates in real time via SignalR as signals are created, activated and resolved.</p>
+        </div>
+        <a
+          href="https://market-qx.trade/en/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn-secondary shrink-0"
+        >
+          Open live chart on Quotex &#8599;
+        </a>
       </div>
 
       {isLoading && <LoadingSkeleton rows={4} />}
