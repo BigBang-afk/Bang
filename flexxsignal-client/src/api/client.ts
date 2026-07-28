@@ -1,7 +1,9 @@
 import axios, { type AxiosInstance, type InternalAxiosRequestConfig } from "axios";
 import { useAuthStore } from "../store/authStore";
 
-const baseURL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5080";
+// Nullish coalescing (not ||) deliberately: an explicitly empty string means "same origin,
+// relative paths" (the production Docker build), which must not fall back to the dev default.
+const baseURL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5080";
 
 export const apiClient: AxiosInstance = axios.create({ baseURL });
 
