@@ -7,6 +7,8 @@ using FlexXSignal.Infrastructure.MarketDataProviders;
 using FlexXSignal.Infrastructure.Persistence;
 using FlexXSignal.Infrastructure.Security;
 using FlexXSignal.Infrastructure.Services;
+using FlexXSignal.SignalEngine.Engine;
+using FlexXSignal.SignalEngine.Strategies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -88,6 +90,29 @@ public static class DependencyInjection
         services.AddSingleton<AuthorizedWebSocketDataProvider>();
         services.AddHttpClient<AuthorizedRestDataProvider>();
         services.AddScoped<IMarketDataProviderResolver, MarketDataProviderResolver>();
+
+        services.AddSingleton<ITradingStrategy, MomentumContinuationStrategy>();
+        services.AddSingleton<ITradingStrategy, BreakoutRetestStrategy>();
+        services.AddSingleton<ITradingStrategy, LiquiditySweepReversalStrategy>();
+        services.AddSingleton<ITradingStrategy, TrendPullbackStrategy>();
+        services.AddSingleton<ITradingStrategy, SupportResistanceRejectionStrategy>();
+        services.AddSingleton<ITradingStrategy, CandlePressureSequenceStrategy>();
+        services.AddSingleton<ITradingStrategy, MultiTimeframeTrendConfirmationStrategy>();
+        services.AddSingleton<SignalEngineOrchestrator>();
+
+        services.AddScoped<SubscriptionAccessService>();
+        services.AddScoped<Application.Features.MarketData.IMarketDataService, MarketDataService>();
+        services.AddScoped<Application.Features.Strategies.IStrategyService, StrategyService>();
+        services.AddScoped<Application.Features.Signals.ISignalService, SignalService>();
+        services.AddScoped<Application.Features.Backtesting.IBacktestService, BacktestService>();
+        services.AddScoped<Application.Features.Subscriptions.ISubscriptionService, SubscriptionService>();
+        services.AddScoped<Application.Features.Notifications.INotificationService, NotificationService>();
+        services.AddScoped<Application.Features.Support.ISupportTicketService, SupportTicketService>();
+        services.AddScoped<Application.Features.Admin.IAdminService, AdminService>();
+        services.AddScoped<IPaymentProvider, Payments.ManualPaymentProvider>();
+        services.AddScoped<IEmailSender, Notifications.ConsoleEmailSender>();
+        services.AddScoped<ITelegramSender, Notifications.TelegramSender>();
+        services.AddHttpClient<Notifications.TelegramSender>();
 
         return services;
     }
