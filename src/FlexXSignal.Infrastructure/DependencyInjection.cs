@@ -3,7 +3,9 @@ using FlexXSignal.Application.Common.Interfaces;
 using FlexXSignal.Application.Features.Auth;
 using FlexXSignal.Domain.Entities;
 using FlexXSignal.Infrastructure.Identity;
+using FlexXSignal.Infrastructure.MarketDataProviders;
 using FlexXSignal.Infrastructure.Persistence;
+using FlexXSignal.Infrastructure.Security;
 using FlexXSignal.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -77,6 +79,15 @@ public static class DependencyInjection
         services.AddScoped<IDateTimeProvider, DateTimeProvider>();
         services.AddScoped<IAuditLogService, AuditLogService>();
         services.AddScoped<IAuthService, AuthService>();
+
+        services.AddDataProtection();
+        services.AddSingleton<IApiKeyProtector, ApiKeyProtector>();
+
+        services.AddSingleton<DemoMarketDataProvider>();
+        services.AddSingleton<CsvMarketDataProvider>();
+        services.AddSingleton<AuthorizedWebSocketDataProvider>();
+        services.AddHttpClient<AuthorizedRestDataProvider>();
+        services.AddScoped<IMarketDataProviderResolver, MarketDataProviderResolver>();
 
         return services;
     }
