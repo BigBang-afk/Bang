@@ -65,6 +65,18 @@ export default function SignalDetailPage() {
             <ConfidenceGauge value={signal.confidencePercent} />
           </div>
         </div>
+        <a
+          href="https://market-qx.trade/en/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 mt-4 text-xs text-cyan-400 hover:underline"
+        >
+          Open live chart on Quotex &#8599;
+        </a>
+        <p className="text-xs text-slate-500 mt-1">
+          Opens Quotex in a new tab for reference. This site has no live connection to it — prices
+          and timing there may differ from the snapshot below.
+        </p>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
