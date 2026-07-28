@@ -9,6 +9,7 @@
   <ItemGroup>
     <ProjectReference Include="..\FlexXSignal.Domain\FlexXSignal.Domain.csproj" />
     <ProjectReference Include="..\FlexXSignal.Application\FlexXSignal.Application.csproj" />
+    <ProjectReference Include="..\FlexXSignal.SignalEngine\FlexXSignal.SignalEngine.csproj" />
   </ItemGroup>
 
   <ItemGroup>
