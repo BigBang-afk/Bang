@@ -8,24 +8,30 @@ using FlexXSignal.Domain.Enums;
 using FlexXSignal.Infrastructure.Persistence;
 using FlexXSignal.SignalEngine.Confidence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 
 namespace FlexXSignal.Infrastructure.Services;
 
 public sealed class SignalService : ISignalService
 {
+    private const string StatisticsCacheKey = "signals:statistics:v1";
+    private static readonly DistributedCacheEntryOptions StatisticsCacheOptions = new() { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(10) };
+
     private readonly AppDbContext _db;
     private readonly IDateTimeProvider _clock;
     private readonly IAuditLogService _auditLog;
     private readonly SubscriptionAccessService _access;
     private readonly ISignalRealtimeNotifier _realtime;
+    private readonly IDistributedCache _cache;
 
-    public SignalService(AppDbContext db, IDateTimeProvider clock, IAuditLogService auditLog, SubscriptionAccessService access, ISignalRealtimeNotifier realtime)
+    public SignalService(AppDbContext db, IDateTimeProvider clock, IAuditLogService auditLog, SubscriptionAccessService access, ISignalRealtimeNotifier realtime, IDistributedCache cache)
     {
         _db = db;
         _clock = clock;
         _auditLog = auditLog;
         _access = access;
         _realtime = realtime;
+        _cache = cache;
     }
 
     public async Task<Result<SignalDto>> GetByIdAsync(Guid signalId, Guid? requestingUserId, CancellationToken ct = default)
@@ -187,6 +193,14 @@ public sealed class SignalService : ISignalService
 
     public async Task<Result<SignalStatisticsDto>> GetStatisticsAsync(Guid? requestingUserId, CancellationToken ct = default)
     {
+        // Statistics are identical for every caller (not user-scoped), and this endpoint is polled
+        // frequently by dashboards, so a short Redis-backed cache meaningfully cuts DB load.
+        var cached = await _cache.GetStringAsync(StatisticsCacheKey, ct);
+        if (cached is not null)
+        {
+            return Result<SignalStatisticsDto>.Success(JsonSerializer.Deserialize<SignalStatisticsDto>(cached)!);
+        }
+
         var now = _clock.UtcNow;
         var todayStart = now.Date;
 
@@ -233,6 +247,8 @@ public sealed class SignalService : ISignalService
             currentStreak,
             last500.Count == 0 ? 0 : Math.Round(last500.Average(s => s.ConfidencePercent), 2),
             uptime);
+
+        await _cache.SetStringAsync(StatisticsCacheKey, JsonSerializer.Serialize(stats), StatisticsCacheOptions, ct);
 
         return Result<SignalStatisticsDto>.Success(stats);
     }
