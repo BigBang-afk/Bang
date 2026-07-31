@@ -32,3 +32,4 @@ backend/models_store/*.joblib
 
 # --- Docker ---
 infrastructure/nginx/certs/
+frontend/.vercel/
