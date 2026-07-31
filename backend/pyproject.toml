@@ -1,0 +1,14 @@
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "S", "SIM", "RUF", "BLE"]
+ignore = [
+    "B008",   # function-call-in-default-argument: FastAPI's Depends()/Query() pattern relies on this.
+    "S101",   # assert usage is expected/required in pytest test files.
+    "S311",   # non-cryptographic random is intentional: mock price simulation, public signal ID suffixes, test data.
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "S105", "S106"]
+"app/db/seed_data.py" = ["E501"]  # natural-language strategy descriptions read better unwrapped
