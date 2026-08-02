@@ -1,0 +1,105 @@
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Cormorant Garamond", "Georgia", serif;
+  --font-sans: "Inter", system-ui, sans-serif;
+
+  --color-ink-950: #0a0908;
+  --color-ink-900: #100e0b;
+  --color-ink-800: #181510;
+  --color-ink-700: #221e17;
+  --color-ink-600: #332c21;
+  --color-ink-500: #4a4032;
+
+  --color-gold-50: #fdf9ec;
+  --color-gold-100: #faf0cc;
+  --color-gold-200: #f3e0a0;
+  --color-gold-300: #ecce70;
+  --color-gold-400: #e3ba49;
+  --color-gold-500: #d4af37;
+  --color-gold-600: #b3902a;
+  --color-gold-700: #8a6f22;
+  --color-gold-800: #6b5620;
+  --color-gold-900: #4a3b18;
+
+  --color-emerald-glow: #2f6f5e;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background: var(--color-ink-950);
+  color: #ece6d9;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100svh;
+}
+
+h1, h2, h3, h4, .font-serif {
+  font-family: var(--font-serif);
+}
+
+::selection {
+  background: var(--color-gold-500);
+  color: var(--color-ink-950);
+}
+
+/* subtle scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-ink-900);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-ink-600);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-gold-800);
+}
+
+@keyframes shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.shimmer-text {
+  background: linear-gradient(90deg, var(--color-gold-300) 0%, var(--color-gold-500) 25%, var(--color-gold-100) 50%, var(--color-gold-500) 75%, var(--color-gold-300) 100%);
+  background-size: 800px 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 4s linear infinite;
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-rise {
+  animation: rise 0.4s ease-out both;
+}
+
+.input {
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-ink-600);
+  background: var(--color-ink-950);
+  padding: 0.55rem 0.7rem;
+  font-size: 0.875rem;
+  color: #ece6d9;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+.input:focus {
+  border-color: var(--color-gold-500);
+}
+
