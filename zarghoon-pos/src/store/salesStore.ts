@@ -1,17 +1,18 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Karat } from "./goldRateStore";
+import type { Category } from "./inventoryStore";
 
 export interface SaleLineItem {
   productId: string;
   name: string;
   sku: string;
-  karat: Karat;
-  weightGrams: number;
+  category: Category;
+  netWeightGrams: number;
+  grossWeightGrams: number;
+  kaat: number;
+  buyPriceInGold: number;
   qty: number;
   ratePerGram: number;
-  makingCharge: number;
-  stoneCharge: number;
   lineTotal: number;
 }
 

@@ -95,7 +95,8 @@ export default function Sales() {
                       <thead>
                         <tr className="text-left text-xs uppercase tracking-wider text-ink-500">
                           <th className="pb-2 font-medium">Item</th>
-                          <th className="pb-2 font-medium">Karat / Weight</th>
+                          <th className="pb-2 font-medium">Category / Net Wt</th>
+                          <th className="pb-2 font-medium">Kaat</th>
                           <th className="pb-2 font-medium">Rate</th>
                           <th className="pb-2 text-right font-medium">Total</th>
                         </tr>
@@ -107,8 +108,9 @@ export default function Sales() {
                               {it.name} × {it.qty}
                             </td>
                             <td className="py-2 text-ink-500">
-                              {it.karat}K · {it.weightGrams}g
+                              {it.category} · {it.netWeightGrams}g
                             </td>
+                            <td className="py-2 text-ink-500">{it.kaat}</td>
                             <td className="py-2 text-ink-500">{formatMoney(it.ratePerGram, currency)}/g</td>
                             <td className="py-2 text-right text-[#c9bd9e]">{formatMoney(it.lineTotal, currency)}</td>
                           </tr>

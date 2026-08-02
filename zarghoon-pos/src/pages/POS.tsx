@@ -1,29 +1,19 @@
 import { useMemo, useState } from "react";
 import { Search, Plus, Minus, Trash2, ShoppingBag, X, Printer } from "lucide-react";
-import { useInventoryStore, type Product, type Category } from "../store/inventoryStore";
+import { useInventoryStore, type Product, type Category, categories as allCategories } from "../store/inventoryStore";
 import { useGoldRateStore } from "../store/goldRateStore";
 import { useSalesStore, type PaymentMethod, type SaleLineItem, type Sale } from "../store/salesStore";
 import { useSettingsStore } from "../store/settingsStore";
 import { computeProductPrice } from "../lib/pricing";
 import { formatMoney } from "../lib/format";
+import ProductThumb from "../components/ProductThumb";
 
 interface CartLine {
   product: Product;
   qty: number;
 }
 
-const categories: (Category | "All")[] = [
-  "All",
-  "Ring",
-  "Necklace",
-  "Bangle",
-  "Earrings",
-  "Chain",
-  "Bracelet",
-  "Set",
-  "Pendant",
-  "Other",
-];
+const categories: (Category | "All")[] = ["All", ...allCategories];
 
 export default function POS() {
   const products = useInventoryStore((s) => s.products);
@@ -97,12 +87,13 @@ export default function POS() {
         productId: l.product.id,
         name: l.product.name,
         sku: l.product.sku,
-        karat: l.product.karat,
-        weightGrams: l.product.weightGrams,
+        category: l.product.category,
+        netWeightGrams: l.product.netWeightGrams,
+        grossWeightGrams: l.product.grossWeightGrams,
+        kaat: l.product.kaat,
+        buyPriceInGold: l.product.buyPriceInGold,
         qty: l.qty,
         ratePerGram: breakdown.ratePerGram,
-        makingCharge: breakdown.makingCharge,
-        stoneCharge: breakdown.stoneCharge,
         lineTotal: breakdown.total * l.qty,
       };
     });
@@ -172,12 +163,10 @@ export default function POS() {
                     : "border-gold-900/30 bg-ink-900/40 hover:border-gold-600/60 hover:bg-ink-900/70"
                 }`}
               >
-                <div className="mb-2 flex h-16 items-center justify-center rounded-lg bg-gradient-to-br from-ink-800 to-ink-950 text-3xl">
-                  {p.icon}
-                </div>
+                <ProductThumb images={p.images} fill className="mb-2" />
                 <div className="truncate text-sm font-medium text-[#ece6d9]">{p.name}</div>
                 <div className="mt-0.5 text-[11px] text-ink-500">
-                  {p.karat}K · {p.weightGrams}g · {p.sku}
+                  {p.category} · {p.netWeightGrams}g · Kaat {p.kaat}
                 </div>
                 <div className="mt-1.5 flex items-center justify-between">
                   <span className="font-serif text-sm font-semibold text-gold-300">
@@ -222,9 +211,7 @@ export default function POS() {
                 const { total: lineUnitPrice } = computeProductPrice(l.product, rates);
                 return (
                   <div key={l.product.id} className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-ink-800 text-lg">
-                      {l.product.icon}
-                    </div>
+                    <ProductThumb images={l.product.images} size={40} />
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-medium text-[#ece6d9]">
                         {l.product.name}
@@ -375,7 +362,7 @@ function ReceiptModal({
                   {it.name} × {it.qty}
                 </div>
                 <div className="text-[11px] text-ink-500 print:text-neutral-500">
-                  {it.karat}K · {it.weightGrams}g @ {formatMoney(it.ratePerGram, currency)}/g
+                  {it.category} · {it.netWeightGrams}g net · Kaat {it.kaat} @ {formatMoney(it.ratePerGram, currency)}/g
                 </div>
               </div>
               <span className="text-[#c9bd9e] print:text-black">{formatMoney(it.lineTotal, currency)}</span>

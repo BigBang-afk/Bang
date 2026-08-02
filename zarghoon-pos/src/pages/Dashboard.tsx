@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import StatCard from "../components/StatCard";
 import GoldRateModal from "../components/GoldRateModal";
+import ProductThumb from "../components/ProductThumb";
 import { useGoldRateStore } from "../store/goldRateStore";
 import { useInventoryStore } from "../store/inventoryStore";
 import { useSalesStore } from "../store/salesStore";
@@ -169,7 +170,8 @@ export default function Dashboard() {
               {lowStock.map((p) => (
                 <li key={p.id} className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-2 text-[#c9bd9e]">
-                    <span>{p.icon}</span> {p.name}
+                    <ProductThumb images={p.images} size={22} />
+                    {p.name}
                   </span>
                   <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-400">
                     {p.stock} left
