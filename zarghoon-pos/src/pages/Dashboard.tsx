@@ -36,16 +36,18 @@ export default function Dashboard() {
   );
   const todaysRevenue = todaysSales.reduce((sum, s) => sum + s.total, 0);
 
+  const inStockProducts = useMemo(() => products.filter((p) => p.stock > 0), [products]);
+
   const inventoryValue = useMemo(
     () =>
-      products.reduce(
+      inStockProducts.reduce(
         (sum, p) => sum + computeProductPrice(p, rates).total * p.stock,
         0
       ),
-    [products, rates]
+    [inStockProducts, rates]
   );
 
-  const lowStock = products.filter((p) => p.stock <= 5);
+  const lowStock = inStockProducts.filter((p) => p.stock <= 5);
 
   const chartData = useMemo(() => {
     const days: { label: string; revenue: number }[] = [];
@@ -105,7 +107,7 @@ export default function Dashboard() {
           label="Inventory Value"
           value={formatMoney(inventoryValue, currency)}
           icon={Package}
-          hint={`${products.length} products`}
+          hint={`${inStockProducts.length} products`}
         />
         <StatCard
           label="Total Sales"

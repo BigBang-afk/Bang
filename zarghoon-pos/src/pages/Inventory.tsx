@@ -42,9 +42,11 @@ export default function Inventory() {
   const [showForm, setShowForm] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Product | null>(null);
 
+  const inStock = useMemo(() => products.filter((p) => p.stock > 0), [products]);
+
   const filtered = useMemo(
     () =>
-      products.filter((p) => {
+      inStock.filter((p) => {
         const matchesCategory = category === "All" || p.category === category;
         const matchesSearch =
           !search ||
@@ -52,7 +54,7 @@ export default function Inventory() {
           p.sku.toLowerCase().includes(search.toLowerCase());
         return matchesCategory && matchesSearch;
       }),
-    [products, category, search]
+    [inStock, category, search]
   );
 
   const totalNetWeight = filtered.reduce((sum, p) => sum + p.netWeightGrams * p.stock, 0);
@@ -89,7 +91,7 @@ export default function Inventory() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="font-serif text-3xl font-semibold text-gold-100">Inventory</h1>
-          <p className="text-sm text-ink-500">{products.length} products in catalogue</p>
+          <p className="text-sm text-ink-500">{inStock.length} products in stock</p>
         </div>
         <button
           onClick={openAdd}
@@ -186,16 +188,8 @@ export default function Inventory() {
                   <td className="px-4 py-3 text-ink-500">{p.kaat}</td>
                   <td className="px-4 py-3 text-gold-300 font-medium">{p.buyPriceInGold.toFixed(3)} g</td>
                   <td className="px-4 py-3">
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                        p.stock <= 0
-                          ? "bg-rose-500/10 text-rose-400"
-                          : p.stock <= 5
-                          ? "bg-amber-500/10 text-amber-400"
-                          : "bg-emerald-500/10 text-emerald-400"
-                      }`}
-                    >
-                      {p.stock}
+                    <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400">
+                      In Stock
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right font-semibold text-gold-300">

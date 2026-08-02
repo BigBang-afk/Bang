@@ -1,16 +1,20 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, Receipt, Scale, Coins, Wallet, CalendarClock } from "lucide-react";
-import { useSalesStore } from "../store/salesStore";
+import { ChevronDown, ChevronUp, Receipt, Scale, Coins, Wallet, CalendarClock, Printer, X } from "lucide-react";
+import { useSalesStore, type Sale } from "../store/salesStore";
 import { useSettingsStore } from "../store/settingsStore";
-import { formatMoney, formatDateTime, todayKey } from "../lib/format";
+import { formatMoney, formatDateTime, formatDate, todayKey } from "../lib/format";
 import StatCard from "../components/StatCard";
+import { InvoiceModal } from "../components/Invoice";
 
 export default function Sales() {
   const sales = useSalesStore((s) => s.sales);
   const currency = useSettingsStore((s) => s.currency);
+  const shop = useSettingsStore();
   const [fromDate, setFromDate] = useState(todayKey());
   const [toDate, setToDate] = useState(todayKey());
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [printingSale, setPrintingSale] = useState<Sale | null>(null);
+  const [showReport, setShowReport] = useState(false);
 
   const isToday = fromDate === todayKey() && toDate === todayKey();
 
@@ -84,6 +88,13 @@ export default function Sales() {
               className="bg-transparent text-[#ece6d9] outline-none [color-scheme:dark]"
             />
           </label>
+          <button
+            onClick={() => setShowReport(true)}
+            disabled={filtered.length === 0}
+            className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-gold-600 to-gold-500 px-3 py-2 text-xs font-semibold text-ink-950 hover:from-gold-500 hover:to-gold-400 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Printer size={14} /> Print Report
+          </button>
         </div>
       </div>
 
@@ -127,9 +138,14 @@ export default function Sales() {
                 key={s.id}
                 className="overflow-hidden rounded-xl border border-gold-900/25 bg-ink-900/40"
               >
-                <button
+                <div
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setExpanded(isOpen ? null : s.id)}
-                  className="flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") setExpanded(isOpen ? null : s.id);
+                  }}
+                  className="flex w-full cursor-pointer items-center justify-between gap-4 px-5 py-3.5 text-left"
                 >
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
@@ -145,13 +161,23 @@ export default function Sales() {
                     <span className="font-serif text-lg font-semibold text-gold-200">
                       {formatMoney(s.total, currency)}
                     </span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPrintingSale(s);
+                      }}
+                      title="Print invoice"
+                      className="rounded-md p-1.5 text-ink-500 hover:bg-ink-800 hover:text-gold-300"
+                    >
+                      <Printer size={15} />
+                    </button>
                     {isOpen ? (
                       <ChevronUp size={16} className="text-ink-500" />
                     ) : (
                       <ChevronDown size={16} className="text-ink-500" />
                     )}
                   </div>
-                </button>
+                </div>
                 {isOpen && (
                   <div className="border-t border-gold-900/25 px-5 py-4">
                     <table className="w-full text-sm">
@@ -196,6 +222,142 @@ export default function Sales() {
           })}
         </div>
       )}
+
+      {printingSale && (
+        <InvoiceModal
+          sale={printingSale}
+          currency={currency}
+          shop={shop}
+          title={`Invoice ${printingSale.invoiceNo}`}
+          onClose={() => setPrintingSale(null)}
+        />
+      )}
+
+      {showReport && (
+        <SalesReportModal
+          sales={filtered}
+          totals={totals}
+          rangeLabel={isToday ? "Today" : `${formatDate(fromDate)} — ${formatDate(toDate)}`}
+          currency={currency}
+          shop={shop}
+          onClose={() => setShowReport(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function SalesReportModal({
+  sales,
+  totals,
+  rangeLabel,
+  currency,
+  shop,
+  onClose,
+}: {
+  sales: Sale[];
+  totals: { netWeight: number; grossWeight: number; salePrice: number; total: number };
+  rangeLabel: string;
+  currency: string;
+  shop: { shopName: string; shopTagline: string; shopAddress: string; shopPhone: string };
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm print:static print:block print:bg-white print:p-0 print:backdrop-blur-none">
+      <div className="animate-rise my-4 w-full max-w-4xl print:my-0 print:max-w-none">
+        <div className="flex items-center justify-between rounded-t-2xl border border-b-0 border-gold-800/50 bg-ink-950 px-5 py-4 print:hidden">
+          <h3 className="font-serif text-lg font-semibold text-gold-100">Sales Report — {rangeLabel}</h3>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => window.print()}
+              className="flex items-center gap-2 rounded-lg border border-gold-800/50 px-3 py-2 text-sm font-medium text-[#c9bd9e] hover:border-gold-600"
+            >
+              <Printer size={15} /> Print Report
+            </button>
+            <button onClick={onClose} className="ml-1 text-ink-500 hover:text-gold-300">
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+
+        <div
+          id="invoice"
+          className="w-full bg-white p-10 text-neutral-900 shadow-2xl print:w-[210mm] print:min-h-[297mm] print:p-[14mm] print:shadow-none"
+        >
+          <div className="flex items-start justify-between border-b-2 border-neutral-900 pb-4">
+            <div>
+              <h1 className="font-serif text-2xl font-bold">{shop.shopName}</h1>
+              <p className="text-xs text-neutral-600">{shop.shopTagline}</p>
+              <p className="text-xs text-neutral-600">{shop.shopAddress}</p>
+              <p className="text-xs text-neutral-600">{shop.shopPhone}</p>
+            </div>
+            <div className="text-right">
+              <h2 className="text-xl font-bold tracking-wide text-neutral-900">SALES REPORT</h2>
+              <p className="text-xs text-neutral-600">Period: {rangeLabel}</p>
+              <p className="text-xs text-neutral-600">Generated: {formatDateTime(new Date().toISOString())}</p>
+            </div>
+          </div>
+
+          <div className="mt-5 grid grid-cols-4 gap-4 text-sm">
+            <div>
+              <p className="text-[11px] uppercase tracking-wide text-neutral-500">Invoices</p>
+              <p className="font-semibold">{sales.length}</p>
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-wide text-neutral-500">Net Weight</p>
+              <p className="font-semibold">{totals.netWeight.toFixed(2)} g</p>
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-wide text-neutral-500">Gross Weight</p>
+              <p className="font-semibold">{totals.grossWeight.toFixed(2)} g</p>
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-wide text-neutral-500">Total Revenue</p>
+              <p className="font-semibold">{formatMoney(totals.total, currency)}</p>
+            </div>
+          </div>
+
+          <table className="mt-6 w-full border-collapse text-sm">
+            <thead>
+              <tr className="border-y-2 border-neutral-900 text-left text-[11px] uppercase text-neutral-700">
+                <th className="py-2 pr-2">#</th>
+                <th className="py-2 pr-2">Invoice</th>
+                <th className="py-2 pr-2">Date</th>
+                <th className="py-2 pr-2">Customer</th>
+                <th className="py-2 pr-2 text-right">Items</th>
+                <th className="py-2 pr-2">Payment</th>
+                <th className="py-2 pr-2 text-right">Subtotal</th>
+                <th className="py-2 pl-2 text-right">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sales.map((s, i) => (
+                <tr key={s.id} className="border-b border-neutral-200">
+                  <td className="py-2 pr-2 text-neutral-500">{i + 1}</td>
+                  <td className="py-2 pr-2 font-medium">{s.invoiceNo}</td>
+                  <td className="py-2 pr-2 text-neutral-600">{formatDateTime(s.date)}</td>
+                  <td className="py-2 pr-2 text-neutral-600">{s.customerName || "Walk-in"}</td>
+                  <td className="py-2 pr-2 text-right text-neutral-600">{s.items.length}</td>
+                  <td className="py-2 pr-2 text-neutral-600">{s.paymentMethod}</td>
+                  <td className="py-2 pr-2 text-right text-neutral-600">{formatMoney(s.subtotal, currency)}</td>
+                  <td className="py-2 pl-2 text-right font-medium">{formatMoney(s.total, currency)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-neutral-900 text-sm font-bold">
+                <td colSpan={6} />
+                <td className="py-2 pr-2 text-right">{formatMoney(totals.salePrice, currency)}</td>
+                <td className="py-2 pl-2 text-right">{formatMoney(totals.total, currency)}</td>
+              </tr>
+            </tfoot>
+          </table>
+
+          <div className="mt-16 text-[11px] text-neutral-500">
+            <p>{shop.shopName} — Sales report generated from the private POS system.</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
