@@ -24,6 +24,18 @@ export const categories: Category[] = [
   "Other",
 ];
 
+const CATEGORY_CODE: Record<Category, string> = {
+  Ring: "RG",
+  Necklace: "NK",
+  Bangle: "BN",
+  Earrings: "ER",
+  Chain: "CH",
+  Bracelet: "BR",
+  Set: "ST",
+  Pendant: "PD",
+  Other: "OT",
+};
+
 // Traditional 96-point gold purity scale used for stock costing.
 export const GOLD_BASE = 96;
 
@@ -31,10 +43,19 @@ export function computeGrossWeight(netWeightGrams: number, wastagePercent: numbe
   return netWeightGrams + (netWeightGrams * wastagePercent) / 100;
 }
 
-export function computeBuyPriceInGold(kaat: number): number {
-  const denominator = GOLD_BASE - kaat;
-  if (denominator <= 0) return 0;
-  return GOLD_BASE / denominator;
+export function computeBuyPriceInGold(netWeightGrams: number, kaat: number): number {
+  return (netWeightGrams / GOLD_BASE) * kaat;
+}
+
+function generateSku(category: Category, existingSkus: string[]): string {
+  const code = CATEGORY_CODE[category];
+  const used = new Set(existingSkus);
+  let sku: string;
+  do {
+    const num = Math.floor(100 + Math.random() * 900);
+    sku = `ZJ-${code}-${num}`;
+  } while (used.has(sku));
+  return sku;
 }
 
 export interface Product {
@@ -52,28 +73,32 @@ export interface Product {
   createdAt: string;
 }
 
-export type ProductInput = Omit<
+// Fields the Add/Edit Stock form actually collects. SKU is generated and
+// stock always starts at 1 (each entry represents one physical piece).
+export type ProductFormInput = Pick<
   Product,
-  "id" | "createdAt" | "grossWeightGrams" | "buyPriceInGold"
+  "name" | "category" | "netWeightGrams" | "wastagePercent" | "kaat" | "images"
 >;
 
-function withDerivedFields(input: ProductInput): Omit<Product, "id" | "createdAt"> {
+type FullProductInput = ProductFormInput & { sku: string; stock: number };
+
+function withDerivedFields(input: FullProductInput): Omit<Product, "id" | "createdAt"> {
   return {
     ...input,
     grossWeightGrams: computeGrossWeight(input.netWeightGrams, input.wastagePercent),
-    buyPriceInGold: computeBuyPriceInGold(input.kaat),
+    buyPriceInGold: computeBuyPriceInGold(input.netWeightGrams, input.kaat),
   };
 }
 
 interface InventoryState {
   products: Product[];
-  addProduct: (p: ProductInput) => void;
-  updateProduct: (id: string, patch: Partial<ProductInput>) => void;
+  addProduct: (p: ProductFormInput) => void;
+  updateProduct: (id: string, patch: Partial<ProductFormInput>) => void;
   removeProduct: (id: string) => void;
   adjustStock: (id: string, delta: number) => void;
 }
 
-function seedProduct(input: ProductInput, id: string, daysAgo: number): Product {
+function seedProduct(input: FullProductInput, id: string, daysAgo: number): Product {
   return {
     ...withDerivedFields(input),
     id,
@@ -91,7 +116,7 @@ const seedProducts: Product[] = [
       wastagePercent: 6,
       kaat: 8,
       images: [],
-      stock: 8,
+      stock: 1,
     },
     "p1",
     12
@@ -105,7 +130,7 @@ const seedProducts: Product[] = [
       wastagePercent: 8,
       kaat: 12,
       images: [],
-      stock: 3,
+      stock: 1,
     },
     "p2",
     10
@@ -119,7 +144,7 @@ const seedProducts: Product[] = [
       wastagePercent: 5,
       kaat: 8,
       images: [],
-      stock: 12,
+      stock: 1,
     },
     "p3",
     8
@@ -133,7 +158,7 @@ const seedProducts: Product[] = [
       wastagePercent: 7,
       kaat: 8,
       images: [],
-      stock: 15,
+      stock: 1,
     },
     "p4",
     6
@@ -147,7 +172,7 @@ const seedProducts: Product[] = [
       wastagePercent: 4,
       kaat: 4,
       images: [],
-      stock: 20,
+      stock: 1,
     },
     "p5",
     4
@@ -161,7 +186,7 @@ const seedProducts: Product[] = [
       wastagePercent: 9,
       kaat: 16,
       images: [],
-      stock: 10,
+      stock: 1,
     },
     "p6",
     2
@@ -173,25 +198,32 @@ export const useInventoryStore = create<InventoryState>()(
     (set) => ({
       products: seedProducts,
       addProduct: (p) =>
-        set((state) => ({
-          products: [
-            ...state.products,
-            { ...withDerivedFields(p), id: crypto.randomUUID(), createdAt: new Date().toISOString() },
-          ],
-        })),
+        set((state) => {
+          const sku = generateSku(
+            p.category,
+            state.products.map((x) => x.sku)
+          );
+          const full: FullProductInput = { ...p, sku, stock: 1 };
+          return {
+            products: [
+              ...state.products,
+              { ...withDerivedFields(full), id: crypto.randomUUID(), createdAt: new Date().toISOString() },
+            ],
+          };
+        }),
       updateProduct: (id, patch) =>
         set((state) => ({
           products: state.products.map((existing) => {
             if (existing.id !== id) return existing;
-            const merged: ProductInput = {
-              sku: patch.sku ?? existing.sku,
+            const merged: FullProductInput = {
+              sku: existing.sku,
+              stock: existing.stock,
               name: patch.name ?? existing.name,
               category: patch.category ?? existing.category,
               netWeightGrams: patch.netWeightGrams ?? existing.netWeightGrams,
               wastagePercent: patch.wastagePercent ?? existing.wastagePercent,
               kaat: patch.kaat ?? existing.kaat,
               images: patch.images ?? existing.images,
-              stock: patch.stock ?? existing.stock,
             };
             return { ...existing, ...withDerivedFields(merged) };
           }),

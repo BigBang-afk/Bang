@@ -7,7 +7,7 @@ import {
   computeBuyPriceInGold,
   type Product,
   type Category,
-  type ProductInput,
+  type ProductFormInput,
 } from "../store/inventoryStore";
 import { useGoldRateStore } from "../store/goldRateStore";
 import { useSettingsStore } from "../store/settingsStore";
@@ -19,15 +19,13 @@ import StatCard from "../components/StatCard";
 
 const categoryTabs: (Category | "All")[] = ["All", ...allCategories];
 
-const emptyForm: ProductInput = {
-  sku: "",
+const emptyForm: ProductFormInput = {
   name: "",
   category: "Ring",
   netWeightGrams: 0,
   wastagePercent: 0,
   kaat: 0,
   images: [],
-  stock: 0,
 };
 
 export default function Inventory() {
@@ -58,10 +56,7 @@ export default function Inventory() {
   );
 
   const totalNetWeight = filtered.reduce((sum, p) => sum + p.netWeightGrams * p.stock, 0);
-  const totalBuyPriceInGold = filtered.reduce(
-    (sum, p) => sum + p.buyPriceInGold * p.netWeightGrams * p.stock,
-    0
-  );
+  const totalBuyPriceInGold = filtered.reduce((sum, p) => sum + p.buyPriceInGold * p.stock, 0);
 
   function openAdd() {
     setEditing(null);
@@ -73,7 +68,7 @@ export default function Inventory() {
     setShowForm(true);
   }
 
-  function handleSubmit(form: ProductInput) {
+  function handleSubmit(form: ProductFormInput) {
     if (editing) {
       updateProduct(editing.id, form);
     } else {
@@ -183,7 +178,7 @@ export default function Inventory() {
                   <td className="px-4 py-3 text-ink-500">{p.wastagePercent}%</td>
                   <td className="px-4 py-3 text-ink-500">{p.grossWeightGrams.toFixed(2)} g</td>
                   <td className="px-4 py-3 text-ink-500">{p.kaat}</td>
-                  <td className="px-4 py-3 text-gold-300 font-medium">{p.buyPriceInGold.toFixed(4)}</td>
+                  <td className="px-4 py-3 text-gold-300 font-medium">{p.buyPriceInGold.toFixed(3)} g</td>
                   <td className="px-4 py-3">
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -280,19 +275,17 @@ function ProductFormModal({
 }: {
   initial: Product | null;
   onCancel: () => void;
-  onSubmit: (form: ProductInput) => void;
+  onSubmit: (form: ProductFormInput) => void;
 }) {
-  const [form, setForm] = useState<ProductInput>(
+  const [form, setForm] = useState<ProductFormInput>(
     initial
       ? {
-          sku: initial.sku,
           name: initial.name,
           category: initial.category,
           netWeightGrams: initial.netWeightGrams,
           wastagePercent: initial.wastagePercent,
           kaat: initial.kaat,
           images: initial.images,
-          stock: initial.stock,
         }
       : emptyForm
   );
@@ -300,9 +293,9 @@ function ProductFormModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const grossWeight = computeGrossWeight(form.netWeightGrams, form.wastagePercent);
-  const buyPriceInGold = computeBuyPriceInGold(form.kaat);
+  const buyPriceInGold = computeBuyPriceInGold(form.netWeightGrams, form.kaat);
 
-  function update<K extends keyof ProductInput>(key: K, value: ProductInput[K]) {
+  function update<K extends keyof ProductFormInput>(key: K, value: ProductFormInput[K]) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
@@ -324,7 +317,7 @@ function ProductFormModal({
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.name.trim() || !form.sku.trim()) return;
+    if (!form.name.trim()) return;
     onSubmit(form);
   }
 
@@ -390,14 +383,7 @@ function ProductFormModal({
                 className="input"
               />
             </Field>
-            <Field label="SKU">
-              <input
-                required
-                value={form.sku}
-                onChange={(e) => update("sku", e.target.value)}
-                className="input"
-              />
-            </Field>
+
             <Field label="Category">
               <select
                 value={form.category}
@@ -411,7 +397,6 @@ function ProductFormModal({
                 ))}
               </select>
             </Field>
-
             <Field label="Net Weight (grams)">
               <input
                 type="number"
@@ -423,6 +408,7 @@ function ProductFormModal({
                 className="input"
               />
             </Field>
+
             <Field label="Wastage %">
               <input
                 type="number"
@@ -443,33 +429,22 @@ function ProductFormModal({
               <input
                 type="number"
                 min={0}
-                max={95}
                 step={0.01}
                 value={form.kaat || ""}
                 onChange={(e) => update("kaat", Number(e.target.value) || 0)}
                 className="input"
               />
             </Field>
-            <Field label="Buy Price in Gold (auto)" span2>
+            <Field label="Buy Price in Gold (auto)">
               <div className="input flex items-center justify-between bg-ink-900/60 text-gold-300">
-                <span>{buyPriceInGold ? buyPriceInGold.toFixed(4) : "—"}</span>
-                {form.kaat > 0 && (
-                  <span className="text-[11px] text-ink-500">
-                    96 − {form.kaat} = {96 - form.kaat} → 96 ÷ {96 - form.kaat}
-                  </span>
-                )}
+                {buyPriceInGold ? `${buyPriceInGold.toFixed(3)} g` : "—"}
               </div>
             </Field>
-
-            <Field label="Stock Quantity" span2>
-              <input
-                type="number"
-                min={0}
-                value={form.stock || ""}
-                onChange={(e) => update("stock", Number(e.target.value) || 0)}
-                className="input"
-              />
-            </Field>
+            {form.kaat > 0 && form.netWeightGrams > 0 && (
+              <p className="col-span-2 -mt-2 text-[11px] text-ink-500">
+                {form.netWeightGrams} ÷ 96 × {form.kaat} = {buyPriceInGold.toFixed(3)} g
+              </p>
+            )}
           </div>
         </div>
 

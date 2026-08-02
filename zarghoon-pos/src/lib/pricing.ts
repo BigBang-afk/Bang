@@ -6,13 +6,13 @@ export interface PriceBreakdown {
 }
 
 /**
- * Selling price = Gross Weight x Buy Price in Gold (purity factor) x today's 21K gold rate.
+ * Value = Gross Weight x today's 21K gold rate.
  */
 export function computeProductPrice(
   product: Product,
   rates: { k21: number }
 ): PriceBreakdown {
   const ratePerGram = rates.k21;
-  const total = product.grossWeightGrams * product.buyPriceInGold * ratePerGram;
+  const total = product.grossWeightGrams * ratePerGram;
   return { ratePerGram, total };
 }
