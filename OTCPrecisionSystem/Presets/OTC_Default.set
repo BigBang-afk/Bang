@@ -1,0 +1,111 @@
+; OTC_Default.set
+; OTC Precision Signal System - Conservative preset
+;
+; Load this preset in MetaTrader 5 when attaching OTCPrecisionIndicator.mq5
+; (Inputs tab -> Load). The same values also apply directly to
+; OTCSignalTesterEA.mq5 and OTCTradeEA.mq5, which share identical input
+; names for every section except "EA Risk Controls" / "Validation" /
+; "OnTester Scoring Weights", which are specific to those two programs.
+;
+; Mode = Conservative: the engine internally applies the Conservative
+; preset (min confidence 85, 6/8 modules agreeing, HTF + structure +
+; price-action confirmation required, no-trade filters active, 3-candle
+; cooldown). The "*Custom" fields below are only used if you switch
+; InpSignalMode to Custom, and are pre-filled with the Conservative
+; equivalents so switching modes does not silently change behaviour.
+;
+; Reminder: 85 is a confidence THRESHOLD, not a promised win rate. The
+; only win rate ever displayed is measured from real settled signals.
+
+InpMinHistoryBars=250
+InpDebugLogging=false
+
+InpSignalMode=0
+
+InpExpiryMode=1
+InpCustomExpirySeconds=60
+
+InpEmaFastPeriod=20
+InpEmaMidPeriod=50
+InpEmaSlowPeriod=200
+InpEmaSlopeLookback=5
+
+InpRsiPeriod=14
+InpStochK=5
+InpStochD=3
+InpStochSlowing=3
+InpMacdFast=12
+InpMacdSlow=26
+InpMacdSignal=9
+InpRocPeriod=10
+
+InpSwingLookback=3
+InpStructureSearchBars=80
+
+InpSRSwingLookback=20
+InpSRAtrDistanceMult=0.5
+InpUsePrevDayLevels=true
+InpUsePrevSessionLevels=true
+InpUseRoundLevels=true
+InpRoundLevelStep=0.0010
+
+InpLiquidityLookback=15
+InpLiquiditySweepAtrMult=0.25
+
+InpAtrPeriod=14
+InpBBPeriod=20
+InpBBDeviation=2.0
+InpMinBodyAtrRatio=0.15
+InpMaxAtrSpikeRatio=2.5
+InpVolPercentileLookback=100
+InpHighVolPercentile=90.0
+InpLowVolPercentile=10.0
+InpAdxPeriod=14
+InpAdxTrendThreshold=22.0
+
+InpConfirmTimeframe=5
+InpTrendTimeframe=15
+
+InpMinConfidenceCustom=85.0
+InpMinModulesAgreeingCustom=6
+InpRequireHtfCustom=true
+InpRequireStructureCustom=true
+InpRequirePriceActionCustom=true
+InpBlockNearSrCustom=true
+InpBlockAbnormalVolCustom=true
+InpMinCooldownCustom=3
+InpWeightStructure=15.0
+InpWeightTrend=20.0
+InpWeightMomentum=15.0
+InpWeightPriceAction=15.0
+InpWeightSR=10.0
+InpWeightLiquidity=10.0
+InpWeightMTF=15.0
+
+InpMaxSpreadPoints=25.0
+InpMaxDataGapMultiplier=3.0
+InpUseNewsWindows=false
+InpNewsWindows=
+
+InpAlertPopup=true
+InpAlertSound=true
+InpAlertSoundFile=alert.wav
+InpAlertPush=false
+InpAlertEmail=false
+InpAlertCSVLog=true
+
+InpMinSampleSize=200
+InpSimPayoutPercent=85.0
+
+InpShowDashboard=true
+InpDashboardX=14
+InpDashboardY=20
+InpDashboardFontSize=8
+
+InpShowPreview=false
+
+InpArrowAtrDistanceMult=0.6
+InpShowNoTradeMarker=false
+InpShowConfidenceLabel=true
+
+InpStaleFeedMinutes=15
