@@ -33,8 +33,10 @@ public class CashLedgerEntryConfiguration : IEntityTypeConfiguration<CashLedgerE
         builder.Property(c => c.PaymentMode).HasMaxLength(20).IsRequired();
         builder.Property(c => c.Description).HasMaxLength(255);
         builder.Property(c => c.RunningBalance).HasColumnType("decimal(18,2)");
+        builder.Property(c => c.EntityType).HasMaxLength(20);
         builder.HasIndex(c => c.TransactionDate);
         builder.HasIndex(c => new { c.ReferenceType, c.ReferenceId });
+        builder.HasIndex(c => new { c.EntityType, c.EntityId });
 
         builder.HasOne(c => c.BankAccount)
             .WithMany()

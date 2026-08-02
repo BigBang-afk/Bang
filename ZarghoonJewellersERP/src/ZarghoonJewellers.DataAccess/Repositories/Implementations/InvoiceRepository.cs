@@ -26,6 +26,7 @@ public class InvoiceRepository : GenericRepository<Invoice>, IInvoiceRepository
         => await DbSet
             .Include(i => i.Customer)
             .Include(i => i.InvoiceDetails).ThenInclude(d => d.Stock)
+            .Include(i => i.Payments)
             .FirstOrDefaultAsync(i => i.InvoiceId == invoiceId, cancellationToken);
 
     public async Task<decimal> GetTotalSalesForDateAsync(DateOnly date, CancellationToken cancellationToken = default)
@@ -65,4 +66,45 @@ public class InvoiceRepository : GenericRepository<Invoice>, IInvoiceRepository
 
         return result;
     }
+
+    public async Task<IReadOnlyList<Invoice>> GetHeldInvoicesAsync(CancellationToken cancellationToken = default)
+        => await DbSet.AsNoTracking()
+            .Include(i => i.Customer)
+            .Include(i => i.InvoiceDetails)
+            .Where(i => i.Status == "Held")
+            .OrderByDescending(i => i.InvoiceDate)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Invoice>> SearchInvoicesAsync(string? searchTerm, DateOnly? fromDate, DateOnly? toDate,
+        string? status, int? customerId, CancellationToken cancellationToken = default)
+    {
+        var query = DbSet.AsNoTracking().Include(i => i.Customer).AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var term = searchTerm.Trim();
+            query = query.Where(i => i.InvoiceNumber.Contains(term) || i.Customer.FullName.Contains(term));
+        }
+
+        if (fromDate.HasValue)
+            query = query.Where(i => i.InvoiceDate >= fromDate.Value.ToDateTime(TimeOnly.MinValue));
+
+        if (toDate.HasValue)
+            query = query.Where(i => i.InvoiceDate < toDate.Value.AddDays(1).ToDateTime(TimeOnly.MinValue));
+
+        if (!string.IsNullOrWhiteSpace(status))
+            query = query.Where(i => i.Status == status);
+
+        if (customerId.HasValue)
+            query = query.Where(i => i.CustomerId == customerId.Value);
+
+        return await query.OrderByDescending(i => i.InvoiceDate).Take(500).ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Invoice>> GetByShiftAsync(int shiftId, CancellationToken cancellationToken = default)
+        => await DbSet.AsNoTracking()
+            .Include(i => i.Customer)
+            .Where(i => i.ShiftId == shiftId)
+            .OrderBy(i => i.InvoiceDate)
+            .ToListAsync(cancellationToken);
 }

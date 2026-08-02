@@ -26,6 +26,7 @@ public class UnitOfWork : IUnitOfWork
     private IGoldLedgerRepository? _goldLedger;
     private IRepairOrderRepository? _repairOrders;
     private IAuditLogRepository? _auditLogs;
+    private IShiftRepository? _shifts;
 
     private IGenericRepository<Karigar>? _karigars;
     private IGenericRepository<Employee>? _employees;
@@ -40,6 +41,7 @@ public class UnitOfWork : IUnitOfWork
     private IGenericRepository<RolePermission>? _rolePermissions;
     private IGenericRepository<Setting>? _settings;
     private IGenericRepository<UsdtTransaction>? _usdtTransactions;
+    private IGenericRepository<InvoicePayment>? _invoicePayments;
 
     public UnitOfWork(ApplicationDbContext context)
     {
@@ -57,6 +59,7 @@ public class UnitOfWork : IUnitOfWork
     public IGoldLedgerRepository GoldLedger => _goldLedger ??= new GoldLedgerRepository(_context);
     public IRepairOrderRepository RepairOrders => _repairOrders ??= new RepairOrderRepository(_context);
     public IAuditLogRepository AuditLogs => _auditLogs ??= new AuditLogRepository(_context);
+    public IShiftRepository Shifts => _shifts ??= new ShiftRepository(_context);
 
     public IGenericRepository<Karigar> Karigars => _karigars ??= new GenericRepository<Karigar>(_context);
     public IGenericRepository<Employee> Employees => _employees ??= new GenericRepository<Employee>(_context);
@@ -71,6 +74,7 @@ public class UnitOfWork : IUnitOfWork
     public IGenericRepository<RolePermission> RolePermissions => _rolePermissions ??= new GenericRepository<RolePermission>(_context);
     public IGenericRepository<Setting> Settings => _settings ??= new GenericRepository<Setting>(_context);
     public IGenericRepository<UsdtTransaction> UsdtTransactions => _usdtTransactions ??= new GenericRepository<UsdtTransaction>(_context);
+    public IGenericRepository<InvoicePayment> InvoicePayments => _invoicePayments ??= new GenericRepository<InvoicePayment>(_context);
 
     public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         => _context.SaveChangesAsync(cancellationToken);

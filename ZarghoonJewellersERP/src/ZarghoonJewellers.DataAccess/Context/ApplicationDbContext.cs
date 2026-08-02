@@ -32,8 +32,10 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<InvoiceDetail> InvoiceDetails => Set<InvoiceDetail>();
+    public DbSet<InvoicePayment> InvoicePayments => Set<InvoicePayment>();
     public DbSet<Purchase> Purchases => Set<Purchase>();
     public DbSet<PurchaseDetail> PurchaseDetails => Set<PurchaseDetail>();
+    public DbSet<Shift> Shifts => Set<Shift>();
 
     public DbSet<CashLedgerEntry> CashLedger => Set<CashLedgerEntry>();
     public DbSet<GoldLedgerEntry> GoldLedger => Set<GoldLedgerEntry>();

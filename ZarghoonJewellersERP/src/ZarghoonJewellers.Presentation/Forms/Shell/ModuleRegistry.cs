@@ -60,6 +60,11 @@ public static class ModuleRegistry
             },
             new()
             {
+                Key = "invoicesearch", DisplayName = "Invoice History / Search", IconLetter = 'H', IconColor = ThemeColors.Info,
+                PermissionModule = "Invoices", Factory = () => sp.GetRequiredService<UcInvoiceSearch>()
+            },
+            new()
+            {
                 Key = "purchases", DisplayName = "Purchases", IconLetter = 'P', IconColor = ThemeColors.Info,
                 PermissionModule = "Purchases", Factory = () => sp.GetRequiredService<UcPurchases>()
             },
@@ -87,6 +92,21 @@ public static class ModuleRegistry
             {
                 Key = "goldledger", DisplayName = "Gold Ledger", IconLetter = 'G', IconColor = ThemeColors.GoldPrimary,
                 PermissionModule = "GoldLedger", Factory = () => sp.GetRequiredService<UcGoldLedger>()
+            },
+            new()
+            {
+                Key = "partyledger", DisplayName = "Customer / Supplier / Karigar Ledger", IconLetter = 'W', IconColor = ThemeColors.Info,
+                PermissionModule = "Reports", Factory = () => sp.GetRequiredService<UcPartyLedger>()
+            },
+            new()
+            {
+                Key = "customerstatement", DisplayName = "Customer Statement", IconLetter = 'O', IconColor = ThemeColors.Warning,
+                PermissionModule = "Reports", Factory = () => sp.GetRequiredService<UcCustomerStatement>()
+            },
+            new()
+            {
+                Key = "profitreports", DisplayName = "Profit Reports", IconLetter = 'F', IconColor = ThemeColors.GoldPrimary,
+                PermissionModule = "Reports", Factory = () => sp.GetRequiredService<UcProfitReports>()
             },
             new()
             {

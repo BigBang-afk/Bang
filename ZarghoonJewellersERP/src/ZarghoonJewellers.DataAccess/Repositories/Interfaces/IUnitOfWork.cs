@@ -23,6 +23,7 @@ public interface IUnitOfWork : IDisposable
     IGoldLedgerRepository GoldLedger { get; }
     IRepairOrderRepository RepairOrders { get; }
     IAuditLogRepository AuditLogs { get; }
+    IShiftRepository Shifts { get; }
 
     // Plain generic repositories for simpler lookup-style entities
     IGenericRepository<Karigar> Karigars { get; }
@@ -38,6 +39,7 @@ public interface IUnitOfWork : IDisposable
     IGenericRepository<RolePermission> RolePermissions { get; }
     IGenericRepository<Setting> Settings { get; }
     IGenericRepository<UsdtTransaction> UsdtTransactions { get; }
+    IGenericRepository<InvoicePayment> InvoicePayments { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default);

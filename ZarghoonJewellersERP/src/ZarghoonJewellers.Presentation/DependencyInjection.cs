@@ -30,10 +30,14 @@ public static class DependencyInjection
         services.AddTransient<UcSuppliers>();
         services.AddTransient<UcStock>();
         services.AddTransient<UcInvoices>();
+        services.AddTransient<UcInvoiceSearch>();
         services.AddTransient<UcPurchases>();
         services.AddTransient<UcGoldRate>();
         services.AddTransient<UcCashLedger>();
         services.AddTransient<UcGoldLedger>();
+        services.AddTransient<UcPartyLedger>();
+        services.AddTransient<UcCustomerStatement>();
+        services.AddTransient<UcProfitReports>();
         services.AddTransient<UcRepairOrders>();
         services.AddTransient<UcUsersRoles>();
         services.AddTransient<UcAuditLog>();

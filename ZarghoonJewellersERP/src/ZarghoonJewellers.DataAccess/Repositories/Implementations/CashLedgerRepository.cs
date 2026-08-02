@@ -24,4 +24,23 @@ public class CashLedgerRepository : GenericRepository<CashLedgerEntry>, ICashLed
             .OrderByDescending(c => c.TransactionDate)
             .Take(count)
             .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<CashLedgerEntry>> GetEntityLedgerAsync(string entityType, int entityId,
+        DateOnly? fromDate, DateOnly? toDate, CancellationToken cancellationToken = default)
+    {
+        var query = DbSet.AsNoTracking().Where(c => c.EntityType == entityType && c.EntityId == entityId);
+
+        if (fromDate.HasValue)
+            query = query.Where(c => c.TransactionDate >= fromDate.Value.ToDateTime(TimeOnly.MinValue));
+        if (toDate.HasValue)
+            query = query.Where(c => c.TransactionDate < toDate.Value.AddDays(1).ToDateTime(TimeOnly.MinValue));
+
+        return await query.OrderBy(c => c.TransactionDate).ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<CashLedgerEntry>> GetBetweenAsync(DateTime from, DateTime to, CancellationToken cancellationToken = default)
+        => await DbSet.AsNoTracking()
+            .Where(c => c.TransactionDate >= from && c.TransactionDate <= to)
+            .OrderBy(c => c.TransactionDate)
+            .ToListAsync(cancellationToken);
 }

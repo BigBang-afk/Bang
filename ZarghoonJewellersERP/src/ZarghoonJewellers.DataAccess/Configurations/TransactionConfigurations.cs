@@ -16,7 +16,9 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.Property(i => i.TotalNetWeight).HasColumnType("decimal(18,3)");
         builder.Property(i => i.SubTotal).HasColumnType("decimal(18,2)");
         builder.Property(i => i.MakingChargeTotal).HasColumnType("decimal(18,2)");
+        builder.Property(i => i.DiscountPercentage).HasColumnType("decimal(5,2)");
         builder.Property(i => i.DiscountAmount).HasColumnType("decimal(18,2)");
+        builder.Property(i => i.TaxPercentage).HasColumnType("decimal(5,2)");
         builder.Property(i => i.TaxAmount).HasColumnType("decimal(18,2)");
         builder.Property(i => i.TotalAmount).HasColumnType("decimal(18,2)");
         builder.Property(i => i.PaidAmount).HasColumnType("decimal(18,2)");
@@ -29,8 +31,12 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.Property(i => i.PaymentMode).HasMaxLength(20).IsRequired();
         builder.Property(i => i.OldGoldExchangeWeight).HasColumnType("decimal(18,3)");
         builder.Property(i => i.Status).HasMaxLength(20).IsRequired();
+        builder.Property(i => i.InvoiceType).HasMaxLength(20).IsRequired();
+        builder.Property(i => i.HoldLabel).HasMaxLength(100);
         builder.HasIndex(i => i.InvoiceNumber).IsUnique();
         builder.HasIndex(i => i.InvoiceDate);
+        builder.HasIndex(i => i.ShiftId);
+        builder.HasIndex(i => i.InvoiceType);
 
         builder.HasOne(i => i.Customer)
             .WithMany(c => c.Invoices)
@@ -40,6 +46,39 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.HasOne(i => i.CreatedByUser)
             .WithMany()
             .HasForeignKey(i => i.CreatedBy)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(i => i.Shift)
+            .WithMany(s => s.Invoices)
+            .HasForeignKey(i => i.ShiftId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(i => i.OriginalInvoice)
+            .WithMany()
+            .HasForeignKey(i => i.OriginalInvoiceId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public class InvoicePaymentConfiguration : IEntityTypeConfiguration<InvoicePayment>
+{
+    public void Configure(EntityTypeBuilder<InvoicePayment> builder)
+    {
+        builder.ToTable("InvoicePayments");
+        builder.HasKey(p => p.InvoicePaymentId);
+        builder.Property(p => p.PaymentMethod).HasMaxLength(20).IsRequired();
+        builder.Property(p => p.Amount).HasColumnType("decimal(18,2)");
+        builder.Property(p => p.ReferenceNumber).HasMaxLength(100);
+        builder.HasIndex(p => p.InvoiceId);
+
+        builder.HasOne(p => p.Invoice)
+            .WithMany(i => i.Payments)
+            .HasForeignKey(p => p.InvoiceId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(p => p.BankAccount)
+            .WithMany()
+            .HasForeignKey(p => p.BankAccountId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

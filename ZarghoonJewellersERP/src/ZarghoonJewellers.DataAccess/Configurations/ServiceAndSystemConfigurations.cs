@@ -4,6 +4,27 @@ using ZarghoonJewellers.Domain.Entities;
 
 namespace ZarghoonJewellers.DataAccess.Configurations;
 
+public class ShiftConfiguration : IEntityTypeConfiguration<Shift>
+{
+    public void Configure(EntityTypeBuilder<Shift> builder)
+    {
+        builder.ToTable("Shifts");
+        builder.HasKey(s => s.ShiftId);
+        builder.Property(s => s.OpeningCash).HasColumnType("decimal(18,2)");
+        builder.Property(s => s.ClosingCashCounted).HasColumnType("decimal(18,2)");
+        builder.Property(s => s.ExpectedCash).HasColumnType("decimal(18,2)");
+        builder.Property(s => s.CashDifference).HasColumnType("decimal(18,2)");
+        builder.Property(s => s.Status).HasMaxLength(10).IsRequired();
+        builder.Property(s => s.Notes).HasMaxLength(500);
+        builder.HasIndex(s => new { s.CashierUserId, s.Status });
+
+        builder.HasOne(s => s.CashierUser)
+            .WithMany()
+            .HasForeignKey(s => s.CashierUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
 public class RepairOrderConfiguration : IEntityTypeConfiguration<RepairOrder>
 {
     public void Configure(EntityTypeBuilder<RepairOrder> builder)
