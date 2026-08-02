@@ -103,3 +103,16 @@ h1, h2, h3, h4, .font-serif {
   border-color: var(--color-gold-500);
 }
 
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+  html,
+  body,
+  #root {
+    background: white !important;
+    min-height: 0 !important;
+  }
+}
+

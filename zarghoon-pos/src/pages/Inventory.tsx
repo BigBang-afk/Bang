@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { Plus, Pencil, Trash2, X, Search, Scale, Coins, ImagePlus } from "lucide-react";
+import { Plus, Pencil, Trash2, X, Search, Scale, Coins, ImagePlus, Layers, Package } from "lucide-react";
 import {
   useInventoryStore,
   categories as allCategories,
@@ -74,6 +74,12 @@ export default function Inventory() {
     } else {
       addProduct(form);
     }
+    setShowForm(false);
+    setEditing(null);
+  }
+
+  function handleSubmitMultiple(rows: ProductFormInput[]) {
+    rows.forEach((row) => addProduct(row));
     setShowForm(false);
     setEditing(null);
   }
@@ -233,6 +239,7 @@ export default function Inventory() {
             setEditing(null);
           }}
           onSubmit={handleSubmit}
+          onSubmitMultiple={handleSubmitMultiple}
         />
       )}
 
@@ -268,15 +275,24 @@ export default function Inventory() {
   );
 }
 
+let bulkRowSeq = 0;
+function nextRowKey() {
+  bulkRowSeq += 1;
+  return `row-${bulkRowSeq}`;
+}
+
 function ProductFormModal({
   initial,
   onCancel,
   onSubmit,
+  onSubmitMultiple,
 }: {
   initial: Product | null;
   onCancel: () => void;
   onSubmit: (form: ProductFormInput) => void;
+  onSubmitMultiple: (rows: ProductFormInput[]) => void;
 }) {
+  const [mode, setMode] = useState<"single" | "multiple">("single");
   const [form, setForm] = useState<ProductFormInput>(
     initial
       ? {
@@ -289,6 +305,9 @@ function ProductFormModal({
         }
       : emptyForm
   );
+  const [rows, setRows] = useState<(ProductFormInput & { _key: string })[]>([
+    { ...emptyForm, _key: nextRowKey() },
+  ]);
   const [imageError, setImageError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -315,17 +334,37 @@ function ProductFormModal({
     setForm((f) => ({ ...f, images: f.images.filter((_, i) => i !== index) }));
   }
 
+  function addRow() {
+    setRows((prev) => [...prev, { ...emptyForm, _key: nextRowKey() }]);
+  }
+
+  function removeRow(key: string) {
+    setRows((prev) => (prev.length > 1 ? prev.filter((r) => r._key !== key) : prev));
+  }
+
+  function updateRow(key: string, patch: Partial<ProductFormInput>) {
+    setRows((prev) => prev.map((r) => (r._key === key ? { ...r, ...patch } : r)));
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.name.trim()) return;
-    onSubmit(form);
+    if (mode === "single") {
+      if (!form.name.trim()) return;
+      onSubmit(form);
+    } else {
+      const valid = rows.filter((r) => r.name.trim());
+      if (valid.length === 0) return;
+      onSubmitMultiple(valid.map(({ _key, ...rest }) => rest));
+    }
   }
+
+  const validRowCount = rows.filter((r) => r.name.trim()).length;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
       <form
         onSubmit={handleSubmit}
-        className="animate-rise max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-gold-900/40 bg-ink-950 shadow-2xl"
+        className="animate-rise max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-gold-900/40 bg-ink-950 shadow-2xl"
       >
         <div className="flex items-center justify-between border-b border-gold-900/40 px-6 py-4">
           <h3 className="font-serif text-lg font-semibold text-gold-100">
@@ -336,117 +375,166 @@ function ProductFormModal({
           </button>
         </div>
 
-        <div className="space-y-4 px-6 py-5">
-          <div>
-            <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-[#a89a7d]">
-              Images
-            </span>
-            <div className="flex flex-wrap gap-2">
-              {form.images.map((src, i) => (
-                <div key={i} className="group relative h-16 w-16 overflow-hidden rounded-lg border border-gold-900/40">
-                  <img src={src} alt="" className="h-full w-full object-cover" />
-                  <button
-                    type="button"
-                    onClick={() => removeImage(i)}
-                    className="absolute inset-0 flex items-center justify-center bg-black/60 text-white opacity-0 transition group-hover:opacity-100"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="flex h-16 w-16 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-gold-900/50 text-ink-500 transition hover:border-gold-600/60 hover:text-gold-300"
-              >
-                <ImagePlus size={18} />
-                <span className="text-[10px]">Add</span>
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={(e) => handleFiles(e.target.files)}
-                className="hidden"
-              />
-            </div>
-            {imageError && <p className="mt-1.5 text-xs text-rose-400">{imageError}</p>}
+        {!initial && (
+          <div className="flex gap-2 border-b border-gold-900/40 px-6 py-3">
+            <button
+              type="button"
+              onClick={() => setMode("single")}
+              className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                mode === "single"
+                  ? "border-gold-600 bg-gold-500/15 text-gold-300"
+                  : "border-gold-900/40 text-ink-500 hover:text-gold-300"
+              }`}
+            >
+              <Package size={14} /> Single Item
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("multiple")}
+              className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                mode === "multiple"
+                  ? "border-gold-600 bg-gold-500/15 text-gold-300"
+                  : "border-gold-900/40 text-ink-500 hover:text-gold-300"
+              }`}
+            >
+              <Layers size={14} /> Multiple Items
+            </button>
           </div>
+        )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Product Name" span2>
-              <input
-                required
-                value={form.name}
-                onChange={(e) => update("name", e.target.value)}
-                className="input"
-              />
-            </Field>
-
-            <Field label="Category">
-              <select
-                value={form.category}
-                onChange={(e) => update("category", e.target.value as Category)}
-                className="input"
-              >
-                {allCategories.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
+        {mode === "single" || initial ? (
+          <div className="space-y-4 px-6 py-5">
+            <div>
+              <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-[#a89a7d]">
+                Images
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {form.images.map((src, i) => (
+                  <div key={i} className="group relative h-16 w-16 overflow-hidden rounded-lg border border-gold-900/40">
+                    <img src={src} alt="" className="h-full w-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(i)}
+                      className="absolute inset-0 flex items-center justify-center bg-black/60 text-white opacity-0 transition group-hover:opacity-100"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
                 ))}
-              </select>
-            </Field>
-            <Field label="Net Weight (grams)">
-              <input
-                type="number"
-                min={0}
-                step={0.01}
-                required
-                value={form.netWeightGrams || ""}
-                onChange={(e) => update("netWeightGrams", Number(e.target.value) || 0)}
-                className="input"
-              />
-            </Field>
-
-            <Field label="Wastage %">
-              <input
-                type="number"
-                min={0}
-                step={0.01}
-                value={form.wastagePercent || ""}
-                onChange={(e) => update("wastagePercent", Number(e.target.value) || 0)}
-                className="input"
-              />
-            </Field>
-            <Field label="Gross Weight (auto)">
-              <div className="input flex items-center justify-between bg-ink-900/60 text-gold-300">
-                {grossWeight.toFixed(3)} g
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex h-16 w-16 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-gold-900/50 text-ink-500 transition hover:border-gold-600/60 hover:text-gold-300"
+                >
+                  <ImagePlus size={18} />
+                  <span className="text-[10px]">Add</span>
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => handleFiles(e.target.files)}
+                  className="hidden"
+                />
               </div>
-            </Field>
+              {imageError && <p className="mt-1.5 text-xs text-rose-400">{imageError}</p>}
+            </div>
 
-            <Field label="Kaat">
-              <input
-                type="number"
-                min={0}
-                step={0.01}
-                value={form.kaat || ""}
-                onChange={(e) => update("kaat", Number(e.target.value) || 0)}
-                className="input"
-              />
-            </Field>
-            <Field label="Buy Price in Gold (auto)">
-              <div className="input flex items-center justify-between bg-ink-900/60 text-gold-300">
-                {buyPriceInGold ? `${buyPriceInGold.toFixed(3)} g` : "—"}
-              </div>
-            </Field>
-            {form.kaat > 0 && form.netWeightGrams > 0 && (
-              <p className="col-span-2 -mt-2 text-[11px] text-ink-500">
-                {form.netWeightGrams} ÷ 96 × {form.kaat} = {buyPriceInGold.toFixed(3)} g
-              </p>
-            )}
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Product Name" span2>
+                <input
+                  required
+                  value={form.name}
+                  onChange={(e) => update("name", e.target.value)}
+                  className="input"
+                />
+              </Field>
+
+              <Field label="Category">
+                <select
+                  value={form.category}
+                  onChange={(e) => update("category", e.target.value as Category)}
+                  className="input"
+                >
+                  {allCategories.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Net Weight (grams)">
+                <input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  required
+                  value={form.netWeightGrams || ""}
+                  onChange={(e) => update("netWeightGrams", Number(e.target.value) || 0)}
+                  className="input"
+                />
+              </Field>
+
+              <Field label="Wastage %">
+                <input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={form.wastagePercent || ""}
+                  onChange={(e) => update("wastagePercent", Number(e.target.value) || 0)}
+                  className="input"
+                />
+              </Field>
+              <Field label="Gross Weight (auto)">
+                <div className="input flex items-center justify-between bg-ink-900/60 text-gold-300">
+                  {grossWeight.toFixed(3)} g
+                </div>
+              </Field>
+
+              <Field label="Kaat">
+                <input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={form.kaat || ""}
+                  onChange={(e) => update("kaat", Number(e.target.value) || 0)}
+                  className="input"
+                />
+              </Field>
+              <Field label="Buy Price in Gold (auto)">
+                <div className="input flex items-center justify-between bg-ink-900/60 text-gold-300">
+                  {buyPriceInGold ? `${buyPriceInGold.toFixed(3)} g` : "—"}
+                </div>
+              </Field>
+              {form.kaat > 0 && form.netWeightGrams > 0 && (
+                <p className="col-span-2 -mt-2 text-[11px] text-ink-500">
+                  {form.netWeightGrams} ÷ 96 × {form.kaat} = {buyPriceInGold.toFixed(3)} g
+                </p>
+              )}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="space-y-3 px-6 py-5">
+            {rows.map((row, i) => (
+              <BulkRow
+                key={row._key}
+                index={i}
+                row={row}
+                onChange={(patch) => updateRow(row._key, patch)}
+                onRemove={() => removeRow(row._key)}
+                canRemove={rows.length > 1}
+              />
+            ))}
+            <button
+              type="button"
+              onClick={addRow}
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-gold-900/50 py-2.5 text-sm font-medium text-ink-500 transition hover:border-gold-600/60 hover:text-gold-300"
+            >
+              <Plus size={15} /> Add Another Item
+            </button>
+          </div>
+        )}
 
         <div className="flex gap-3 border-t border-gold-900/40 px-6 py-4">
           <button
@@ -460,10 +548,145 @@ function ProductFormModal({
             type="submit"
             className="flex-1 rounded-lg bg-gradient-to-r from-gold-600 to-gold-500 py-2.5 text-sm font-semibold text-ink-950 hover:from-gold-500 hover:to-gold-400"
           >
-            {initial ? "Save Changes" : "Add Stock"}
+            {initial
+              ? "Save Changes"
+              : mode === "single"
+              ? "Add Stock"
+              : `Save All (${validRowCount} item${validRowCount === 1 ? "" : "s"})`}
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+function BulkRow({
+  index,
+  row,
+  onChange,
+  onRemove,
+  canRemove,
+}: {
+  index: number;
+  row: ProductFormInput;
+  onChange: (patch: Partial<ProductFormInput>) => void;
+  onRemove: () => void;
+  canRemove: boolean;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const grossWeight = computeGrossWeight(row.netWeightGrams, row.wastagePercent);
+  const buyPriceInGold = computeBuyPriceInGold(row.netWeightGrams, row.kaat);
+
+  async function handleFiles(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    try {
+      const dataUrls = await Promise.all(Array.from(files).map((f) => fileToResizedDataUrl(f)));
+      onChange({ images: [...row.images, ...dataUrls] });
+    } catch {
+      // ignore silently in bulk mode
+    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  return (
+    <div className="rounded-xl border border-gold-900/30 bg-ink-900/40 p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="text-xs font-medium uppercase tracking-wider text-gold-500/70">
+          Item {index + 1}
+        </span>
+        {canRemove && (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="rounded-md p-1 text-ink-500 hover:bg-ink-800 hover:text-rose-400"
+          >
+            <Trash2 size={14} />
+          </button>
+        )}
+      </div>
+
+      <div className="flex gap-3">
+        <div className="shrink-0">
+          {row.images[0] ? (
+            <div className="group relative h-14 w-14 overflow-hidden rounded-lg border border-gold-900/40">
+              <img src={row.images[0]} alt="" className="h-full w-full object-cover" />
+              <button
+                type="button"
+                onClick={() => onChange({ images: [] })}
+                className="absolute inset-0 flex items-center justify-center bg-black/60 text-white opacity-0 transition group-hover:opacity-100"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex h-14 w-14 flex-col items-center justify-center gap-0.5 rounded-lg border border-dashed border-gold-900/50 text-ink-500 hover:border-gold-600/60 hover:text-gold-300"
+            >
+              <ImagePlus size={16} />
+              <span className="text-[9px]">Add</span>
+            </button>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={(e) => handleFiles(e.target.files)}
+            className="hidden"
+          />
+        </div>
+
+        <div className="grid flex-1 grid-cols-2 gap-2 sm:grid-cols-3">
+          <input
+            value={row.name}
+            onChange={(e) => onChange({ name: e.target.value })}
+            placeholder="Item name"
+            className="input col-span-2 sm:col-span-1"
+          />
+          <select
+            value={row.category}
+            onChange={(e) => onChange({ category: e.target.value as Category })}
+            className="input"
+          >
+            {allCategories.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          <input
+            type="number"
+            min={0}
+            step={0.01}
+            value={row.netWeightGrams || ""}
+            onChange={(e) => onChange({ netWeightGrams: Number(e.target.value) || 0 })}
+            placeholder="Net wt (g)"
+            className="input"
+          />
+          <input
+            type="number"
+            min={0}
+            step={0.01}
+            value={row.wastagePercent || ""}
+            onChange={(e) => onChange({ wastagePercent: Number(e.target.value) || 0 })}
+            placeholder="Wastage %"
+            className="input"
+          />
+          <input
+            type="number"
+            min={0}
+            step={0.01}
+            value={row.kaat || ""}
+            onChange={(e) => onChange({ kaat: Number(e.target.value) || 0 })}
+            placeholder="Kaat"
+            className="input"
+          />
+          <div className="input flex items-center bg-ink-900/60 text-xs text-gold-300">
+            Gross {grossWeight.toFixed(2)}g · Gold {buyPriceInGold.toFixed(3)}g
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

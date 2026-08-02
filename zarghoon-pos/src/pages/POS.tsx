@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
-import { Search, Plus, Minus, Trash2, ShoppingBag, X, Printer } from "lucide-react";
+import { Scale, Plus, Minus, Trash2, ShoppingBag, X, Printer } from "lucide-react";
 import { useInventoryStore, type Product, type Category, categories as allCategories } from "../store/inventoryStore";
 import { useGoldRateStore } from "../store/goldRateStore";
 import { useSalesStore, type PaymentMethod, type SaleLineItem, type Sale } from "../store/salesStore";
 import { useSettingsStore } from "../store/settingsStore";
 import { computeProductPrice } from "../lib/pricing";
-import { formatMoney } from "../lib/format";
+import { formatMoney, formatDateTime } from "../lib/format";
 import ProductThumb from "../components/ProductThumb";
 
 interface CartLine {
@@ -14,17 +14,18 @@ interface CartLine {
 }
 
 const categories: (Category | "All")[] = ["All", ...allCategories];
+const WEIGHT_TOLERANCE = 0.5;
 
 export default function POS() {
   const products = useInventoryStore((s) => s.products);
   const adjustStock = useInventoryStore((s) => s.adjustStock);
   const rates = useGoldRateStore();
   const currency = useSettingsStore((s) => s.currency);
-  const shopName = useSettingsStore((s) => s.shopName);
+  const settings = useSettingsStore();
   const addSale = useSalesStore((s) => s.addSale);
 
-  const [search, setSearch] = useState("");
   const [category, setCategory] = useState<Category | "All">("All");
+  const [weightQuery, setWeightQuery] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -32,16 +33,18 @@ export default function POS() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("Cash");
   const [completedSale, setCompletedSale] = useState<Sale | null>(null);
 
+  const weightValue = weightQuery.trim() === "" ? null : Number(weightQuery);
+
   const filtered = useMemo(() => {
     return products.filter((p) => {
       const matchesCategory = category === "All" || p.category === category;
-      const matchesSearch =
-        !search ||
-        p.name.toLowerCase().includes(search.toLowerCase()) ||
-        p.sku.toLowerCase().includes(search.toLowerCase());
-      return matchesCategory && matchesSearch;
+      const matchesWeight =
+        weightValue === null ||
+        Number.isNaN(weightValue) ||
+        Math.abs(p.netWeightGrams - weightValue) <= WEIGHT_TOLERANCE;
+      return matchesCategory && matchesWeight;
     });
-  }, [products, category, search]);
+  }, [products, category, weightValue]);
 
   function addToCart(product: Product) {
     setCart((prev) => {
@@ -119,19 +122,10 @@ export default function POS() {
 
   return (
     <div className="flex h-full flex-col lg:flex-row">
-      <div className="flex-1 p-4 md:p-6">
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="flex flex-1 items-center gap-2 rounded-lg border border-gold-900/50 bg-ink-900/50 px-3">
-            <Search size={16} className="text-ink-500" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name or SKU..."
-              className="w-full bg-transparent py-2.5 text-sm text-[#ece6d9] outline-none placeholder:text-ink-600"
-            />
-          </div>
+      <div className="flex-1 p-4 md:p-6 print:hidden">
+        <div className="mb-1 text-xs font-medium uppercase tracking-wider text-[#a89a7d]">
+          Step 1 — Select a category
         </div>
-
         <div className="mb-4 flex flex-wrap gap-2">
           {categories.map((c) => (
             <button
@@ -146,6 +140,29 @@ export default function POS() {
               {c}
             </button>
           ))}
+        </div>
+
+        <div className="mb-1 text-xs font-medium uppercase tracking-wider text-[#a89a7d]">
+          Step 2 — Search by weight
+        </div>
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="flex flex-1 items-center gap-2 rounded-lg border border-gold-900/50 bg-ink-900/50 px-3 sm:max-w-xs">
+            <Scale size={16} className="text-ink-500" />
+            <input
+              type="number"
+              min={0}
+              step={0.01}
+              value={weightQuery}
+              onChange={(e) => setWeightQuery(e.target.value)}
+              placeholder="Item weight in grams..."
+              className="w-full bg-transparent py-2.5 text-sm text-[#ece6d9] outline-none placeholder:text-ink-600"
+            />
+          </div>
+          {weightValue !== null && !Number.isNaN(weightValue) && (
+            <p className="text-xs text-ink-500">
+              Showing items within ±{WEIGHT_TOLERANCE}g of {weightValue}g
+            </p>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
@@ -185,13 +202,13 @@ export default function POS() {
           })}
           {filtered.length === 0 && (
             <p className="col-span-full py-12 text-center text-sm text-ink-500">
-              No products match your search.
+              No products match this category / weight.
             </p>
           )}
         </div>
       </div>
 
-      <div className="flex w-full flex-col border-t border-gold-900/30 bg-ink-900/40 lg:w-96 lg:border-l lg:border-t-0">
+      <div className="flex w-full flex-col border-t border-gold-900/30 bg-ink-900/40 lg:w-96 lg:border-l lg:border-t-0 print:hidden">
         <div className="flex items-center gap-2 border-b border-gold-900/30 px-5 py-4">
           <ShoppingBag size={18} className="text-gold-400" />
           <h2 className="font-serif text-lg font-semibold text-gold-100">Current Sale</h2>
@@ -203,7 +220,7 @@ export default function POS() {
         <div className="max-h-72 flex-1 overflow-y-auto px-5 py-3">
           {cart.length === 0 ? (
             <p className="py-8 text-center text-sm text-ink-500">
-              Tap a product to add it to the sale.
+              Select a category and weight, then tap a product to add it.
             </p>
           ) : (
             <div className="space-y-3">
@@ -314,10 +331,10 @@ export default function POS() {
       </div>
 
       {completedSale && (
-        <ReceiptModal
+        <InvoiceModal
           sale={completedSale}
           currency={currency}
-          shopName={shopName}
+          shop={settings}
           onClose={() => setCompletedSale(null)}
         />
       )}
@@ -325,85 +342,134 @@ export default function POS() {
   );
 }
 
-function ReceiptModal({
+function InvoiceModal({
   sale,
   currency,
-  shopName,
+  shop,
   onClose,
 }: {
   sale: Sale;
   currency: string;
-  shopName: string;
+  shop: { shopName: string; shopTagline: string; shopAddress: string; shopPhone: string };
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm print:bg-white">
-      <div className="animate-rise max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-2xl border border-gold-800/50 bg-ink-950 shadow-2xl print:border-0 print:bg-white print:text-black">
-        <div className="flex items-center justify-between border-b border-gold-900/40 px-5 py-4 print:hidden">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm print:static print:block print:bg-white print:p-0 print:backdrop-blur-none">
+      <div className="animate-rise my-4 w-full max-w-3xl print:my-0 print:max-w-none">
+        <div className="flex items-center justify-between rounded-t-2xl border border-b-0 border-gold-800/50 bg-ink-950 px-5 py-4 print:hidden">
           <h3 className="font-serif text-lg font-semibold text-gold-100">Sale Complete</h3>
-          <button onClick={onClose} className="text-ink-500 hover:text-gold-300">
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => window.print()}
+              className="flex items-center gap-2 rounded-lg border border-gold-800/50 px-3 py-2 text-sm font-medium text-[#c9bd9e] hover:border-gold-600"
+            >
+              <Printer size={15} /> Print Invoice
+            </button>
+            <button
+              onClick={onClose}
+              className="rounded-lg bg-gradient-to-r from-gold-600 to-gold-500 px-4 py-2 text-sm font-semibold text-ink-950 hover:from-gold-500 hover:to-gold-400"
+            >
+              New Sale
+            </button>
+            <button onClick={onClose} className="ml-1 text-ink-500 hover:text-gold-300">
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
-        <div className="px-6 py-5 text-center">
-          <p className="font-serif text-xl font-semibold text-gold-100 print:text-black">{shopName}</p>
-          <p className="text-xs text-ink-500 print:text-neutral-600">Invoice {sale.invoiceNo}</p>
-          <p className="text-xs text-ink-500 print:text-neutral-600">
-            {new Date(sale.date).toLocaleString()}
-          </p>
-        </div>
+        <div
+          id="invoice"
+          className="w-full bg-white p-10 text-neutral-900 shadow-2xl print:w-[210mm] print:min-h-[297mm] print:p-[14mm] print:shadow-none"
+        >
+          <div className="flex items-start justify-between border-b-2 border-neutral-900 pb-4">
+            <div>
+              <h1 className="font-serif text-2xl font-bold">{shop.shopName}</h1>
+              <p className="text-xs text-neutral-600">{shop.shopTagline}</p>
+              <p className="text-xs text-neutral-600">{shop.shopAddress}</p>
+              <p className="text-xs text-neutral-600">{shop.shopPhone}</p>
+            </div>
+            <div className="text-right">
+              <h2 className="text-xl font-bold tracking-wide text-neutral-900">INVOICE</h2>
+              <p className="text-xs text-neutral-600">Invoice #: {sale.invoiceNo}</p>
+              <p className="text-xs text-neutral-600">Date: {formatDateTime(sale.date)}</p>
+            </div>
+          </div>
 
-        <div className="space-y-2 border-y border-dashed border-gold-900/40 px-6 py-4 print:border-neutral-300">
-          {sale.items.map((it, i) => (
-            <div key={i} className="flex items-start justify-between text-sm">
-              <div>
-                <div className="text-[#ece6d9] print:text-black">
-                  {it.name} × {it.qty}
-                </div>
-                <div className="text-[11px] text-ink-500 print:text-neutral-500">
-                  {it.category} · {it.netWeightGrams}g net · Kaat {it.kaat} @ {formatMoney(it.ratePerGram, currency)}/g
-                </div>
+          <div className="mt-5 flex justify-between text-sm">
+            <div>
+              <p className="text-[11px] uppercase tracking-wide text-neutral-500">Billed To</p>
+              <p className="font-medium">{sale.customerName || "Walk-in Customer"}</p>
+              {sale.customerPhone && <p className="text-neutral-600">{sale.customerPhone}</p>}
+            </div>
+            <div className="text-right">
+              <p className="text-[11px] uppercase tracking-wide text-neutral-500">Payment Method</p>
+              <p className="font-medium">{sale.paymentMethod}</p>
+            </div>
+          </div>
+
+          <table className="mt-6 w-full border-collapse text-sm">
+            <thead>
+              <tr className="border-y-2 border-neutral-900 text-left text-[11px] uppercase text-neutral-700">
+                <th className="py-2 pr-2">#</th>
+                <th className="py-2 pr-2">Item</th>
+                <th className="py-2 pr-2">Category</th>
+                <th className="py-2 pr-2 text-right">Net Wt</th>
+                <th className="py-2 pr-2 text-right">Gross Wt</th>
+                <th className="py-2 pr-2 text-right">Kaat</th>
+                <th className="py-2 pr-2 text-right">Rate/g</th>
+                <th className="py-2 pr-2 text-right">Qty</th>
+                <th className="py-2 pl-2 text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sale.items.map((it, i) => (
+                <tr key={i} className="border-b border-neutral-200">
+                  <td className="py-2 pr-2 text-neutral-500">{i + 1}</td>
+                  <td className="py-2 pr-2">
+                    <div className="font-medium">{it.name}</div>
+                    <div className="text-[10px] text-neutral-500">{it.sku}</div>
+                  </td>
+                  <td className="py-2 pr-2 text-neutral-600">{it.category}</td>
+                  <td className="py-2 pr-2 text-right text-neutral-600">{it.netWeightGrams}g</td>
+                  <td className="py-2 pr-2 text-right text-neutral-600">{it.grossWeightGrams.toFixed(2)}g</td>
+                  <td className="py-2 pr-2 text-right text-neutral-600">{it.kaat}</td>
+                  <td className="py-2 pr-2 text-right text-neutral-600">{formatMoney(it.ratePerGram, currency)}</td>
+                  <td className="py-2 pr-2 text-right text-neutral-600">{it.qty}</td>
+                  <td className="py-2 pl-2 text-right font-medium">{formatMoney(it.lineTotal, currency)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <div className="mt-4 flex justify-end">
+            <div className="w-64 space-y-1.5 text-sm">
+              <div className="flex justify-between">
+                <span className="text-neutral-600">Subtotal</span>
+                <span>{formatMoney(sale.subtotal, currency)}</span>
               </div>
-              <span className="text-[#c9bd9e] print:text-black">{formatMoney(it.lineTotal, currency)}</span>
+              {sale.discount > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-neutral-600">Discount</span>
+                  <span>-{formatMoney(sale.discount, currency)}</span>
+                </div>
+              )}
+              <div className="flex justify-between border-t-2 border-neutral-900 pt-1.5 text-base font-bold">
+                <span>Total</span>
+                <span>{formatMoney(sale.total, currency)}</span>
+              </div>
             </div>
-          ))}
-        </div>
-
-        <div className="space-y-1.5 px-6 py-4 text-sm">
-          <div className="flex justify-between text-ink-500 print:text-neutral-600">
-            <span>Subtotal</span>
-            <span>{formatMoney(sale.subtotal, currency)}</span>
           </div>
-          {sale.discount > 0 && (
-            <div className="flex justify-between text-ink-500 print:text-neutral-600">
-              <span>Discount</span>
-              <span>-{formatMoney(sale.discount, currency)}</span>
+
+          <div className="mt-16 flex items-end justify-between text-[11px] text-neutral-500">
+            <div className="max-w-xs">
+              <p>Thank you for shopping with {shop.shopName}.</p>
+              <p>Goods once sold are not exchangeable or refundable without this invoice.</p>
             </div>
-          )}
-          <div className="flex justify-between text-base font-semibold text-gold-200 print:text-black">
-            <span>Total</span>
-            <span>{formatMoney(sale.total, currency)}</span>
+            <div className="text-center">
+              <div className="mb-1 w-40 border-b border-neutral-400" />
+              <p>Authorized Signature</p>
+            </div>
           </div>
-          <div className="pt-1 text-xs text-ink-500 print:text-neutral-500">
-            Paid via {sale.paymentMethod}
-            {sale.customerName && ` · ${sale.customerName}`}
-          </div>
-        </div>
-
-        <div className="flex gap-3 px-6 pb-6 print:hidden">
-          <button
-            onClick={() => window.print()}
-            className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-gold-800/50 py-2.5 text-sm font-medium text-[#c9bd9e] hover:border-gold-600"
-          >
-            <Printer size={15} /> Print
-          </button>
-          <button
-            onClick={onClose}
-            className="flex-1 rounded-lg bg-gradient-to-r from-gold-600 to-gold-500 py-2.5 text-sm font-semibold text-ink-950 hover:from-gold-500 hover:to-gold-400"
-          >
-            New Sale
-          </button>
         </div>
       </div>
     </div>

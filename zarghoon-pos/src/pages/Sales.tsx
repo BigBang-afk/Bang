@@ -1,28 +1,46 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, Receipt } from "lucide-react";
+import { ChevronDown, ChevronUp, Receipt, Scale, Coins, Wallet, CalendarClock } from "lucide-react";
 import { useSalesStore } from "../store/salesStore";
 import { useSettingsStore } from "../store/settingsStore";
 import { formatMoney, formatDateTime, todayKey } from "../lib/format";
-
-type Filter = "today" | "week" | "all";
+import StatCard from "../components/StatCard";
 
 export default function Sales() {
   const sales = useSalesStore((s) => s.sales);
   const currency = useSettingsStore((s) => s.currency);
-  const [filter, setFilter] = useState<Filter>("all");
+  const [fromDate, setFromDate] = useState(todayKey());
+  const [toDate, setToDate] = useState(todayKey());
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  const filtered = useMemo(() => {
-    if (filter === "all") return sales;
-    const now = new Date();
-    const cutoff =
-      filter === "today"
-        ? todayKey()
-        : todayKey(new Date(now.setDate(now.getDate() - 7)));
-    return sales.filter((s) => (filter === "today" ? s.date.startsWith(cutoff) : s.date >= cutoff));
-  }, [sales, filter]);
+  const isToday = fromDate === todayKey() && toDate === todayKey();
 
-  const totalRevenue = filtered.reduce((sum, s) => sum + s.total, 0);
+  const filtered = useMemo(() => {
+    return sales.filter((s) => {
+      const day = s.date.slice(0, 10);
+      return day >= fromDate && day <= toDate;
+    });
+  }, [sales, fromDate, toDate]);
+
+  const totals = useMemo(() => {
+    let netWeight = 0;
+    let grossWeight = 0;
+    let salePrice = 0;
+    let total = 0;
+    for (const s of filtered) {
+      salePrice += s.subtotal;
+      total += s.total;
+      for (const it of s.items) {
+        netWeight += it.netWeightGrams * it.qty;
+        grossWeight += it.grossWeightGrams * it.qty;
+      }
+    }
+    return { netWeight, grossWeight, salePrice, total };
+  }, [filtered]);
+
+  function resetToToday() {
+    setFromDate(todayKey());
+    setToDate(todayKey());
+  }
 
   return (
     <div className="p-4 md:p-8 space-y-5">
@@ -30,24 +48,69 @@ export default function Sales() {
         <div>
           <h1 className="font-serif text-3xl font-semibold text-gold-100">Sales History</h1>
           <p className="text-sm text-ink-500">
-            {filtered.length} invoice{filtered.length === 1 ? "" : "s"} · {formatMoney(totalRevenue, currency)} total
+            {filtered.length} invoice{filtered.length === 1 ? "" : "s"} ·{" "}
+            {isToday ? "Today" : `${fromDate} → ${toDate}`}
           </p>
         </div>
-        <div className="flex gap-2">
-          {(["today", "week", "all"] as Filter[]).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`rounded-lg border px-3 py-1.5 text-xs font-medium capitalize transition ${
-                filter === f
-                  ? "border-gold-600 bg-gold-500/15 text-gold-300"
-                  : "border-gold-900/40 text-ink-500 hover:text-gold-300"
-              }`}
-            >
-              {f}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={resetToToday}
+            className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition ${
+              isToday
+                ? "border-gold-600 bg-gold-500/15 text-gold-300"
+                : "border-gold-900/40 text-ink-500 hover:text-gold-300"
+            }`}
+          >
+            <CalendarClock size={14} /> Today
+          </button>
+          <label className="flex items-center gap-1.5 rounded-lg border border-gold-900/40 bg-ink-900/50 px-3 py-2 text-xs text-ink-500">
+            From
+            <input
+              type="date"
+              value={fromDate}
+              max={toDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="bg-transparent text-[#ece6d9] outline-none [color-scheme:dark]"
+            />
+          </label>
+          <label className="flex items-center gap-1.5 rounded-lg border border-gold-900/40 bg-ink-900/50 px-3 py-2 text-xs text-ink-500">
+            To
+            <input
+              type="date"
+              value={toDate}
+              min={fromDate}
+              max={todayKey()}
+              onChange={(e) => setToDate(e.target.value)}
+              className="bg-transparent text-[#ece6d9] outline-none [color-scheme:dark]"
+            />
+          </label>
         </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <StatCard
+          label="Total Net Weight"
+          value={`${totals.netWeight.toFixed(2)} g`}
+          icon={Scale}
+        />
+        <StatCard
+          label="Total Gross Weight"
+          value={`${totals.grossWeight.toFixed(2)} g`}
+          icon={Scale}
+        />
+        <StatCard
+          label="Sale Price"
+          value={formatMoney(totals.salePrice, currency)}
+          icon={Coins}
+          hint="Subtotal before discount"
+        />
+        <StatCard
+          label="Total of Sale Price"
+          value={formatMoney(totals.total, currency)}
+          icon={Wallet}
+          accent
+          hint="Final total after discount"
+        />
       </div>
 
       {filtered.length === 0 ? (
@@ -95,7 +158,9 @@ export default function Sales() {
                       <thead>
                         <tr className="text-left text-xs uppercase tracking-wider text-ink-500">
                           <th className="pb-2 font-medium">Item</th>
-                          <th className="pb-2 font-medium">Category / Net Wt</th>
+                          <th className="pb-2 font-medium">Category</th>
+                          <th className="pb-2 font-medium">Net Wt</th>
+                          <th className="pb-2 font-medium">Gross Wt</th>
                           <th className="pb-2 font-medium">Kaat</th>
                           <th className="pb-2 font-medium">Rate</th>
                           <th className="pb-2 text-right font-medium">Total</th>
@@ -107,9 +172,9 @@ export default function Sales() {
                             <td className="py-2 text-[#ece6d9]">
                               {it.name} × {it.qty}
                             </td>
-                            <td className="py-2 text-ink-500">
-                              {it.category} · {it.netWeightGrams}g
-                            </td>
+                            <td className="py-2 text-ink-500">{it.category}</td>
+                            <td className="py-2 text-ink-500">{it.netWeightGrams}g</td>
+                            <td className="py-2 text-ink-500">{it.grossWeightGrams.toFixed(2)}g</td>
                             <td className="py-2 text-ink-500">{it.kaat}</td>
                             <td className="py-2 text-ink-500">{formatMoney(it.ratePerGram, currency)}/g</td>
                             <td className="py-2 text-right text-[#c9bd9e]">{formatMoney(it.lineTotal, currency)}</td>
