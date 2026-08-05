@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Plus,
   Pencil,
@@ -603,11 +603,25 @@ function ProductFormModal({
         }
       : emptyForm
   );
+  const [bulkDefaults, setBulkDefaults] = useState<Pick<ProductFormInput, "category" | "wastagePercent" | "kaat">>({
+    category: allCategories[0] ?? "Ring",
+    wastagePercent: 0,
+    kaat: 0,
+  });
   const [rows, setRows] = useState<(ProductFormInput & { _key: string })[]>([
-    { ...emptyForm, _key: nextRowKey() },
+    { ...emptyForm, ...bulkDefaults, _key: nextRowKey() },
   ]);
+  const [focusKey, setFocusKey] = useState<string | null>(null);
+  const nameRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [imageError, setImageError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (focusKey && nameRefs.current[focusKey]) {
+      nameRefs.current[focusKey]?.focus();
+      setFocusKey(null);
+    }
+  }, [focusKey, rows]);
 
   const grossWeight = computeGrossWeight(form.netWeightGrams, form.wastagePercent);
   const buyPriceInGold = computeBuyPriceInGold(form.netWeightGrams, form.kaat);
@@ -633,7 +647,9 @@ function ProductFormModal({
   }
 
   function addRow() {
-    setRows((prev) => [...prev, { ...emptyForm, _key: nextRowKey() }]);
+    const key = nextRowKey();
+    setRows((prev) => [...prev, { ...emptyForm, ...bulkDefaults, _key: key }]);
+    setFocusKey(key);
   }
 
   function removeRow(key: string) {
@@ -642,6 +658,10 @@ function ProductFormModal({
 
   function updateRow(key: string, patch: Partial<ProductFormInput>) {
     setRows((prev) => prev.map((r) => (r._key === key ? { ...r, ...patch } : r)));
+  }
+
+  function applyDefaultsToAllRows() {
+    setRows((prev) => prev.map((r) => ({ ...r, ...bulkDefaults })));
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -824,6 +844,61 @@ function ProductFormModal({
           </div>
         ) : (
           <div className="space-y-3 px-6 py-5">
+            <div className="rounded-xl border border-gold-700/40 bg-gold-500/[0.06] p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wider text-gold-400">
+                  Batch Defaults
+                </span>
+                <button
+                  type="button"
+                  onClick={applyDefaultsToAllRows}
+                  className="text-[11px] font-medium text-gold-500 hover:text-gold-300"
+                >
+                  Apply to all rows below
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <select
+                  value={bulkDefaults.category}
+                  onChange={(e) => setBulkDefaults((d) => ({ ...d, category: e.target.value as Category }))}
+                  className="input"
+                >
+                  {allCategories.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={bulkDefaults.wastagePercent || ""}
+                  onChange={(e) =>
+                    setBulkDefaults((d) => ({ ...d, wastagePercent: Number(e.target.value) || 0 }))
+                  }
+                  onFocus={(e) => e.target.select()}
+                  placeholder="Wastage %"
+                  className="input"
+                />
+                <input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={bulkDefaults.kaat || ""}
+                  onChange={(e) => setBulkDefaults((d) => ({ ...d, kaat: Number(e.target.value) || 0 }))}
+                  onFocus={(e) => e.target.select()}
+                  placeholder="Kaat"
+                  className="input"
+                />
+              </div>
+              <p className="mt-2 text-[11px] text-ink-500">
+                New rows start with these values. Set them once per batch, then just type each item's name
+                and weight — press <kbd className="rounded bg-ink-800 px-1 py-0.5 text-[10px]">Enter</kbd>{" "}
+                after the weight to jump straight to the next item.
+              </p>
+            </div>
+
             {rows.map((row, i) => (
               <BulkRow
                 key={row._key}
@@ -832,6 +907,10 @@ function ProductFormModal({
                 onChange={(patch) => updateRow(row._key, patch)}
                 onRemove={() => removeRow(row._key)}
                 canRemove={rows.length > 1}
+                nameInputRef={(el) => {
+                  nameRefs.current[row._key] = el;
+                }}
+                onQuickAdd={addRow}
               />
             ))}
             <button
@@ -885,17 +964,30 @@ function BulkRow({
   onChange,
   onRemove,
   canRemove,
+  nameInputRef,
+  onQuickAdd,
 }: {
   index: number;
   row: ProductFormInput;
   onChange: (patch: Partial<ProductFormInput>) => void;
   onRemove: () => void;
   canRemove: boolean;
+  nameInputRef?: (el: HTMLInputElement | null) => void;
+  onQuickAdd?: () => void;
 }) {
   const allCategories = useInventoryStore((s) => s.categories);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const netWtRef = useRef<HTMLInputElement>(null);
+  const wastageRef = useRef<HTMLInputElement>(null);
+  const kaatRef = useRef<HTMLInputElement>(null);
   const grossWeight = computeGrossWeight(row.netWeightGrams, row.wastagePercent);
   const buyPriceInGold = computeBuyPriceInGold(row.netWeightGrams, row.kaat);
+
+  function advanceOnEnter(e: React.KeyboardEvent, next?: () => void) {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    next?.();
+  }
 
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -959,8 +1051,10 @@ function BulkRow({
 
         <div className="grid flex-1 grid-cols-2 gap-2 sm:grid-cols-3">
           <input
+            ref={nameInputRef}
             value={row.name}
             onChange={(e) => onChange({ name: e.target.value })}
+            onKeyDown={(e) => advanceOnEnter(e, () => netWtRef.current?.focus())}
             placeholder="Item name"
             className="input col-span-2 sm:col-span-1"
           />
@@ -976,29 +1070,38 @@ function BulkRow({
             ))}
           </select>
           <input
+            ref={netWtRef}
             type="number"
             min={0}
             step={0.01}
             value={row.netWeightGrams || ""}
             onChange={(e) => onChange({ netWeightGrams: Number(e.target.value) || 0 })}
+            onKeyDown={(e) => advanceOnEnter(e, () => wastageRef.current?.focus())}
+            onFocus={(e) => e.target.select()}
             placeholder="Net wt (g)"
             className="input"
           />
           <input
+            ref={wastageRef}
             type="number"
             min={0}
             step={0.01}
             value={row.wastagePercent || ""}
             onChange={(e) => onChange({ wastagePercent: Number(e.target.value) || 0 })}
+            onKeyDown={(e) => advanceOnEnter(e, () => kaatRef.current?.focus())}
+            onFocus={(e) => e.target.select()}
             placeholder="Wastage %"
             className="input"
           />
           <input
+            ref={kaatRef}
             type="number"
             min={0}
             step={0.01}
             value={row.kaat || ""}
             onChange={(e) => onChange({ kaat: Number(e.target.value) || 0 })}
+            onKeyDown={(e) => advanceOnEnter(e, onQuickAdd)}
+            onFocus={(e) => e.target.select()}
             placeholder="Kaat"
             className="input"
           />
