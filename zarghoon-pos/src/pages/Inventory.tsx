@@ -319,6 +319,8 @@ export default function Inventory() {
       {showReport && (
         <InventoryReportModal
           products={filtered}
+          categoryStats={categoryStats}
+          groupByCategory={category === "All"}
           rates={rates}
           totals={{ netWeight: totalNetWeight, buyPriceInGold: totalBuyPriceInGold, value: totalValue }}
           categoryLabel={category === "All" ? "All Categories" : category}
@@ -360,8 +362,18 @@ export default function Inventory() {
   );
 }
 
+interface CategoryStat {
+  category: Category;
+  count: number;
+  netWeight: number;
+  buyPriceInGold: number;
+  value: number;
+}
+
 function InventoryReportModal({
   products,
+  categoryStats,
+  groupByCategory,
   rates,
   totals,
   categoryLabel,
@@ -370,6 +382,8 @@ function InventoryReportModal({
   onClose,
 }: {
   products: Product[];
+  categoryStats: CategoryStat[];
+  groupByCategory: boolean;
   rates: { k21: number };
   totals: { netWeight: number; buyPriceInGold: number; value: number };
   categoryLabel: string;
@@ -433,50 +447,86 @@ function InventoryReportModal({
             </div>
           </div>
 
-          <table className="mt-6 w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-y-2 border-neutral-900 text-left text-[11px] uppercase text-neutral-700">
-                <th className="py-2 pr-2">#</th>
-                <th className="py-2 pr-2">Product</th>
-                <th className="py-2 pr-2">Category</th>
-                <th className="py-2 pr-2 text-right">Net Wt</th>
-                <th className="py-2 pr-2 text-right">Gross Wt</th>
-                <th className="py-2 pr-2 text-right">Kaat</th>
-                <th className="py-2 pr-2 text-right">Buy Price in Gold</th>
-                <th className="py-2 pl-2 text-right">Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.map((p, i) => {
-                const { total } = computeProductPrice(p, rates);
-                return (
-                  <tr key={p.id} className="border-b border-neutral-200">
+          {groupByCategory ? (
+            <table className="mt-6 w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-y-2 border-neutral-900 text-left text-[11px] uppercase text-neutral-700">
+                  <th className="py-2 pr-2">#</th>
+                  <th className="py-2 pr-2">Category</th>
+                  <th className="py-2 pr-2 text-right">Products</th>
+                  <th className="py-2 pr-2 text-right">Net Weight</th>
+                  <th className="py-2 pr-2 text-right">Buy Price in Gold</th>
+                  <th className="py-2 pl-2 text-right">Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                {categoryStats.map((s, i) => (
+                  <tr key={s.category} className="border-b border-neutral-200">
                     <td className="py-2 pr-2 text-neutral-500">{i + 1}</td>
-                    <td className="py-2 pr-2">
-                      <div className="font-medium">{p.name}</div>
-                      <div className="text-[10px] text-neutral-500">{p.sku}</div>
-                    </td>
-                    <td className="py-2 pr-2 text-neutral-600">{p.category}</td>
-                    <td className="py-2 pr-2 text-right text-neutral-600">{p.netWeightGrams}g</td>
-                    <td className="py-2 pr-2 text-right text-neutral-600">{p.grossWeightGrams.toFixed(2)}g</td>
-                    <td className="py-2 pr-2 text-right text-neutral-600">{p.kaat}</td>
-                    <td className="py-2 pr-2 text-right text-neutral-600">{p.buyPriceInGold.toFixed(3)}g</td>
-                    <td className="py-2 pl-2 text-right font-medium">{formatMoney(total, currency)}</td>
+                    <td className="py-2 pr-2 font-medium">{s.category}</td>
+                    <td className="py-2 pr-2 text-right text-neutral-600">{s.count}</td>
+                    <td className="py-2 pr-2 text-right text-neutral-600">{s.netWeight.toFixed(2)}g</td>
+                    <td className="py-2 pr-2 text-right text-neutral-600">{s.buyPriceInGold.toFixed(3)}g</td>
+                    <td className="py-2 pl-2 text-right font-medium">{formatMoney(s.value, currency)}</td>
                   </tr>
-                );
-              })}
-            </tbody>
-            <tfoot>
-              <tr className="border-t-2 border-neutral-900 text-sm font-bold">
-                <td colSpan={3} />
-                <td className="py-2 pr-2 text-right">{totals.netWeight.toFixed(2)}g</td>
-                <td className="py-2 pr-2" />
-                <td className="py-2 pr-2" />
-                <td className="py-2 pr-2 text-right">{totals.buyPriceInGold.toFixed(3)}g</td>
-                <td className="py-2 pl-2 text-right">{formatMoney(totals.value, currency)}</td>
-              </tr>
-            </tfoot>
-          </table>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-neutral-900 text-sm font-bold">
+                  <td colSpan={2} />
+                  <td className="py-2 pr-2 text-right">{products.length}</td>
+                  <td className="py-2 pr-2 text-right">{totals.netWeight.toFixed(2)}g</td>
+                  <td className="py-2 pr-2 text-right">{totals.buyPriceInGold.toFixed(3)}g</td>
+                  <td className="py-2 pl-2 text-right">{formatMoney(totals.value, currency)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          ) : (
+            <table className="mt-6 w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-y-2 border-neutral-900 text-left text-[11px] uppercase text-neutral-700">
+                  <th className="py-2 pr-2">#</th>
+                  <th className="py-2 pr-2">Product</th>
+                  <th className="py-2 pr-2">Category</th>
+                  <th className="py-2 pr-2 text-right">Net Wt</th>
+                  <th className="py-2 pr-2 text-right">Gross Wt</th>
+                  <th className="py-2 pr-2 text-right">Kaat</th>
+                  <th className="py-2 pr-2 text-right">Buy Price in Gold</th>
+                  <th className="py-2 pl-2 text-right">Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                {products.map((p, i) => {
+                  const { total } = computeProductPrice(p, rates);
+                  return (
+                    <tr key={p.id} className="border-b border-neutral-200">
+                      <td className="py-2 pr-2 text-neutral-500">{i + 1}</td>
+                      <td className="py-2 pr-2">
+                        <div className="font-medium">{p.name}</div>
+                        <div className="text-[10px] text-neutral-500">{p.sku}</div>
+                      </td>
+                      <td className="py-2 pr-2 text-neutral-600">{p.category}</td>
+                      <td className="py-2 pr-2 text-right text-neutral-600">{p.netWeightGrams}g</td>
+                      <td className="py-2 pr-2 text-right text-neutral-600">{p.grossWeightGrams.toFixed(2)}g</td>
+                      <td className="py-2 pr-2 text-right text-neutral-600">{p.kaat}</td>
+                      <td className="py-2 pr-2 text-right text-neutral-600">{p.buyPriceInGold.toFixed(3)}g</td>
+                      <td className="py-2 pl-2 text-right font-medium">{formatMoney(total, currency)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-neutral-900 text-sm font-bold">
+                  <td colSpan={3} />
+                  <td className="py-2 pr-2 text-right">{totals.netWeight.toFixed(2)}g</td>
+                  <td className="py-2 pr-2" />
+                  <td className="py-2 pr-2" />
+                  <td className="py-2 pr-2 text-right">{totals.buyPriceInGold.toFixed(3)}g</td>
+                  <td className="py-2 pl-2 text-right">{formatMoney(totals.value, currency)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          )}
 
           <div className="mt-16 text-[11px] text-neutral-500">
             <p>{shop.shopName} — inventory report generated from the private POS system.</p>
