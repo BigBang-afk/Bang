@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: bang
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: backend }
+  template:
+    metadata:
+      labels: { app: backend }
+    spec:
+      containers:
+        - name: backend
+          image: ghcr.io/bigbang-afk/bang-backend:latest
+          command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+          ports: [{ containerPort: 8000 }]
+          envFrom:
+            - secretRef: { name: bang-secrets }
+          readinessProbe:
+            httpGet: { path: /health, port: 8000 }
+            initialDelaySeconds: 10
+          livenessProbe:
+            httpGet: { path: /health, port: 8000 }
+            initialDelaySeconds: 20
+          resources:
+            requests: { cpu: "250m", memory: "256Mi" }
+            limits: { cpu: "1", memory: "512Mi" }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: bang
+spec:
+  selector: { app: backend }
+  ports: [{ port: 8000, targetPort: 8000 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: celery-worker
+  namespace: bang
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: celery-worker }
+  template:
+    metadata:
+      labels: { app: celery-worker }
+    spec:
+      containers:
+        - name: celery-worker
+          image: ghcr.io/bigbang-afk/bang-backend:latest
+          command: ["celery", "-A", "app.celery_app", "worker", "--loglevel=info", "--concurrency=4"]
+          envFrom:
+            - secretRef: { name: bang-secrets }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: celery-beat
+  namespace: bang
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: celery-beat }
+  template:
+    metadata:
+      labels: { app: celery-beat }
+    spec:
+      containers:
+        - name: celery-beat
+          image: ghcr.io/bigbang-afk/bang-backend:latest
+          command: ["celery", "-A", "app.celery_app", "beat", "--loglevel=info"]
+          envFrom:
+            - secretRef: { name: bang-secrets }
