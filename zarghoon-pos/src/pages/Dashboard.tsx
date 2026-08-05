@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Coins, TrendingUp, Package, Receipt, AlertTriangle, Pencil } from "lucide-react";
+import { Coins, TrendingUp, Package, Receipt, AlertTriangle, Pencil, PiggyBank, FlaskConical } from "lucide-react";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -19,6 +19,7 @@ import { useSalesStore } from "../store/salesStore";
 import { useSettingsStore } from "../store/settingsStore";
 import { formatMoney, todayKey, formatDate } from "../lib/format";
 import { computeProductPrice } from "../lib/pricing";
+import { computeProfit } from "../lib/profit";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -35,6 +36,22 @@ export default function Dashboard() {
     [sales, today]
   );
   const todaysRevenue = todaysSales.reduce((sum, s) => sum + s.total, 0);
+
+  const todaysProfit = useMemo(
+    () =>
+      todaysSales.reduce(
+        (acc, s) => {
+          for (const it of s.items) {
+            const p = computeProfit(it);
+            acc.cash += p.profitCash;
+            acc.gold += p.profitGold;
+          }
+          return acc;
+        },
+        { cash: 0, gold: 0 }
+      ),
+    [todaysSales]
+  );
 
   const inStockProducts = useMemo(() => products.filter((p) => p.stock > 0), [products]);
 
@@ -87,7 +104,7 @@ export default function Dashboard() {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
         <button onClick={() => setShowRateModal(true)} className="text-left">
           <StatCard
             label="21K Gold Rate / g"
@@ -102,6 +119,18 @@ export default function Dashboard() {
           value={formatMoney(todaysRevenue, currency)}
           icon={TrendingUp}
           hint={`${todaysSales.length} sale${todaysSales.length === 1 ? "" : "s"} today`}
+        />
+        <StatCard
+          label="Today's Profit (Cash)"
+          value={formatMoney(todaysProfit.cash, currency)}
+          icon={PiggyBank}
+          accent
+        />
+        <StatCard
+          label="Today's Profit (Gold)"
+          value={`${todaysProfit.gold.toFixed(3)} g`}
+          icon={FlaskConical}
+          accent
         />
         <StatCard
           label="Inventory Value"

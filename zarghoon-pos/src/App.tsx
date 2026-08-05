@@ -5,6 +5,7 @@ import POS from "./pages/POS";
 import Inventory from "./pages/Inventory";
 import OldGold from "./pages/OldGold";
 import Sales from "./pages/Sales";
+import Profit from "./pages/Profit";
 import Settings from "./pages/Settings";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -21,6 +22,7 @@ export default function App() {
             <Route path="/inventory" element={<Inventory />} />
             <Route path="/old-gold" element={<OldGold />} />
             <Route path="/sales" element={<Sales />} />
+            <Route path="/profit" element={<Profit />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
         </Route>
