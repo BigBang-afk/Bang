@@ -75,6 +75,23 @@ export default function Inventory() {
   const totalBuyPriceInGold = filtered.reduce((sum, p) => sum + p.buyPriceInGold * p.stock, 0);
   const totalValue = filtered.reduce((sum, p) => sum + computeProductPrice(p, rates).total * p.stock, 0);
 
+  const showCategoryGrid = category === "All" && search.trim() === "";
+
+  const categoryStats = useMemo(
+    () =>
+      allCategories.map((c) => {
+        const items = inStock.filter((p) => p.category === c);
+        return {
+          category: c,
+          count: items.length,
+          netWeight: items.reduce((sum, p) => sum + p.netWeightGrams * p.stock, 0),
+          buyPriceInGold: items.reduce((sum, p) => sum + p.buyPriceInGold * p.stock, 0),
+          value: items.reduce((sum, p) => sum + computeProductPrice(p, rates).total * p.stock, 0),
+        };
+      }),
+    [inStock, rates]
+  );
+
   function openAdd() {
     setEditing(null);
     setShowForm(true);
@@ -175,79 +192,117 @@ export default function Inventory() {
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-gold-900/25 bg-ink-900/40">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gold-900/30 text-left text-xs uppercase tracking-wider text-ink-500">
-              <th className="px-4 py-3 font-medium">Product</th>
-              <th className="px-4 py-3 font-medium">Category</th>
-              <th className="px-4 py-3 font-medium">Net Wt</th>
-              <th className="px-4 py-3 font-medium">Wastage</th>
-              <th className="px-4 py-3 font-medium">Gross Wt</th>
-              <th className="px-4 py-3 font-medium">Kaat</th>
-              <th className="px-4 py-3 font-medium">Buy Price in Gold</th>
-              <th className="px-4 py-3 font-medium">Stock</th>
-              <th className="px-4 py-3 text-right font-medium">Value</th>
-              <th className="px-4 py-3 text-right font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((p) => {
-              const { total } = computeProductPrice(p, rates);
-              return (
-                <tr key={p.id} className="border-b border-gold-900/10 last:border-0 hover:bg-ink-800/30">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2.5">
-                      <ProductThumb images={p.images} size={36} />
-                      <div>
-                        <div className="font-medium text-[#ece6d9]">{p.name}</div>
-                        <div className="text-[11px] text-ink-500">{p.sku}</div>
+      {showCategoryGrid ? (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          {categoryStats.map((s) => (
+            <button
+              key={s.category}
+              onClick={() => setCategory(s.category)}
+              disabled={s.count === 0}
+              className={`rounded-2xl border p-5 text-left transition ${
+                s.count === 0
+                  ? "cursor-not-allowed border-gold-900/15 bg-ink-900/20 opacity-50"
+                  : "border-gold-900/25 bg-ink-900/40 hover:border-gold-600/60 hover:bg-ink-900/70"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-serif text-lg font-semibold text-gold-100">{s.category}</span>
+                <span className="rounded-full bg-gold-500/10 px-2 py-0.5 text-xs font-medium text-gold-300">
+                  {s.count}
+                </span>
+              </div>
+              <div className="mt-3 space-y-1 text-xs text-ink-500">
+                <div className="flex justify-between">
+                  <span>Net Weight</span>
+                  <span className="text-[#c9bd9e]">{s.netWeight.toFixed(2)} g</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Buy Price in Gold</span>
+                  <span className="text-[#c9bd9e]">{s.buyPriceInGold.toFixed(3)} g</span>
+                </div>
+                <div className="flex justify-between border-t border-gold-900/25 pt-1.5">
+                  <span>Value</span>
+                  <span className="font-medium text-gold-300">{formatMoney(s.value, currency)}</span>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-2xl border border-gold-900/25 bg-ink-900/40">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gold-900/30 text-left text-xs uppercase tracking-wider text-ink-500">
+                <th className="px-4 py-3 font-medium">Product</th>
+                <th className="px-4 py-3 font-medium">Category</th>
+                <th className="px-4 py-3 font-medium">Net Wt</th>
+                <th className="px-4 py-3 font-medium">Wastage</th>
+                <th className="px-4 py-3 font-medium">Gross Wt</th>
+                <th className="px-4 py-3 font-medium">Kaat</th>
+                <th className="px-4 py-3 font-medium">Buy Price in Gold</th>
+                <th className="px-4 py-3 font-medium">Stock</th>
+                <th className="px-4 py-3 text-right font-medium">Value</th>
+                <th className="px-4 py-3 text-right font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((p) => {
+                const { total } = computeProductPrice(p, rates);
+                return (
+                  <tr key={p.id} className="border-b border-gold-900/10 last:border-0 hover:bg-ink-800/30">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2.5">
+                        <ProductThumb images={p.images} size={36} />
+                        <div>
+                          <div className="font-medium text-[#ece6d9]">{p.name}</div>
+                          <div className="text-[11px] text-ink-500">{p.sku}</div>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-ink-500">{p.category}</td>
-                  <td className="px-4 py-3 text-ink-500">{p.netWeightGrams} g</td>
-                  <td className="px-4 py-3 text-ink-500">{p.wastagePercent}%</td>
-                  <td className="px-4 py-3 text-ink-500">{p.grossWeightGrams.toFixed(2)} g</td>
-                  <td className="px-4 py-3 text-ink-500">{p.kaat}</td>
-                  <td className="px-4 py-3 text-gold-300 font-medium">{p.buyPriceInGold.toFixed(3)} g</td>
-                  <td className="px-4 py-3">
-                    <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400">
-                      In Stock
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right font-semibold text-gold-300">
-                    {formatMoney(total, currency)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => openEdit(p)}
-                        className="rounded-md p-1.5 text-ink-500 hover:bg-ink-800 hover:text-gold-300"
-                      >
-                        <Pencil size={14} />
-                      </button>
-                      <button
-                        onClick={() => setConfirmDelete(p)}
-                        className="rounded-md p-1.5 text-ink-500 hover:bg-ink-800 hover:text-rose-400"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
+                    </td>
+                    <td className="px-4 py-3 text-ink-500">{p.category}</td>
+                    <td className="px-4 py-3 text-ink-500">{p.netWeightGrams} g</td>
+                    <td className="px-4 py-3 text-ink-500">{p.wastagePercent}%</td>
+                    <td className="px-4 py-3 text-ink-500">{p.grossWeightGrams.toFixed(2)} g</td>
+                    <td className="px-4 py-3 text-ink-500">{p.kaat}</td>
+                    <td className="px-4 py-3 text-gold-300 font-medium">{p.buyPriceInGold.toFixed(3)} g</td>
+                    <td className="px-4 py-3">
+                      <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400">
+                        In Stock
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right font-semibold text-gold-300">
+                      {formatMoney(total, currency)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => openEdit(p)}
+                          className="rounded-md p-1.5 text-ink-500 hover:bg-ink-800 hover:text-gold-300"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          onClick={() => setConfirmDelete(p)}
+                          className="rounded-md p-1.5 text-ink-500 hover:bg-ink-800 hover:text-rose-400"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={10} className="px-4 py-10 text-center text-ink-500">
+                    No products found.
                   </td>
                 </tr>
-              );
-            })}
-            {filtered.length === 0 && (
-              <tr>
-                <td colSpan={10} className="px-4 py-10 text-center text-ink-500">
-                  No products found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {showForm && (
         <ProductFormModal
