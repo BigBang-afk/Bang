@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Scale, Plus, Minus, Trash2, ShoppingBag } from "lucide-react";
-import { useInventoryStore, type Product, type Category, categories as allCategories } from "../store/inventoryStore";
+import { useInventoryStore, type Product, type Category } from "../store/inventoryStore";
 import { useGoldRateStore } from "../store/goldRateStore";
 import { useSalesStore, type PaymentMethod, type SaleLineItem, type Sale } from "../store/salesStore";
 import { useSettingsStore } from "../store/settingsStore";
@@ -14,11 +14,11 @@ interface CartLine {
   qty: number;
 }
 
-const categories: (Category | "All")[] = ["All", ...allCategories];
 const WEIGHT_TOLERANCE = 0.5;
 
 export default function POS() {
   const products = useInventoryStore((s) => s.products);
+  const allCategories = useInventoryStore((s) => s.categories);
   const adjustStock = useInventoryStore((s) => s.adjustStock);
   const rates = useGoldRateStore();
   const currency = useSettingsStore((s) => s.currency);
@@ -33,6 +33,8 @@ export default function POS() {
   const [discount, setDiscount] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("Cash");
   const [completedSale, setCompletedSale] = useState<Sale | null>(null);
+
+  const categoryTabs = useMemo<(Category | "All")[]>(() => ["All", ...allCategories], [allCategories]);
 
   const weightValue = weightQuery.trim() === "" ? null : Number(weightQuery);
 
@@ -129,7 +131,7 @@ export default function POS() {
           Step 1 — Select a category
         </div>
         <div className="mb-4 flex flex-wrap gap-2">
-          {categories.map((c) => (
+          {categoryTabs.map((c) => (
             <button
               key={c}
               onClick={() => setCategory(c)}

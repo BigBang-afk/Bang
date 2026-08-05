@@ -11,10 +11,10 @@ import {
   Layers,
   Package,
   Printer,
+  FolderPlus,
 } from "lucide-react";
 import {
   useInventoryStore,
-  categories as allCategories,
   computeGrossWeight,
   computeBuyPriceInGold,
   type Product,
@@ -28,8 +28,7 @@ import { formatMoney, formatDateTime } from "../lib/format";
 import { fileToResizedDataUrl } from "../lib/image";
 import ProductThumb from "../components/ProductThumb";
 import StatCard from "../components/StatCard";
-
-const categoryTabs: (Category | "All")[] = ["All", ...allCategories];
+import AddCategoryModal from "../components/AddCategoryModal";
 
 const emptyForm: ProductFormInput = {
   name: "",
@@ -42,6 +41,8 @@ const emptyForm: ProductFormInput = {
 
 export default function Inventory() {
   const products = useInventoryStore((s) => s.products);
+  const allCategories = useInventoryStore((s) => s.categories);
+  const addCategory = useInventoryStore((s) => s.addCategory);
   const addProduct = useInventoryStore((s) => s.addProduct);
   const updateProduct = useInventoryStore((s) => s.updateProduct);
   const removeProduct = useInventoryStore((s) => s.removeProduct);
@@ -55,6 +56,9 @@ export default function Inventory() {
   const [showForm, setShowForm] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Product | null>(null);
   const [showReport, setShowReport] = useState(false);
+  const [showAddCategory, setShowAddCategory] = useState(false);
+
+  const categoryTabs = useMemo<(Category | "All")[]>(() => ["All", ...allCategories], [allCategories]);
 
   const inStock = useMemo(() => products.filter((p) => p.stock > 0), [products]);
 
@@ -89,7 +93,7 @@ export default function Inventory() {
           value: items.reduce((sum, p) => sum + computeProductPrice(p, rates).total * p.stock, 0),
         };
       }),
-    [inStock, rates]
+    [inStock, rates, allCategories]
   );
 
   function openAdd() {
@@ -175,7 +179,7 @@ export default function Inventory() {
             className="w-full bg-transparent py-2.5 text-sm text-[#ece6d9] outline-none placeholder:text-ink-600"
           />
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {categoryTabs.map((c) => (
             <button
               key={c}
@@ -189,6 +193,12 @@ export default function Inventory() {
               {c}
             </button>
           ))}
+          <button
+            onClick={() => setShowAddCategory(true)}
+            className="flex items-center gap-1.5 rounded-full border border-dashed border-gold-900/50 px-3 py-1.5 text-xs font-medium text-ink-500 transition hover:border-gold-600/60 hover:text-gold-300"
+          >
+            <FolderPlus size={13} /> Add Category
+          </button>
         </div>
       </div>
 
@@ -327,6 +337,17 @@ export default function Inventory() {
           shop={shop}
           currency={currency}
           onClose={() => setShowReport(false)}
+        />
+      )}
+
+      {showAddCategory && (
+        <AddCategoryModal
+          onCancel={() => setShowAddCategory(false)}
+          onAdd={(name) => {
+            const added = addCategory(name);
+            if (added) setCategory(added);
+            setShowAddCategory(false);
+          }}
         />
       )}
 
@@ -554,6 +575,9 @@ function ProductFormModal({
   onSubmit: (form: ProductFormInput) => void;
   onSubmitMultiple: (rows: ProductFormInput[]) => void;
 }) {
+  const allCategories = useInventoryStore((s) => s.categories);
+  const addCategory = useInventoryStore((s) => s.addCategory);
+  const [showAddCategory, setShowAddCategory] = useState(false);
   const [mode, setMode] = useState<"single" | "multiple">("single");
   const [form, setForm] = useState<ProductFormInput>(
     initial
@@ -714,17 +738,27 @@ function ProductFormModal({
               </Field>
 
               <Field label="Category">
-                <select
-                  value={form.category}
-                  onChange={(e) => update("category", e.target.value as Category)}
-                  className="input"
-                >
-                  {allCategories.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex gap-1.5">
+                  <select
+                    value={form.category}
+                    onChange={(e) => update("category", e.target.value as Category)}
+                    className="input"
+                  >
+                    {allCategories.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddCategory(true)}
+                    title="Add new category"
+                    className="shrink-0 rounded-lg border border-gold-900/50 px-2.5 text-ink-500 hover:border-gold-600 hover:text-gold-300"
+                  >
+                    <FolderPlus size={16} />
+                  </button>
+                </div>
               </Field>
               <Field label="Net Weight (grams)">
                 <input
@@ -818,6 +852,17 @@ function ProductFormModal({
           </button>
         </div>
       </form>
+
+      {showAddCategory && (
+        <AddCategoryModal
+          onCancel={() => setShowAddCategory(false)}
+          onAdd={(name) => {
+            const added = addCategory(name);
+            if (added) update("category", added);
+            setShowAddCategory(false);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -835,6 +880,7 @@ function BulkRow({
   onRemove: () => void;
   canRemove: boolean;
 }) {
+  const allCategories = useInventoryStore((s) => s.categories);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const grossWeight = computeGrossWeight(row.netWeightGrams, row.wastagePercent);
   const buyPriceInGold = computeBuyPriceInGold(row.netWeightGrams, row.kaat);

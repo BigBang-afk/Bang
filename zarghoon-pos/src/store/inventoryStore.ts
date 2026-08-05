@@ -1,18 +1,9 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type Category =
-  | "Ring"
-  | "Necklace"
-  | "Bangle"
-  | "Earrings"
-  | "Chain"
-  | "Bracelet"
-  | "Set"
-  | "Pendant"
-  | "Other";
+export type Category = string;
 
-export const categories: Category[] = [
+export const defaultCategories: Category[] = [
   "Ring",
   "Necklace",
   "Bangle",
@@ -24,7 +15,7 @@ export const categories: Category[] = [
   "Other",
 ];
 
-const CATEGORY_CODE: Record<Category, string> = {
+const CATEGORY_CODE: Record<string, string> = {
   Ring: "RG",
   Necklace: "NK",
   Bangle: "BN",
@@ -35,6 +26,12 @@ const CATEGORY_CODE: Record<Category, string> = {
   Pendant: "PD",
   Other: "OT",
 };
+
+function categoryCode(category: string): string {
+  if (CATEGORY_CODE[category]) return CATEGORY_CODE[category];
+  const letters = category.replace(/[^a-zA-Z]/g, "").toUpperCase();
+  return (letters.slice(0, 2) || "XX").padEnd(2, "X");
+}
 
 // Traditional 96-point gold purity scale used for stock costing.
 export const GOLD_BASE = 96;
@@ -48,7 +45,7 @@ export function computeBuyPriceInGold(netWeightGrams: number, kaat: number): num
 }
 
 function generateSku(category: Category, existingSkus: string[]): string {
-  const code = CATEGORY_CODE[category];
+  const code = categoryCode(category);
   const used = new Set(existingSkus);
   let sku: string;
   do {
@@ -92,10 +89,12 @@ function withDerivedFields(input: FullProductInput): Omit<Product, "id" | "creat
 
 interface InventoryState {
   products: Product[];
+  categories: Category[];
   addProduct: (p: ProductFormInput) => void;
   updateProduct: (id: string, patch: Partial<ProductFormInput>) => void;
   removeProduct: (id: string) => void;
   adjustStock: (id: string, delta: number) => void;
+  addCategory: (name: string) => string;
 }
 
 function seedProduct(input: FullProductInput, id: string, daysAgo: number): Product {
@@ -195,8 +194,17 @@ const seedProducts: Product[] = [
 
 export const useInventoryStore = create<InventoryState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       products: seedProducts,
+      categories: defaultCategories,
+      addCategory: (name) => {
+        const trimmed = name.trim();
+        if (!trimmed) return "";
+        const existing = get().categories.find((c) => c.toLowerCase() === trimmed.toLowerCase());
+        if (existing) return existing;
+        set((state) => ({ categories: [...state.categories, trimmed] }));
+        return trimmed;
+      },
       addProduct: (p) =>
         set((state) => {
           const sku = generateSku(

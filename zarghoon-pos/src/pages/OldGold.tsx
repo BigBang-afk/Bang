@@ -19,13 +19,11 @@ import {
   type OldGoldEntry,
   type OldGoldFormInput,
 } from "../store/oldGoldStore";
-import { categories as allCategories, type Category } from "../store/inventoryStore";
+import { useInventoryStore, type Category } from "../store/inventoryStore";
 import { useGoldRateStore } from "../store/goldRateStore";
 import { useSettingsStore } from "../store/settingsStore";
 import { formatMoney, formatDateTime, formatDate, todayKey } from "../lib/format";
 import StatCard from "../components/StatCard";
-
-const categoryTabs: (Category | "All")[] = ["All", ...allCategories];
 
 const KARAT_PRESETS = [
   { label: "18K", value: 0.75 },
@@ -90,6 +88,8 @@ function StockView() {
   const returnEntry = useOldGoldStore((s) => s.returnEntry);
   const meltAll = useOldGoldStore((s) => s.meltAll);
   const currency = useSettingsStore((s) => s.currency);
+  const allCategories = useInventoryStore((s) => s.categories);
+  const categoryTabs = useMemo<(Category | "All")[]>(() => ["All", ...allCategories], [allCategories]);
 
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<Category | "All">("All");
@@ -620,6 +620,7 @@ function EntryFormModal({
 }) {
   const k21 = useGoldRateStore((s) => s.k21);
   const currency = useSettingsStore((s) => s.currency);
+  const allCategories = useInventoryStore((s) => s.categories);
   const [form, setForm] = useState<OldGoldFormInput>(
     initial
       ? {
