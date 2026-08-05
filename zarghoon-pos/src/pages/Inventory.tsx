@@ -13,6 +13,7 @@ import {
   Printer,
   FolderPlus,
   Share2,
+  ClipboardPaste,
 } from "lucide-react";
 import {
   useInventoryStore,
@@ -615,6 +616,8 @@ function ProductFormModal({
   const nameRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [imageError, setImageError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showPaste, setShowPaste] = useState(false);
+  const [pasteText, setPasteText] = useState("");
 
   useEffect(() => {
     if (focusKey && nameRefs.current[focusKey]) {
@@ -662,6 +665,34 @@ function ProductFormModal({
 
   function applyDefaultsToAllRows() {
     setRows((prev) => prev.map((r) => ({ ...r, ...bulkDefaults })));
+  }
+
+  function parsePastedRows(text: string): ProductFormInput[] {
+    return text
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const cols = (line.includes("\t") ? line.split("\t") : line.split(",")).map((c) => c.trim());
+        const name = cols[0] ?? "";
+        const netWeightGrams = Number(cols[1]) || 0;
+        const wastagePercent = cols[2] && !Number.isNaN(Number(cols[2])) ? Number(cols[2]) : bulkDefaults.wastagePercent;
+        const kaat = cols[3] && !Number.isNaN(Number(cols[3])) ? Number(cols[3]) : bulkDefaults.kaat;
+        return { name, category: bulkDefaults.category, netWeightGrams, wastagePercent, kaat, images: [] };
+      })
+      .filter((r) => r.name && r.netWeightGrams > 0);
+  }
+
+  const pastePreview = useMemo(() => parsePastedRows(pasteText), [pasteText, bulkDefaults]);
+
+  function importPastedRows() {
+    if (pastePreview.length === 0) return;
+    setRows((prev) => {
+      const kept = prev.filter((r) => r.name.trim());
+      return [...kept, ...pastePreview.map((r) => ({ ...r, _key: nextRowKey() }))];
+    });
+    setPasteText("");
+    setShowPaste(false);
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -849,13 +880,22 @@ function ProductFormModal({
                 <span className="text-xs font-semibold uppercase tracking-wider text-gold-400">
                   Batch Defaults
                 </span>
-                <button
-                  type="button"
-                  onClick={applyDefaultsToAllRows}
-                  className="text-[11px] font-medium text-gold-500 hover:text-gold-300"
-                >
-                  Apply to all rows below
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowPaste((v) => !v)}
+                    className="flex items-center gap-1 text-[11px] font-medium text-gold-500 hover:text-gold-300"
+                  >
+                    <ClipboardPaste size={12} /> {showPaste ? "Hide paste" : "Paste List"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={applyDefaultsToAllRows}
+                    className="text-[11px] font-medium text-gold-500 hover:text-gold-300"
+                  >
+                    Apply to all rows below
+                  </button>
+                </div>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <select
@@ -898,6 +938,50 @@ function ProductFormModal({
                 after the weight to jump straight to the next item.
               </p>
             </div>
+
+            {showPaste && (
+              <div className="rounded-xl border border-gold-700/40 bg-ink-900/50 p-3">
+                <p className="mb-2 text-[11px] text-ink-500">
+                  Paste a list from Excel or WhatsApp — one item per line:{" "}
+                  <span className="text-[#c9bd9e]">Name, Weight</span>, optionally followed by{" "}
+                  <span className="text-[#c9bd9e]">, Wastage, Kaat</span>. Missing wastage/kaat use the
+                  batch defaults above. Tab or comma separated.
+                </p>
+                <textarea
+                  value={pasteText}
+                  onChange={(e) => setPasteText(e.target.value)}
+                  rows={5}
+                  placeholder={"Gold Ring A, 5.2\nGold Ring B, 4.8, 7, 9\nGold Chain C, 12.5"}
+                  className="input resize-none font-mono text-xs"
+                />
+                <div className="mt-2 flex items-center justify-between">
+                  <span className="text-[11px] text-ink-500">
+                    {pastePreview.length} item{pastePreview.length === 1 ? "" : "s"} detected
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowPaste(false);
+                        setPasteText("");
+                      }}
+                      className="rounded-lg border border-gold-900/50 px-3 py-1.5 text-xs text-[#c9bd9e] hover:border-gold-700"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={importPastedRows}
+                      disabled={pastePreview.length === 0}
+                      className="rounded-lg bg-gradient-to-r from-gold-600 to-gold-500 px-3 py-1.5 text-xs font-semibold text-ink-950 hover:from-gold-500 hover:to-gold-400 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Import {pastePreview.length > 0 ? pastePreview.length : ""} Item
+                      {pastePreview.length === 1 ? "" : "s"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {rows.map((row, i) => (
               <BulkRow
