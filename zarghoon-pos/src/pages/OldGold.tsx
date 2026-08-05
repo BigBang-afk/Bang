@@ -88,6 +88,7 @@ function StockView() {
   const removeEntry = useOldGoldStore((s) => s.removeEntry);
   const meltEntry = useOldGoldStore((s) => s.meltEntry);
   const returnEntry = useOldGoldStore((s) => s.returnEntry);
+  const meltAll = useOldGoldStore((s) => s.meltAll);
   const currency = useSettingsStore((s) => s.currency);
 
   const [search, setSearch] = useState("");
@@ -97,6 +98,7 @@ function StockView() {
   const [confirmDelete, setConfirmDelete] = useState<OldGoldEntry | null>(null);
   const [meltingEntry, setMeltingEntry] = useState<OldGoldEntry | null>(null);
   const [returningEntry, setReturningEntry] = useState<OldGoldEntry | null>(null);
+  const [showMeltAll, setShowMeltAll] = useState(false);
 
   const pending = useMemo(() => entries.filter((e) => e.status === "Pending"), [entries]);
 
@@ -136,7 +138,14 @@ function StockView() {
 
   return (
     <div className="space-y-5">
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <button
+          onClick={() => setShowMeltAll(true)}
+          disabled={filtered.length === 0}
+          className="flex items-center gap-2 rounded-lg border border-amber-800/50 px-4 py-2.5 text-sm font-semibold text-amber-400 transition hover:bg-amber-950/30 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <FlaskConical size={16} /> Melt All ({filtered.length})
+        </button>
         <button
           onClick={() => {
             setEditing(null);
@@ -281,6 +290,18 @@ function StockView() {
           onConfirm={(actualPureGrams) => {
             meltEntry(meltingEntry.id, actualPureGrams);
             setMeltingEntry(null);
+          }}
+        />
+      )}
+
+      {showMeltAll && (
+        <MeltAllModal
+          entries={filtered}
+          currency={currency}
+          onCancel={() => setShowMeltAll(false)}
+          onConfirm={(actualTotalPureGrams) => {
+            meltAll(filtered.map((e) => e.id), actualTotalPureGrams);
+            setShowMeltAll(false);
           }}
         />
       )}
@@ -449,6 +470,138 @@ function MeltModal({
             className="flex-1 rounded-lg bg-gradient-to-r from-amber-600 to-amber-500 py-2.5 text-sm font-semibold text-ink-950 hover:from-amber-500 hover:to-amber-400"
           >
             Confirm Melt &amp; Close
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function MeltAllModal({
+  entries,
+  currency,
+  onCancel,
+  onConfirm,
+}: {
+  entries: OldGoldEntry[];
+  currency: string;
+  onCancel: () => void;
+  onConfirm: (actualTotalPureGrams: number) => void;
+}) {
+  const estimateTotal = entries.reduce((sum, e) => sum + e.estimatePureGrams, 0);
+  const cashTotal = entries.reduce((sum, e) => sum + e.buyPriceCash, 0);
+  const [actualTotal, setActualTotal] = useState(estimateTotal.toFixed(3));
+  const actualValue = Number(actualTotal) || 0;
+  const variance = actualValue - estimateTotal;
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    onConfirm(actualValue);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+      <form
+        onSubmit={handleSubmit}
+        className="animate-rise max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-gold-900/40 bg-ink-950 shadow-2xl"
+      >
+        <div className="flex items-center justify-between border-b border-gold-900/40 px-6 py-4">
+          <h3 className="flex items-center gap-2 font-serif text-lg font-semibold text-gold-100">
+            <FlaskConical size={18} className="text-amber-400" /> Melt All ({entries.length})
+          </h3>
+          <button type="button" onClick={onCancel} className="text-ink-500 hover:text-gold-300">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="space-y-4 px-6 py-5">
+          <p className="text-xs text-ink-500">
+            All {entries.length} voucher{entries.length === 1 ? "" : "s"} below will be melted together as one
+            batch. Enter the single actual pure weight you recovered — it will be shared across the vouchers
+            in proportion to their estimate.
+          </p>
+
+          <div className="max-h-40 overflow-y-auto rounded-lg border border-gold-900/30">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-gold-900/30 text-left uppercase text-ink-500">
+                  <th className="px-3 py-2 font-medium">Voucher</th>
+                  <th className="px-3 py-2 font-medium">Category</th>
+                  <th className="px-3 py-2 text-right font-medium">Net Wt</th>
+                  <th className="px-3 py-2 text-right font-medium">Est. Pure</th>
+                </tr>
+              </thead>
+              <tbody>
+                {entries.map((e) => (
+                  <tr key={e.id} className="border-b border-gold-900/10 last:border-0">
+                    <td className="px-3 py-1.5 text-gold-300">{e.voucherNo}</td>
+                    <td className="px-3 py-1.5 text-ink-500">{e.category}</td>
+                    <td className="px-3 py-1.5 text-right text-ink-500">{e.netWeightGrams}g</td>
+                    <td className="px-3 py-1.5 text-right text-ink-500">{e.estimatePureGrams.toFixed(3)}g</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="rounded-lg border border-gold-900/40 bg-ink-900/40 p-3">
+              <div className="text-[11px] uppercase tracking-wider text-ink-500">Total Estimated Pure</div>
+              <div className="font-medium text-[#ece6d9]">{estimateTotal.toFixed(3)} g</div>
+            </div>
+            <div className="rounded-lg border border-gold-900/40 bg-ink-900/40 p-3">
+              <div className="text-[11px] uppercase tracking-wider text-ink-500">Total Buy Price Cash</div>
+              <div className="font-medium text-[#ece6d9]">{formatMoney(cashTotal, currency)}</div>
+            </div>
+          </div>
+
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-[#a89a7d]">
+              Actual Total Pure Weight After Melting (grams)
+            </span>
+            <input
+              type="number"
+              min={0}
+              step={0.001}
+              autoFocus
+              value={actualTotal}
+              onChange={(e) => setActualTotal(e.target.value)}
+              className="input"
+            />
+          </label>
+
+          <div
+            className={`rounded-lg border px-4 py-2.5 text-sm ${
+              variance === 0
+                ? "border-gold-900/40 bg-ink-900/40 text-ink-500"
+                : variance > 0
+                ? "border-emerald-800/40 bg-emerald-950/30 text-emerald-400"
+                : "border-rose-800/40 bg-rose-950/30 text-rose-400"
+            }`}
+          >
+            Total variance vs estimate: {variance >= 0 ? "+" : ""}
+            {variance.toFixed(3)} g
+          </div>
+
+          <p className="text-[11px] text-ink-500">
+            Confirming will close all {entries.length} voucher{entries.length === 1 ? "" : "s"} above — they
+            can no longer be edited.
+          </p>
+        </div>
+
+        <div className="flex gap-3 border-t border-gold-900/40 px-6 py-4">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex-1 rounded-lg border border-gold-900/50 py-2.5 text-sm text-[#c9bd9e] hover:border-gold-700"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="flex-1 rounded-lg bg-gradient-to-r from-amber-600 to-amber-500 py-2.5 text-sm font-semibold text-ink-950 hover:from-amber-500 hover:to-amber-400"
+          >
+            Confirm Melt All &amp; Close
           </button>
         </div>
       </form>

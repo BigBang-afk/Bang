@@ -43,6 +43,7 @@ interface OldGoldState {
   updateEntry: (id: string, patch: Partial<OldGoldFormInput>) => void;
   removeEntry: (id: string) => void;
   meltEntry: (id: string, actualPureGrams: number) => void;
+  meltAll: (ids: string[], actualTotalPureGrams: number) => void;
   returnEntry: (id: string) => void;
 }
 
@@ -91,6 +92,29 @@ export const useOldGoldStore = create<OldGoldState>()(
               : e
           ),
         })),
+      meltAll: (ids, actualTotalPureGrams) =>
+        set((state) => {
+          const idSet = new Set(ids);
+          const targets = state.entries.filter((e) => idSet.has(e.id) && e.status === "Pending");
+          const estimateSum = targets.reduce((sum, e) => sum + e.estimatePureGrams, 0);
+          const now = new Date().toISOString();
+          return {
+            entries: state.entries.map((e) => {
+              if (!idSet.has(e.id) || e.status !== "Pending") return e;
+              const share =
+                estimateSum > 0
+                  ? (e.estimatePureGrams / estimateSum) * actualTotalPureGrams
+                  : actualTotalPureGrams / targets.length;
+              return {
+                ...e,
+                status: "Melted" as const,
+                actualPureGrams: share,
+                meltVarianceGrams: share - e.estimatePureGrams,
+                closedAt: now,
+              };
+            }),
+          };
+        }),
       returnEntry: (id) =>
         set((state) => ({
           entries: state.entries.map((e) =>
