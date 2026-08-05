@@ -1,5 +1,17 @@
 import { useMemo, useRef, useState } from "react";
-import { Plus, Pencil, Trash2, X, Search, Scale, Coins, ImagePlus, Layers, Package } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  X,
+  Search,
+  Scale,
+  Coins,
+  ImagePlus,
+  Layers,
+  Package,
+  Printer,
+} from "lucide-react";
 import {
   useInventoryStore,
   categories as allCategories,
@@ -12,7 +24,7 @@ import {
 import { useGoldRateStore } from "../store/goldRateStore";
 import { useSettingsStore } from "../store/settingsStore";
 import { computeProductPrice } from "../lib/pricing";
-import { formatMoney } from "../lib/format";
+import { formatMoney, formatDateTime } from "../lib/format";
 import { fileToResizedDataUrl } from "../lib/image";
 import ProductThumb from "../components/ProductThumb";
 import StatCard from "../components/StatCard";
@@ -35,12 +47,14 @@ export default function Inventory() {
   const removeProduct = useInventoryStore((s) => s.removeProduct);
   const rates = useGoldRateStore();
   const currency = useSettingsStore((s) => s.currency);
+  const shop = useSettingsStore();
 
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<Category | "All">("All");
   const [editing, setEditing] = useState<Product | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Product | null>(null);
+  const [showReport, setShowReport] = useState(false);
 
   const inStock = useMemo(() => products.filter((p) => p.stock > 0), [products]);
 
@@ -59,6 +73,7 @@ export default function Inventory() {
 
   const totalNetWeight = filtered.reduce((sum, p) => sum + p.netWeightGrams * p.stock, 0);
   const totalBuyPriceInGold = filtered.reduce((sum, p) => sum + p.buyPriceInGold * p.stock, 0);
+  const totalValue = filtered.reduce((sum, p) => sum + computeProductPrice(p, rates).total * p.stock, 0);
 
   function openAdd() {
     setEditing(null);
@@ -93,12 +108,21 @@ export default function Inventory() {
           <h1 className="font-serif text-3xl font-semibold text-gold-100">Inventory</h1>
           <p className="text-sm text-ink-500">{inStock.length} products in stock</p>
         </div>
-        <button
-          onClick={openAdd}
-          className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-gold-600 to-gold-500 px-4 py-2.5 text-sm font-semibold text-ink-950 shadow-lg shadow-gold-900/30 hover:from-gold-500 hover:to-gold-400"
-        >
-          <Plus size={16} /> Add Stock
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowReport(true)}
+            disabled={filtered.length === 0}
+            className="flex items-center gap-2 rounded-lg border border-gold-800/50 px-4 py-2.5 text-sm font-medium text-[#c9bd9e] transition hover:border-gold-600 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Printer size={16} /> Print Report
+          </button>
+          <button
+            onClick={openAdd}
+            className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-gold-600 to-gold-500 px-4 py-2.5 text-sm font-semibold text-ink-950 shadow-lg shadow-gold-900/30 hover:from-gold-500 hover:to-gold-400"
+          >
+            <Plus size={16} /> Add Stock
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
@@ -237,6 +261,18 @@ export default function Inventory() {
         />
       )}
 
+      {showReport && (
+        <InventoryReportModal
+          products={filtered}
+          rates={rates}
+          totals={{ netWeight: totalNetWeight, buyPriceInGold: totalBuyPriceInGold, value: totalValue }}
+          categoryLabel={category === "All" ? "All Categories" : category}
+          shop={shop}
+          currency={currency}
+          onClose={() => setShowReport(false)}
+        />
+      )}
+
       {confirmDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
           <div className="animate-rise w-full max-w-sm rounded-2xl border border-gold-900/40 bg-ink-950 p-6">
@@ -265,6 +301,133 @@ export default function Inventory() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function InventoryReportModal({
+  products,
+  rates,
+  totals,
+  categoryLabel,
+  shop,
+  currency,
+  onClose,
+}: {
+  products: Product[];
+  rates: { k21: number };
+  totals: { netWeight: number; buyPriceInGold: number; value: number };
+  categoryLabel: string;
+  shop: { shopName: string; shopTagline: string; shopAddress: string; shopPhone: string };
+  currency: string;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm print:static print:block print:bg-white print:p-0 print:backdrop-blur-none">
+      <div className="animate-rise my-4 w-full max-w-4xl print:my-0 print:max-w-none">
+        <div className="flex items-center justify-between rounded-t-2xl border border-b-0 border-gold-800/50 bg-ink-950 px-5 py-4 print:hidden">
+          <h3 className="font-serif text-lg font-semibold text-gold-100">Inventory Report — {categoryLabel}</h3>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => window.print()}
+              className="flex items-center gap-2 rounded-lg border border-gold-800/50 px-3 py-2 text-sm font-medium text-[#c9bd9e] hover:border-gold-600"
+            >
+              <Printer size={15} /> Print Report
+            </button>
+            <button onClick={onClose} className="ml-1 text-ink-500 hover:text-gold-300">
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+
+        <div
+          id="invoice"
+          className="w-full bg-white p-10 text-neutral-900 shadow-2xl print:w-[210mm] print:min-h-[297mm] print:p-[14mm] print:shadow-none"
+        >
+          <div className="flex items-start justify-between border-b-2 border-neutral-900 pb-4">
+            <div>
+              <h1 className="font-serif text-2xl font-bold">{shop.shopName}</h1>
+              <p className="text-xs text-neutral-600">{shop.shopTagline}</p>
+              <p className="text-xs text-neutral-600">{shop.shopAddress}</p>
+              <p className="text-xs text-neutral-600">{shop.shopPhone}</p>
+            </div>
+            <div className="text-right">
+              <h2 className="text-xl font-bold tracking-wide text-neutral-900">INVENTORY REPORT</h2>
+              <p className="text-xs text-neutral-600">Category: {categoryLabel}</p>
+              <p className="text-xs text-neutral-600">Generated: {formatDateTime(new Date().toISOString())}</p>
+              <p className="text-xs text-neutral-600">21K Rate: {formatMoney(rates.k21, currency)}/g</p>
+            </div>
+          </div>
+
+          <div className="mt-5 grid grid-cols-4 gap-4 text-sm">
+            <div>
+              <p className="text-[11px] uppercase tracking-wide text-neutral-500">Products</p>
+              <p className="font-semibold">{products.length}</p>
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-wide text-neutral-500">Net Weight</p>
+              <p className="font-semibold">{totals.netWeight.toFixed(2)} g</p>
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-wide text-neutral-500">Buy Price in Gold</p>
+              <p className="font-semibold">{totals.buyPriceInGold.toFixed(2)} g</p>
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-wide text-neutral-500">Total Value</p>
+              <p className="font-semibold">{formatMoney(totals.value, currency)}</p>
+            </div>
+          </div>
+
+          <table className="mt-6 w-full border-collapse text-sm">
+            <thead>
+              <tr className="border-y-2 border-neutral-900 text-left text-[11px] uppercase text-neutral-700">
+                <th className="py-2 pr-2">#</th>
+                <th className="py-2 pr-2">Product</th>
+                <th className="py-2 pr-2">Category</th>
+                <th className="py-2 pr-2 text-right">Net Wt</th>
+                <th className="py-2 pr-2 text-right">Gross Wt</th>
+                <th className="py-2 pr-2 text-right">Kaat</th>
+                <th className="py-2 pr-2 text-right">Buy Price in Gold</th>
+                <th className="py-2 pl-2 text-right">Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {products.map((p, i) => {
+                const { total } = computeProductPrice(p, rates);
+                return (
+                  <tr key={p.id} className="border-b border-neutral-200">
+                    <td className="py-2 pr-2 text-neutral-500">{i + 1}</td>
+                    <td className="py-2 pr-2">
+                      <div className="font-medium">{p.name}</div>
+                      <div className="text-[10px] text-neutral-500">{p.sku}</div>
+                    </td>
+                    <td className="py-2 pr-2 text-neutral-600">{p.category}</td>
+                    <td className="py-2 pr-2 text-right text-neutral-600">{p.netWeightGrams}g</td>
+                    <td className="py-2 pr-2 text-right text-neutral-600">{p.grossWeightGrams.toFixed(2)}g</td>
+                    <td className="py-2 pr-2 text-right text-neutral-600">{p.kaat}</td>
+                    <td className="py-2 pr-2 text-right text-neutral-600">{p.buyPriceInGold.toFixed(3)}g</td>
+                    <td className="py-2 pl-2 text-right font-medium">{formatMoney(total, currency)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-neutral-900 text-sm font-bold">
+                <td colSpan={3} />
+                <td className="py-2 pr-2 text-right">{totals.netWeight.toFixed(2)}g</td>
+                <td className="py-2 pr-2" />
+                <td className="py-2 pr-2" />
+                <td className="py-2 pr-2 text-right">{totals.buyPriceInGold.toFixed(3)}g</td>
+                <td className="py-2 pl-2 text-right">{formatMoney(totals.value, currency)}</td>
+              </tr>
+            </tfoot>
+          </table>
+
+          <div className="mt-16 text-[11px] text-neutral-500">
+            <p>{shop.shopName} — inventory report generated from the private POS system.</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
