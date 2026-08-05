@@ -7,6 +7,7 @@ import OldGold from "./pages/OldGold";
 import Sales from "./pages/Sales";
 import Profit from "./pages/Profit";
 import DailyCash from "./pages/DailyCash";
+import Marketing from "./pages/Marketing";
 import Settings from "./pages/Settings";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -25,6 +26,7 @@ export default function App() {
             <Route path="/sales" element={<Sales />} />
             <Route path="/profit" element={<Profit />} />
             <Route path="/daily-cash" element={<DailyCash />} />
+            <Route path="/marketing" element={<Marketing />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
         </Route>

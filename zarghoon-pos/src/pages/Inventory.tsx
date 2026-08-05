@@ -12,6 +12,7 @@ import {
   Package,
   Printer,
   FolderPlus,
+  Share2,
 } from "lucide-react";
 import {
   useInventoryStore,
@@ -29,6 +30,7 @@ import { fileToResizedDataUrl } from "../lib/image";
 import ProductThumb from "../components/ProductThumb";
 import StatCard from "../components/StatCard";
 import AddCategoryModal from "../components/AddCategoryModal";
+import ShareItemModal from "../components/ShareItemModal";
 
 const emptyForm: ProductFormInput = {
   name: "",
@@ -57,6 +59,7 @@ export default function Inventory() {
   const [confirmDelete, setConfirmDelete] = useState<Product | null>(null);
   const [showReport, setShowReport] = useState(false);
   const [showAddCategory, setShowAddCategory] = useState(false);
+  const [sharing, setSharing] = useState<Product | null>(null);
 
   const categoryTabs = useMemo<(Category | "All")[]>(() => ["All", ...allCategories], [allCategories]);
 
@@ -286,6 +289,13 @@ export default function Inventory() {
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
                         <button
+                          onClick={() => setSharing(p)}
+                          title="Share on WhatsApp"
+                          className="rounded-md p-1.5 text-ink-500 hover:bg-ink-800 hover:text-emerald-400"
+                        >
+                          <Share2 size={14} />
+                        </button>
+                        <button
                           onClick={() => openEdit(p)}
                           className="rounded-md p-1.5 text-ink-500 hover:bg-ink-800 hover:text-gold-300"
                         >
@@ -350,6 +360,8 @@ export default function Inventory() {
           }}
         />
       )}
+
+      {sharing && <ShareItemModal product={sharing} onClose={() => setSharing(null)} />}
 
       {confirmDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">

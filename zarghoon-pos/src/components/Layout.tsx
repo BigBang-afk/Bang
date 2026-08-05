@@ -7,6 +7,7 @@ import {
   Receipt,
   PiggyBank,
   Banknote,
+  Megaphone,
   Settings,
   LogOut,
   Coins,
@@ -27,6 +28,7 @@ const navItems = [
   { to: "/sales", label: "Sales History", icon: Receipt },
   { to: "/profit", label: "Profit", icon: PiggyBank },
   { to: "/daily-cash", label: "Daily Cash", icon: Banknote },
+  { to: "/marketing", label: "Marketing", icon: Megaphone },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 
