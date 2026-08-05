@@ -9,6 +9,8 @@ import {
   FlaskConical,
   CalendarClock,
   Printer,
+  Pencil,
+  Trash2,
   X,
 } from "lucide-react";
 import { useSalesStore, type Sale } from "../store/salesStore";
@@ -16,6 +18,8 @@ import { useSettingsStore } from "../store/settingsStore";
 import { formatMoney, formatDateTime, formatDate, todayKey } from "../lib/format";
 import { computeProfit } from "../lib/profit";
 import StatCard from "../components/StatCard";
+import EditSaleModal from "../components/EditSaleModal";
+import ConfirmDialog from "../components/ConfirmDialog";
 
 interface ShopInfo {
   shopName: string;
@@ -42,12 +46,16 @@ function saleProfitTotals(sale: Sale) {
 
 export default function Profit() {
   const sales = useSalesStore((s) => s.sales);
+  const updateSale = useSalesStore((s) => s.updateSale);
+  const removeSale = useSalesStore((s) => s.removeSale);
   const currency = useSettingsStore((s) => s.currency);
   const shop = useSettingsStore();
   const [fromDate, setFromDate] = useState(todayKey());
   const [toDate, setToDate] = useState(todayKey());
   const [expanded, setExpanded] = useState<string | null>(null);
   const [printingSale, setPrintingSale] = useState<Sale | null>(null);
+  const [editingSale, setEditingSale] = useState<Sale | null>(null);
+  const [deletingSale, setDeletingSale] = useState<Sale | null>(null);
   const [showReport, setShowReport] = useState(false);
 
   const isToday = fromDate === todayKey() && toDate === todayKey();
@@ -202,6 +210,26 @@ export default function Profit() {
                     >
                       <Printer size={15} />
                     </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingSale(s);
+                      }}
+                      title="Edit sale"
+                      className="rounded-md p-1.5 text-ink-500 hover:bg-ink-800 hover:text-gold-300"
+                    >
+                      <Pencil size={15} />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeletingSale(s);
+                      }}
+                      title="Delete sale"
+                      className="rounded-md p-1.5 text-ink-500 hover:bg-ink-800 hover:text-rose-400"
+                    >
+                      <Trash2 size={15} />
+                    </button>
                     {isOpen ? (
                       <ChevronUp size={16} className="text-ink-500" />
                     ) : (
@@ -265,6 +293,31 @@ export default function Profit() {
 
       {printingSale && (
         <ProfitReportModal sale={printingSale} shop={shop} currency={currency} onClose={() => setPrintingSale(null)} />
+      )}
+
+      {editingSale && (
+        <EditSaleModal
+          sale={editingSale}
+          currency={currency}
+          onCancel={() => setEditingSale(null)}
+          onSave={(patch) => {
+            updateSale(editingSale.id, patch);
+            setEditingSale(null);
+          }}
+        />
+      )}
+
+      {deletingSale && (
+        <ConfirmDialog
+          title="Delete Sale"
+          message={`Are you sure you want to delete invoice ${deletingSale.invoiceNo}? This cannot be undone.`}
+          confirmLabel="Delete"
+          onCancel={() => setDeletingSale(null)}
+          onConfirm={() => {
+            removeSale(deletingSale.id);
+            setDeletingSale(null);
+          }}
+        />
       )}
 
       {showReport && (

@@ -17,7 +17,7 @@ import { useGoldRateStore } from "../store/goldRateStore";
 import { useInventoryStore } from "../store/inventoryStore";
 import { useSalesStore } from "../store/salesStore";
 import { useSettingsStore } from "../store/settingsStore";
-import { formatMoney, todayKey, formatDate } from "../lib/format";
+import { formatMoney, todayKey, monthKey, formatMonthLabel, formatDate } from "../lib/format";
 import { computeProductPrice } from "../lib/pricing";
 import { computeProfit } from "../lib/profit";
 
@@ -37,9 +37,23 @@ export default function Dashboard() {
   );
   const todaysRevenue = todaysSales.reduce((sum, s) => sum + s.total, 0);
 
-  const todaysProfit = useMemo(
+  const currentMonth = monthKey();
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+
+  const availableMonths = useMemo(() => {
+    const set = new Set<string>([currentMonth]);
+    sales.forEach((s) => set.add(s.date.slice(0, 7)));
+    return Array.from(set).sort((a, b) => b.localeCompare(a));
+  }, [sales, currentMonth]);
+
+  const monthSales = useMemo(
+    () => sales.filter((s) => s.date.slice(0, 7) === selectedMonth),
+    [sales, selectedMonth]
+  );
+
+  const monthProfit = useMemo(
     () =>
-      todaysSales.reduce(
+      monthSales.reduce(
         (acc, s) => {
           for (const it of s.items) {
             const p = computeProfit(it);
@@ -50,7 +64,7 @@ export default function Dashboard() {
         },
         { cash: 0, gold: 0 }
       ),
-    [todaysSales]
+    [monthSales]
   );
 
   const inStockProducts = useMemo(() => products.filter((p) => p.stock > 0), [products]);
@@ -104,7 +118,7 @@ export default function Dashboard() {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <button onClick={() => setShowRateModal(true)} className="text-left">
           <StatCard
             label="21K Gold Rate / g"
@@ -121,18 +135,6 @@ export default function Dashboard() {
           hint={`${todaysSales.length} sale${todaysSales.length === 1 ? "" : "s"} today`}
         />
         <StatCard
-          label="Today's Profit (Cash)"
-          value={formatMoney(todaysProfit.cash, currency)}
-          icon={PiggyBank}
-          accent
-        />
-        <StatCard
-          label="Today's Profit (Gold)"
-          value={`${todaysProfit.gold.toFixed(3)} g`}
-          icon={FlaskConical}
-          accent
-        />
-        <StatCard
           label="Inventory Value"
           value={formatMoney(inventoryValue, currency)}
           icon={Package}
@@ -144,6 +146,51 @@ export default function Dashboard() {
           icon={Receipt}
           hint="All-time invoices"
         />
+      </div>
+
+      <div className="rounded-2xl border border-gold-700/50 bg-gradient-to-br from-gold-900/20 to-ink-900 p-5 shadow-[0_0_30px_-12px_rgba(212,175,55,0.4)]">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <PiggyBank size={16} className="text-gold-300" />
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-[#c9bd9e]">Monthly Profit</h2>
+          </div>
+          <select
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="rounded-lg border border-gold-900/50 bg-ink-950 px-3 py-1.5 text-xs text-[#ece6d9] outline-none focus:border-gold-600/60"
+          >
+            {availableMonths.map((m) => (
+              <option key={m} value={m}>
+                {formatMonthLabel(m)}
+                {m === currentMonth ? " (current)" : ""}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
+          <div>
+            <div className="text-xs uppercase tracking-wider text-ink-500">Profit in Cash</div>
+            <div className="mt-1 font-serif text-2xl font-semibold text-gold-100">
+              {formatMoney(monthProfit.cash, currency)}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs uppercase tracking-wider text-ink-500">Profit in Gold</div>
+            <div className="mt-1 flex items-center gap-2 font-serif text-2xl font-semibold text-gold-100">
+              <FlaskConical size={18} className="text-gold-500/70" />
+              {monthProfit.gold.toFixed(3)} g
+            </div>
+          </div>
+          <div>
+            <div className="text-xs uppercase tracking-wider text-ink-500">Invoices</div>
+            <div className="mt-1 font-serif text-2xl font-semibold text-gold-100">{monthSales.length}</div>
+          </div>
+        </div>
+        <p className="mt-3 text-xs text-ink-500">
+          {selectedMonth === currentMonth
+            ? "Resets to zero at the start of each new month."
+            : `Viewing ${formatMonthLabel(selectedMonth)} — switch back to ${formatMonthLabel(currentMonth)} for the current month.`}
+        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">

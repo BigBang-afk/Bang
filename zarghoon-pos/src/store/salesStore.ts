@@ -31,10 +31,14 @@ export interface Sale {
   paymentMethod: PaymentMethod;
 }
 
+export type SaleEditableFields = Pick<Sale, "customerName" | "customerPhone" | "paymentMethod" | "discount">;
+
 interface SalesState {
   sales: Sale[];
   nextInvoiceSeq: number;
   addSale: (sale: Omit<Sale, "id" | "date" | "invoiceNo">) => Sale;
+  updateSale: (id: string, patch: Partial<SaleEditableFields>) => void;
+  removeSale: (id: string) => void;
 }
 
 export const useSalesStore = create<SalesState>()(
@@ -56,6 +60,20 @@ export const useSalesStore = create<SalesState>()(
         }));
         return newSale;
       },
+      updateSale: (id, patch) =>
+        set((state) => ({
+          sales: state.sales.map((s) => {
+            if (s.id !== id) return s;
+            const discount = patch.discount ?? s.discount;
+            return {
+              ...s,
+              ...patch,
+              discount,
+              total: Math.max(0, s.subtotal - discount),
+            };
+          }),
+        })),
+      removeSale: (id) => set((state) => ({ sales: state.sales.filter((s) => s.id !== id) })),
     }),
     { name: "zarghoon-sales" }
   )

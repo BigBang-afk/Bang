@@ -5,6 +5,20 @@ export function todayKey(d: Date = new Date()): string {
   return `${y}-${m}-${day}`;
 }
 
+export function monthKey(d: Date = new Date()): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
+}
+
+export function formatMonthLabel(key: string): string {
+  const [y, m] = key.split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "long",
+  });
+}
+
 export function formatMoney(value: number, currency = "Rs"): string {
   const rounded = Math.round(value);
   return `${currency} ${rounded.toLocaleString("en-IN")}`;
