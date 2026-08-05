@@ -6,6 +6,7 @@ import {
   Flame,
   Receipt,
   PiggyBank,
+  Banknote,
   Settings,
   LogOut,
   Coins,
@@ -25,6 +26,7 @@ const navItems = [
   { to: "/old-gold", label: "Old Gold", icon: Flame },
   { to: "/sales", label: "Sales History", icon: Receipt },
   { to: "/profit", label: "Profit", icon: PiggyBank },
+  { to: "/daily-cash", label: "Daily Cash", icon: Banknote },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 
