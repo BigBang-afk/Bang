@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Coins, TrendingUp, Package, Receipt, AlertTriangle, Pencil, PiggyBank, FlaskConical } from "lucide-react";
+import { Coins, TrendingUp, Package, Receipt, AlertTriangle, Pencil, PiggyBank, FlaskConical, Banknote } from "lucide-react";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -17,6 +17,7 @@ import { useGoldRateStore } from "../store/goldRateStore";
 import { useInventoryStore } from "../store/inventoryStore";
 import { useSalesStore } from "../store/salesStore";
 import { useSettingsStore } from "../store/settingsStore";
+import { useCashBookStore, openingBalanceForDate } from "../store/cashBookStore";
 import { formatMoney, todayKey, monthKey, formatMonthLabel, formatDate } from "../lib/format";
 import { computeProductPrice } from "../lib/pricing";
 import { computeProfit } from "../lib/profit";
@@ -26,6 +27,8 @@ export default function Dashboard() {
   const rates = useGoldRateStore();
   const products = useInventoryStore((s) => s.products);
   const sales = useSalesStore((s) => s.sales);
+  const cashEntries = useCashBookStore((s) => s.entries);
+  const cashClosings = useCashBookStore((s) => s.closings);
   const currency = useSettingsStore((s) => s.currency);
   const shopName = useSettingsStore((s) => s.shopName);
   const [showRateModal, setShowRateModal] = useState(false);
@@ -36,6 +39,19 @@ export default function Dashboard() {
     [sales, today]
   );
   const todaysRevenue = todaysSales.reduce((sum, s) => sum + s.total, 0);
+
+  const todayClosing = useMemo(
+    () => cashClosings.find((c) => c.date === today),
+    [cashClosings, today]
+  );
+  const cashInHand = useMemo(() => {
+    if (todayClosing) return todayClosing.closingBalance;
+    const opening = openingBalanceForDate(cashClosings, today);
+    const todaysCash = cashEntries.filter((e) => e.date === today);
+    const totalIn = todaysCash.filter((e) => e.type === "In").reduce((s, e) => s + e.amount, 0);
+    const totalOut = todaysCash.filter((e) => e.type === "Out").reduce((s, e) => s + e.amount, 0);
+    return opening + totalIn - totalOut;
+  }, [todayClosing, cashClosings, cashEntries, today]);
 
   const currentMonth = monthKey();
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
@@ -118,7 +134,7 @@ export default function Dashboard() {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
         <button onClick={() => setShowRateModal(true)} className="text-left">
           <StatCard
             label="21K Gold Rate / g"
@@ -134,6 +150,15 @@ export default function Dashboard() {
           icon={TrendingUp}
           hint={`${todaysSales.length} sale${todaysSales.length === 1 ? "" : "s"} today`}
         />
+        <button onClick={() => navigate("/daily-cash")} className="text-left">
+          <StatCard
+            label="Cash in Hand"
+            value={formatMoney(cashInHand, currency)}
+            icon={Banknote}
+            accent
+            hint={todayClosing ? "Today's day is closed" : "Tap to open Daily Cash"}
+          />
+        </button>
         <StatCard
           label="Inventory Value"
           value={formatMoney(inventoryValue, currency)}
