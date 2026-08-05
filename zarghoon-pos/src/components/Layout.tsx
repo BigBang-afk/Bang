@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   ShoppingCart,
   Package,
+  Flame,
   Receipt,
   Settings,
   LogOut,
@@ -20,6 +21,7 @@ const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/pos", label: "New Sale", icon: ShoppingCart },
   { to: "/inventory", label: "Inventory", icon: Package },
+  { to: "/old-gold", label: "Old Gold", icon: Flame },
   { to: "/sales", label: "Sales History", icon: Receipt },
   { to: "/settings", label: "Settings", icon: Settings },
 ];

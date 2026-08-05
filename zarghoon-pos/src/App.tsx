@@ -3,6 +3,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import POS from "./pages/POS";
 import Inventory from "./pages/Inventory";
+import OldGold from "./pages/OldGold";
 import Sales from "./pages/Sales";
 import Settings from "./pages/Settings";
 import Layout from "./components/Layout";
@@ -18,6 +19,7 @@ export default function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/pos" element={<POS />} />
             <Route path="/inventory" element={<Inventory />} />
+            <Route path="/old-gold" element={<OldGold />} />
             <Route path="/sales" element={<Sales />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
