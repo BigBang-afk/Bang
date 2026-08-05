@@ -97,105 +97,10 @@ interface InventoryState {
   addCategory: (name: string) => string;
 }
 
-function seedProduct(input: FullProductInput, id: string, daysAgo: number): Product {
-  return {
-    ...withDerivedFields(input),
-    id,
-    createdAt: new Date(Date.now() - daysAgo * 86400000).toISOString(),
-  };
-}
-
-const seedProducts: Product[] = [
-  seedProduct(
-    {
-      sku: "ZJ-RG-101",
-      name: "Bridal Kundan Ring",
-      category: "Ring",
-      netWeightGrams: 6.2,
-      wastagePercent: 6,
-      kaat: 8,
-      images: [],
-      stock: 1,
-    },
-    "p1",
-    12
-  ),
-  seedProduct(
-    {
-      sku: "ZJ-NK-204",
-      name: "Rani Haar Necklace Set",
-      category: "Set",
-      netWeightGrams: 42.5,
-      wastagePercent: 8,
-      kaat: 12,
-      images: [],
-      stock: 1,
-    },
-    "p2",
-    10
-  ),
-  seedProduct(
-    {
-      sku: "ZJ-BN-330",
-      name: "Classic Gold Bangle (Pair)",
-      category: "Bangle",
-      netWeightGrams: 24.8,
-      wastagePercent: 5,
-      kaat: 8,
-      images: [],
-      stock: 1,
-    },
-    "p3",
-    8
-  ),
-  seedProduct(
-    {
-      sku: "ZJ-ER-045",
-      name: "Jhumka Earrings",
-      category: "Earrings",
-      netWeightGrams: 8.4,
-      wastagePercent: 7,
-      kaat: 8,
-      images: [],
-      stock: 1,
-    },
-    "p4",
-    6
-  ),
-  seedProduct(
-    {
-      sku: "ZJ-CH-512",
-      name: 'Rope Chain 22"',
-      category: "Chain",
-      netWeightGrams: 18.6,
-      wastagePercent: 4,
-      kaat: 4,
-      images: [],
-      stock: 1,
-    },
-    "p5",
-    4
-  ),
-  seedProduct(
-    {
-      sku: "ZJ-PD-089",
-      name: "Filigree Pendant",
-      category: "Pendant",
-      netWeightGrams: 4.1,
-      wastagePercent: 9,
-      kaat: 16,
-      images: [],
-      stock: 1,
-    },
-    "p6",
-    2
-  ),
-];
-
 export const useInventoryStore = create<InventoryState>()(
   persist(
     (set, get) => ({
-      products: seedProducts,
+      products: [],
       categories: defaultCategories,
       addCategory: (name) => {
         const trimmed = name.trim();
