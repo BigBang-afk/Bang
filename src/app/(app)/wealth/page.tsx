@@ -98,6 +98,9 @@ export default async function WealthPage() {
             <LinkButton href="/gold" variant="outline" size="sm" className="mt-2 w-full justify-center">
               Manage Gold Portfolio <ArrowRight size={14} />
             </LinkButton>
+            <LinkButton href="/wealth/ledger" variant="outline" size="sm" className="w-full justify-center">
+              View Capital History <ArrowRight size={14} />
+            </LinkButton>
           </CardContent>
         </Card>
       </div>
