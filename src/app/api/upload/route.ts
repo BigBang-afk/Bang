@@ -32,10 +32,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "File is too large. Maximum size is 8MB." }, { status: 400 });
   }
 
+  const filename = `${randomUUID()}.${ext}`;
+
+  // On Vercel (and anywhere BLOB_READ_WRITE_TOKEN is configured) the local
+  // filesystem is read-only, so screenshots are stored in Vercel Blob.
+  // Locally without that token, they fall back to public/uploads.
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    const { put } = await import("@vercel/blob");
+    const blob = await put(`screenshots/${user.id}/${filename}`, file, {
+      access: "public",
+      addRandomSuffix: false,
+      contentType: file.type,
+    });
+    return NextResponse.json({ url: blob.url });
+  }
+
   const uploadsDir = path.join(process.cwd(), "public", "uploads");
   await mkdir(uploadsDir, { recursive: true });
-
-  const filename = `${randomUUID()}.${ext}`;
   const buffer = Buffer.from(await file.arrayBuffer());
   await writeFile(path.join(uploadsDir, filename), buffer);
 

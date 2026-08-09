@@ -9,10 +9,11 @@ This is **not** a broker and does not place trades. You enter everything manuall
 ## Tech Stack
 
 - **Next.js 16** (App Router, TypeScript, Turbopack) + **Tailwind CSS v4**
-- **Prisma ORM** + **SQLite** (file-based, easy to back up; can migrate to PostgreSQL later)
+- **Prisma ORM** + **PostgreSQL** (works with Neon, Supabase, Vercel Postgres, or any Postgres instance)
 - **Server Actions** for all mutations, with Zod validation
 - **Recharts** for charts
 - Session auth via signed JWT cookies (`jose`) + `bcryptjs` password hashing
+- Screenshot uploads via **Vercel Blob** on Vercel, with a local-filesystem fallback for non-Vercel hosting
 
 ---
 
@@ -51,7 +52,14 @@ npm install
 
 This installs Next.js, Prisma, and every other dependency listed in `package.json`.
 
-### 1.4 Configure environment variables
+### 1.4 Get a Postgres database
+
+The app needs a Postgres database. The easiest option for local use is a free
+[Neon](https://neon.tech) project (serverless Postgres, works great with Prisma) —
+create one and copy its connection string. Any other Postgres instance works too
+(local install, Supabase, Docker, etc.).
+
+### 1.5 Configure environment variables
 
 Copy the example env file:
 
@@ -62,9 +70,15 @@ copy .env.example .env
 Open `.env` in a text editor and set:
 
 ```
-DATABASE_URL="file:./dev.db"
+DATABASE_URL="postgresql://user:password@host:5432/dbname?sslmode=require"
+DATABASE_URL_UNPOOLED="postgresql://user:password@host:5432/dbname?sslmode=require"
 SESSION_SECRET="a-long-random-string"
 ```
+
+If your provider gives you both a pooled (e.g. PgBouncer/`-pooler`) and a direct
+connection string, use the pooled one for `DATABASE_URL` and the direct one for
+`DATABASE_URL_UNPOOLED` (used only for running migrations). If you only have one
+connection string, use it for both.
 
 Generate a strong random string for `SESSION_SECRET` (PowerShell):
 
@@ -74,18 +88,17 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 Paste the output as the value of `SESSION_SECRET`.
 
-### 1.5 Create the database and run migrations
+### 1.6 Run migrations
 
 ```powershell
-npx prisma migrate dev
+npx prisma migrate deploy
 ```
 
-This creates `prisma/dev.db` (a SQLite file) and applies the schema. You'll be
-prompted for a migration name the first time only if the migration folder doesn't
-already exist — press Enter to accept the default, or the migration will already be
-present if you cloned this repo as-is.
+This applies the existing migration history in `prisma/migrations/` to your database.
+(Use `npx prisma migrate dev` instead only if you're changing `schema.prisma` yourself
+and need Prisma to generate a new migration.)
 
-### 1.6 Create your first user
+### 1.7 Create your first user
 
 There's no separate CLI seed step — just start the app and register through the UI:
 
@@ -103,7 +116,7 @@ After creating your account you'll be guided through a first-time setup wizard:
 2. USD → PKR exchange rate
 3. 24K gold price per gram (PKR)
 
-### 1.7 Start the development server
+### 1.8 Start the development server
 
 ```powershell
 npm run dev
@@ -111,27 +124,49 @@ npm run dev
 
 Open **http://localhost:3000** in your browser.
 
-### 1.8 Creating a production build
+### 1.9 Creating a production build
 
 ```powershell
 npm run build
 npm run start
 ```
 
-`npm run start` serves the optimized production build, by default also on port 3000.
-To run on a different port: `npm run start -- -p 4000`.
+`npm run build` runs `prisma migrate deploy` automatically before building, so your
+database schema stays in sync. `npm run start` serves the optimized production build,
+by default also on port 3000. To run on a different port: `npm run start -- -p 4000`.
 
-### 1.9 Backing up your database
+### 1.10 Backing up your database
 
-Your entire dataset lives in one file: `prisma/dev.db`. To back it up manually, just
-copy that file somewhere safe while the app is not actively writing to it (stop the
-dev server first, or use the in-app backup described below).
-
-**Recommended:** use the in-app backup instead — it's portable and human-readable:
+Since the database is Postgres, use your provider's own backup/snapshot tools for a
+full database-level backup (Neon and most managed Postgres providers do this
+automatically). For a portable, human-readable snapshot you can move between
+providers, use the in-app backup instead:
 
 - Go to **Settings → Data → Export Backup (JSON)** to download a complete snapshot.
 - Use **Settings → Data → Import Backup (JSON)** to restore it later (this replaces
   all current data after a confirmation prompt).
+
+---
+
+## 1a. Deploying to Vercel
+
+This repo is already set up to deploy cleanly on Vercel:
+
+1. Import the GitHub repo in the Vercel dashboard (or run `vercel link`).
+2. Add a Postgres database to the project — the **Neon** integration under
+   Storage/Marketplace is the simplest (`vercel integration add neon`), and it
+   automatically sets `DATABASE_URL` and `DATABASE_URL_UNPOOLED` for you.
+3. Add a **Blob store** to the project (Storage → Blob, or `vercel blob create-store`)
+   so screenshot uploads work — this sets `BLOB_READ_WRITE_TOKEN` automatically.
+4. Set a `SESSION_SECRET` environment variable (Production, Preview, and Development)
+   to a long random string.
+5. Deploy. The build command (`prisma migrate deploy && next build`) applies any
+   pending migrations before every build, so schema changes ship automatically.
+
+Note: Vercel's serverless functions have a read-only filesystem, which is why this
+app uses Postgres (not SQLite) and Vercel Blob (not local file writes) in that
+environment — both are already wired up with automatic local-filesystem fallbacks
+for non-Vercel hosting.
 
 ---
 
@@ -176,7 +211,7 @@ records.
 ## 3. Project Structure
 
 ```
-prisma/schema.prisma        Database schema (SQLite, migrate-friendly to Postgres)
+prisma/schema.prisma        Database schema (PostgreSQL)
 src/app/(auth)/…             Login / register pages
 src/app/setup/…              First-time setup wizard
 src/app/(app)/…               All authenticated app pages (protected layout)
