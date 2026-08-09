@@ -2,6 +2,7 @@ import Link from "next/link";
 import { formatUsd, formatPkr } from "@/lib/money";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { QuickAddMenu } from "@/components/layout/quick-add-menu";
+import { GlobalSearch } from "@/components/layout/global-search";
 import { UserCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -59,7 +60,10 @@ export function Header({
       </div>
 
       <div className="ml-auto flex items-center gap-3">
-        <span className="hidden text-xs text-muted lg:inline">{today}</span>
+        <div className="hidden lg:block">
+          <GlobalSearch />
+        </div>
+        <span className="hidden text-xs text-muted xl:inline">{today}</span>
         <QuickAddMenu />
         <Link
           href="/settings"
