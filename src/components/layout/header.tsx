@@ -36,7 +36,7 @@ export function Header({
         </div>
         <div className="h-4 w-px bg-border" />
         <div>
-          <span className="text-muted">Today's P&L </span>
+          <span className="text-muted">Today&apos;s P&L </span>
           <span
             className={cn(
               "font-semibold tabular-nums",
