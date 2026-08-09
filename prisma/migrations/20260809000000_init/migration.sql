@@ -254,4 +254,275 @@ CREATE TABLE "allocation_transfers" (
     "goldGrams" DECIMAL(65,30),
     "notes" TEXT,
     "isDemo" BOOLEAN NOT NULL DEFAULT false,
-    "createdAt" TIMESTAMP(3) NO
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "allocation_transfers_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "gold_transactions" (
+    "id" TEXT NOT NULL,
+    "tradingAccountId" TEXT NOT NULL,
+    "date" TIMESTAMP(3) NOT NULL,
+    "txType" TEXT NOT NULL DEFAULT 'BUY',
+    "goldType" TEXT,
+    "purity" TEXT NOT NULL,
+    "purityCustomLabel" TEXT,
+    "weightGrams" DECIMAL(65,30) NOT NULL,
+    "pricePerGramPkr" DECIMAL(65,30) NOT NULL,
+    "totalCostPkr" DECIMAL(65,30) NOT NULL,
+    "usdEquivalent" DECIMAL(65,30) NOT NULL,
+    "usdPkrRateAtEntry" DECIMAL(65,30) NOT NULL,
+    "dealer" TEXT,
+    "notes" TEXT,
+    "isDemo" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "gold_transactions_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "assets" (
+    "id" TEXT NOT NULL,
+    "tradingAccountId" TEXT NOT NULL,
+    "category" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "valueUsd" DECIMAL(65,30) NOT NULL DEFAULT 0,
+    "valuePkr" DECIMAL(65,30) NOT NULL DEFAULT 0,
+    "notes" TEXT,
+    "isDemo" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "assets_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "expenses" (
+    "id" TEXT NOT NULL,
+    "tradingAccountId" TEXT NOT NULL,
+    "date" TIMESTAMP(3) NOT NULL,
+    "category" TEXT NOT NULL,
+    "description" TEXT,
+    "amountPkr" DECIMAL(65,30) NOT NULL,
+    "usdEquivalent" DECIMAL(65,30) NOT NULL,
+    "usdPkrRateAtEntry" DECIMAL(65,30) NOT NULL,
+    "paymentMethod" TEXT,
+    "notes" TEXT,
+    "isDemo" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "expenses_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "goals" (
+    "id" TEXT NOT NULL,
+    "tradingAccountId" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "targetValue" DECIMAL(65,30) NOT NULL,
+    "startValue" DECIMAL(65,30) NOT NULL DEFAULT 0,
+    "unit" TEXT NOT NULL DEFAULT 'USD',
+    "targetDate" TIMESTAMP(3),
+    "achieved" BOOLEAN NOT NULL DEFAULT false,
+    "notes" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "goals_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "monthly_targets" (
+    "id" TEXT NOT NULL,
+    "tradingAccountId" TEXT NOT NULL,
+    "month" INTEGER NOT NULL,
+    "year" INTEGER NOT NULL,
+    "startingCapital" DECIMAL(65,30) NOT NULL,
+    "targetProfit" DECIMAL(65,30) NOT NULL,
+    "maxDrawdownPct" DECIMAL(65,30) NOT NULL,
+    "withdrawalGoal" DECIMAL(65,30),
+    "goldPurchaseGoalGrams" DECIMAL(65,30),
+    "savingsGoal" DECIMAL(65,30),
+    "notes" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "monthly_targets_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "currency_rate_history" (
+    "id" TEXT NOT NULL,
+    "tradingAccountId" TEXT NOT NULL,
+    "rate" DECIMAL(65,30) NOT NULL,
+    "effectiveAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "note" TEXT,
+
+    CONSTRAINT "currency_rate_history_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "gold_rate_history" (
+    "id" TEXT NOT NULL,
+    "tradingAccountId" TEXT NOT NULL,
+    "pricePerGramPkr" DECIMAL(65,30) NOT NULL,
+    "effectiveAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "note" TEXT,
+
+    CONSTRAINT "gold_rate_history_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "attachments" (
+    "id" TEXT NOT NULL,
+    "tradingAccountId" TEXT NOT NULL,
+    "relatedType" TEXT NOT NULL,
+    "relatedId" TEXT NOT NULL,
+    "fileName" TEXT NOT NULL,
+    "fileUrl" TEXT NOT NULL,
+    "fileType" TEXT NOT NULL,
+    "fileSize" INTEGER NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "attachments_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateIndex
+CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "users_username_key" ON "users"("username");
+
+-- CreateIndex
+CREATE INDEX "login_attempts_email_createdAt_idx" ON "login_attempts"("email", "createdAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "settings_userId_key" ON "settings"("userId");
+
+-- CreateIndex
+CREATE INDEX "trades_tradingAccountId_date_idx" ON "trades"("tradingAccountId", "date");
+
+-- CreateIndex
+CREATE INDEX "trades_tradingAccountId_symbol_idx" ON "trades"("tradingAccountId", "symbol");
+
+-- CreateIndex
+CREATE INDEX "trades_tradingAccountId_strategyId_idx" ON "trades"("tradingAccountId", "strategyId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "daily_plans_tradingAccountId_date_key" ON "daily_plans"("tradingAccountId", "date");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "daily_journals_tradingAccountId_date_key" ON "daily_journals"("tradingAccountId", "date");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "strategies_tradingAccountId_name_key" ON "strategies"("tradingAccountId", "name");
+
+-- CreateIndex
+CREATE INDEX "withdrawals_tradingAccountId_date_idx" ON "withdrawals"("tradingAccountId", "date");
+
+-- CreateIndex
+CREATE INDEX "deposits_tradingAccountId_date_idx" ON "deposits"("tradingAccountId", "date");
+
+-- CreateIndex
+CREATE INDEX "account_transactions_tradingAccountId_date_idx" ON "account_transactions"("tradingAccountId", "date");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "profit_allocation_rules_tradingAccountId_key" ON "profit_allocation_rules"("tradingAccountId");
+
+-- CreateIndex
+CREATE INDEX "allocation_transfers_tradingAccountId_date_idx" ON "allocation_transfers"("tradingAccountId", "date");
+
+-- CreateIndex
+CREATE INDEX "gold_transactions_tradingAccountId_date_idx" ON "gold_transactions"("tradingAccountId", "date");
+
+-- CreateIndex
+CREATE INDEX "expenses_tradingAccountId_date_idx" ON "expenses"("tradingAccountId", "date");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "monthly_targets_tradingAccountId_month_year_key" ON "monthly_targets"("tradingAccountId", "month", "year");
+
+-- CreateIndex
+CREATE INDEX "currency_rate_history_tradingAccountId_effectiveAt_idx" ON "currency_rate_history"("tradingAccountId", "effectiveAt");
+
+-- CreateIndex
+CREATE INDEX "gold_rate_history_tradingAccountId_effectiveAt_idx" ON "gold_rate_history"("tradingAccountId", "effectiveAt");
+
+-- CreateIndex
+CREATE INDEX "attachments_tradingAccountId_relatedType_relatedId_idx" ON "attachments"("tradingAccountId", "relatedType", "relatedId");
+
+-- AddForeignKey
+ALTER TABLE "login_attempts" ADD CONSTRAINT "login_attempts_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "settings" ADD CONSTRAINT "settings_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "trading_accounts" ADD CONSTRAINT "trading_accounts_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "trades" ADD CONSTRAINT "trades_tradingAccountId_fkey" FOREIGN KEY ("tradingAccountId") REFERENCES "trading_accounts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "trades" ADD CONSTRAINT "trades_strategyId_fkey" FOREIGN KEY ("strategyId") REFERENCES "strategies"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "daily_plans" ADD CONSTRAINT "daily_plans_tradingAccountId_fkey" FOREIGN KEY ("tradingAccountId") REFERENCES "trading_accounts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "daily_journals" ADD CONSTRAINT "daily_journals_tradingAccountId_fkey" FOREIGN KEY ("tradingAccountId") REFERENCES "trading_accounts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "strategies" ADD CONSTRAINT "strategies_tradingAccountId_fkey" FOREIGN KEY ("tradingAccountId") REFERENCES "trading_accounts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "withdrawals" ADD CONSTRAINT "withdrawals_tradingAccountId_fkey" FOREIGN KEY ("tradingAccountId") REFERENCES "trading_accounts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "deposits" ADD CONSTRAINT "deposits_tradingAccountId_fkey" FOREIGN KEY ("tradingAccountId") REFERENCES "trading_accounts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "account_transactions" ADD CONSTRAINT "account_transactions_tradingAccountId_fkey" FOREIGN KEY ("tradingAccountId") REFERENCES "trading_accounts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "account_transactions" ADD CONSTRAINT "account_transactions_relatedTradeId_fkey" FOREIGN KEY ("relatedTradeId") REFERENCES "trades"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "account_transactions" ADD CONSTRAINT "account_transactions_relatedWithdrawalId_fkey" FOREIGN KEY ("relatedWithdrawalId") REFERENCES "withdrawals"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "account_transactions" ADD CONSTRAINT "account_transactions_relatedDepositId_fkey" FOREIGN KEY ("relatedDepositId") REFERENCES "deposits"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "profit_allocation_rules" ADD CONSTRAINT "profit_allocation_rules_tradingAccountId_fkey" FOREIGN KEY ("tradingAccountId") REFERENCES "trading_accounts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "allocation_transfers" ADD CONSTRAINT "allocation_transfers_tradingAccountId_fkey" FOREIGN KEY ("tradingAccountId") REFERENCES "trading_accounts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "gold_transactions" ADD CONSTRAINT "gold_transactions_tradingAccountId_fkey" FOREIGN KEY ("tradingAccountId") REFERENCES "trading_accounts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "assets" ADD CONSTRAINT "assets_tradingAccountId_fkey" FOREIGN KEY ("tradingAccountId") REFERENCES "trading_accounts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "expenses" ADD CONSTRAINT "expenses_tradingAccountId_fkey" FOREIGN KEY ("tradingAccountId") REFERENCES "trading_accounts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "goals" ADD CONSTRAINT "goals_tradingAccountId_fkey" FOREIGN KEY ("tradingAccountId") REFERENCES "trading_accounts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "monthly_targets" ADD CONSTRAINT "monthly_targets_tradingAccountId_fkey" FOREIGN KEY ("tradingAccountId") REFERENCES "trading_accounts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "currency_rate_history" ADD CONSTRAINT "currency_rate_history_tradingAccountId_fkey" FOREIGN KEY ("tradingAccountId") REFERENCES "trading_accounts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "gold_rate_history" ADD CONSTRAINT "gold_rate_history_tradingAccountId_fkey" FOREIGN KEY ("tradingAccountId") REFERENCES "trading_accounts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "attachments" ADD CONSTRAINT "attachments_tradingAccountId_fkey" FOREIGN KEY ("tradingAccountId") REFERENCES "trading_accounts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
