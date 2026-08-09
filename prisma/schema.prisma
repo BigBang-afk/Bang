@@ -1,0 +1,509 @@
+// Prisma schema for the Personal Trading Journal, Risk Management & Wealth Tracking app.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Auth / Users
+// ---------------------------------------------------------------------------
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  username       String?  @unique
+  passwordHash   String
+  pinHash        String?
+  traderName     String
+  sessionVersion Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  settings        Settings?
+  tradingAccounts TradingAccount[]
+  loginAttempts   LoginAttempt[]
+
+  @@map("users")
+}
+
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  userId    String?
+  email     String
+  success   Boolean
+  ip        String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([email, createdAt])
+  @@map("login_attempts")
+}
+
+model Settings {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  usdToPkrRate        Decimal   @default(280)
+  goldPricePerGramPkr Decimal   @default(29000)
+  ratesUpdatedAt       DateTime?
+
+  defaultRiskPct              Decimal @default(0.5)
+  defaultDailyTargetPct       Decimal @default(3)
+  defaultDailyLossPct         Decimal @default(2)
+  defaultMaxTrades            Int     @default(10)
+  defaultMaxConsecutiveLosses Int     @default(3)
+
+  countBreakevenAsWin Boolean @default(false)
+
+  drawdownLowPct      Decimal @default(5)
+  drawdownModeratePct Decimal @default(10)
+  drawdownHighPct     Decimal @default(20)
+  drawdownCriticalPct Decimal @default(30)
+
+  theme    String @default("DARK")
+  timezone String @default("Asia/Karachi")
+
+  setupCompleted Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("settings")
+}
+
+// ---------------------------------------------------------------------------
+// Trading account & core accounting
+// ---------------------------------------------------------------------------
+
+model TradingAccount {
+  id                 String   @id @default(cuid())
+  userId             String
+  name               String   @default("Main Trading Account")
+  mainTradingType    String // FOREX | CRYPTO | BINARY | STOCKS | MIXED
+  startingBalanceUsd Decimal
+  isDemo             Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  trades              Trade[]
+  dailyPlans          DailyPlan[]
+  dailyJournals       DailyJournal[]
+  strategies          Strategy[]
+  withdrawals         Withdrawal[]
+  deposits            Deposit[]
+  transactions        AccountTransaction[]
+  allocationRule      ProfitAllocationRule?
+  allocationTransfers AllocationTransfer[]
+  goldTransactions    GoldTransaction[]
+  assets              Asset[]
+  expenses            Expense[]
+  goals               Goal[]
+  monthlyTargets      MonthlyTarget[]
+  currencyRateHistory CurrencyRateHistory[]
+  goldRateHistory     GoldRateHistory[]
+  attachments         Attachment[]
+
+  @@map("trading_accounts")
+}
+
+model Trade {
+  id                  String    @id @default(cuid())
+  tradingAccountId    String
+  date                DateTime
+  time                String?
+  session             String? // ASIA | LONDON | NEW_YORK | CUSTOM
+  customSession       String?
+  broker              String?
+  marketType          String // FOREX | CRYPTO | BINARY | STOCKS | OTHER
+  symbol              String
+  direction           String // LONG | SHORT | CALL | PUT
+  entryPrice          Decimal?
+  exitPrice           Decimal?
+  positionSize        Decimal?
+  riskUsd             Decimal?
+  stopLoss            Decimal?
+  takeProfit          Decimal?
+  plannedRR           Decimal?
+  grossPnlUsd         Decimal
+  feesUsd             Decimal   @default(0)
+  netPnlUsd           Decimal
+  pnlPkr              Decimal
+  goldEquivalentG     Decimal
+  usdPkrRateAtEntry   Decimal
+  goldPricePkrAtEntry Decimal
+  strategyId          String?
+  setup               String?
+  timeframe           String?
+  durationMinutes     Int?
+  screenshotUrl       String?
+  notes               String?
+  emotion             String?
+  qualityRating       Int?
+  result              String // WIN | LOSS | BREAKEVEN
+  isDemo              Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  deletedAt           DateTime?
+
+  tradingAccount TradingAccount       @relation(fields: [tradingAccountId], references: [id], onDelete: Cascade)
+  strategy       Strategy?            @relation(fields: [strategyId], references: [id], onDelete: SetNull)
+  transactions   AccountTransaction[]
+
+  @@index([tradingAccountId, date])
+  @@index([tradingAccountId, symbol])
+  @@index([tradingAccountId, strategyId])
+  @@map("trades")
+}
+
+model DailyPlan {
+  id               String   @id @default(cuid())
+  tradingAccountId String
+  date             DateTime
+
+  startingBalance      Decimal
+  dailyTargetPct       Decimal
+  dailyTargetUsd       Decimal
+  dailyMaxLossPct      Decimal
+  dailyMaxLossUsd      Decimal
+  riskPerTradePct      Decimal
+  riskPerTradeUsd      Decimal
+  maxTrades            Int
+  maxConsecutiveLosses Int
+  session1Target       Decimal?
+  session2Target       Decimal?
+  notes                String?
+  status               String   @default("ACTIVE") // ACTIVE | TARGET_HIT | LOSS_LIMIT_HIT | STOPPED
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tradingAccount TradingAccount @relation(fields: [tradingAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([tradingAccountId, date])
+  @@map("daily_plans")
+}
+
+model DailyJournal {
+  id               String   @id @default(cuid())
+  tradingAccountId String
+  date             DateTime
+
+  todaysGoal            String?
+  marketOutlook         String?
+  tradingPlan           String?
+  whatWentWell          String?
+  whatWentWrong         String?
+  mistakes              String?
+  lessonsLearned        String?
+  emotionalState        String?
+  confidence            Int?
+  disciplineScore       Int?
+  emotionalControlScore Int?
+  executionScore        Int?
+  riskManagementScore   Int?
+  overallScore          Int?
+  screenshotUrl         String?
+  tomorrowsImprovement  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tradingAccount TradingAccount @relation(fields: [tradingAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([tradingAccountId, date])
+  @@map("daily_journals")
+}
+
+model Strategy {
+  id               String   @id @default(cuid())
+  tradingAccountId String
+  name             String
+  description      String?
+  isDemo           Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tradingAccount TradingAccount @relation(fields: [tradingAccountId], references: [id], onDelete: Cascade)
+  trades         Trade[]
+
+  @@unique([tradingAccountId, name])
+  @@map("strategies")
+}
+
+model Withdrawal {
+  id                String   @id @default(cuid())
+  tradingAccountId  String
+  date              DateTime
+  amountUsd         Decimal
+  pkrEquivalent     Decimal
+  usdPkrRateAtEntry Decimal
+  purpose           String?
+  destination       String // CASH | BANK | GOLD | CRYPTO | BUSINESS | SAVINGS | REAL_ESTATE | PERSONAL_EXPENSE | OTHER
+  notes             String?
+  isDemo            Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tradingAccount TradingAccount       @relation(fields: [tradingAccountId], references: [id], onDelete: Cascade)
+  transactions   AccountTransaction[]
+
+  @@index([tradingAccountId, date])
+  @@map("withdrawals")
+}
+
+model Deposit {
+  id               String   @id @default(cuid())
+  tradingAccountId String
+  date             DateTime
+  amountUsd        Decimal
+  notes            String?
+  isDemo           Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tradingAccount TradingAccount       @relation(fields: [tradingAccountId], references: [id], onDelete: Cascade)
+  transactions   AccountTransaction[]
+
+  @@index([tradingAccountId, date])
+  @@map("deposits")
+}
+
+// Ledger of every balance-affecting event, so current balance is derived, not stored.
+model AccountTransaction {
+  id                  String   @id @default(cuid())
+  tradingAccountId    String
+  date                DateTime
+  type                String // STARTING_CAPITAL | DEPOSIT | TRADE_PNL | WITHDRAWAL | FEE | ADJUSTMENT
+  amountUsd           Decimal // signed: positive increases balance, negative decreases
+  relatedTradeId      String?
+  relatedWithdrawalId String?
+  relatedDepositId    String?
+  notes               String?
+  isDemo              Boolean  @default(false)
+  createdAt           DateTime @default(now())
+
+  tradingAccount TradingAccount @relation(fields: [tradingAccountId], references: [id], onDelete: Cascade)
+  trade          Trade?         @relation(fields: [relatedTradeId], references: [id], onDelete: SetNull)
+  withdrawal     Withdrawal?    @relation(fields: [relatedWithdrawalId], references: [id], onDelete: SetNull)
+  deposit        Deposit?       @relation(fields: [relatedDepositId], references: [id], onDelete: SetNull)
+
+  @@index([tradingAccountId, date])
+  @@map("account_transactions")
+}
+
+// ---------------------------------------------------------------------------
+// Profit allocation
+// ---------------------------------------------------------------------------
+
+model ProfitAllocationRule {
+  id               String @id @default(cuid())
+  tradingAccountId String @unique
+
+  tradingCapitalPct Decimal @default(30)
+  goldPct           Decimal @default(30)
+  savingsPct        Decimal @default(15)
+  businessPct       Decimal @default(10)
+  realEstatePct     Decimal @default(10)
+  personalPct       Decimal @default(5)
+  otherPct          Decimal @default(0)
+  otherLabel        String?
+
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  tradingAccount TradingAccount @relation(fields: [tradingAccountId], references: [id], onDelete: Cascade)
+
+  @@map("profit_allocation_rules")
+}
+
+model AllocationTransfer {
+  id                String   @id @default(cuid())
+  tradingAccountId  String
+  date              DateTime
+  category          String // TRADING_CAPITAL | GOLD | SAVINGS | BUSINESS | REAL_ESTATE | PERSONAL | OTHER
+  amountUsd         Decimal
+  pkrEquivalent     Decimal
+  usdPkrRateAtEntry Decimal
+  goldGrams         Decimal?
+  notes             String?
+  isDemo            Boolean  @default(false)
+  createdAt         DateTime @default(now())
+
+  tradingAccount TradingAccount @relation(fields: [tradingAccountId], references: [id], onDelete: Cascade)
+
+  @@index([tradingAccountId, date])
+  @@map("allocation_transfers")
+}
+
+// ---------------------------------------------------------------------------
+// Gold, assets, wealth
+// ---------------------------------------------------------------------------
+
+model GoldTransaction {
+  id                  String   @id @default(cuid())
+  tradingAccountId    String
+  date                DateTime
+  txType              String   @default("BUY") // BUY | SELL
+  goldType            String?
+  purity              String // 24K | 22K | 21K | 18K | CUSTOM
+  purityCustomLabel   String?
+  weightGrams         Decimal
+  pricePerGramPkr     Decimal
+  totalCostPkr        Decimal
+  usdEquivalent       Decimal
+  usdPkrRateAtEntry   Decimal
+  dealer              String?
+  notes               String?
+  isDemo              Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  tradingAccount TradingAccount @relation(fields: [tradingAccountId], references: [id], onDelete: Cascade)
+
+  @@index([tradingAccountId, date])
+  @@map("gold_transactions")
+}
+
+model Asset {
+  id               String   @id @default(cuid())
+  tradingAccountId String
+  category         String // CASH | BANK | CRYPTO | BUSINESS | REAL_ESTATE | OTHER
+  name             String
+  valueUsd         Decimal  @default(0)
+  valuePkr         Decimal  @default(0)
+  notes            String?
+  isDemo           Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tradingAccount TradingAccount @relation(fields: [tradingAccountId], references: [id], onDelete: Cascade)
+
+  @@map("assets")
+}
+
+model Expense {
+  id                String   @id @default(cuid())
+  tradingAccountId  String
+  date              DateTime
+  category          String // FOOD | SHOPPING | BILLS | TRAVEL | BUSINESS | FAMILY | ENTERTAINMENT | TRADING_EXPENSE | OTHER
+  description       String?
+  amountPkr         Decimal
+  usdEquivalent     Decimal
+  usdPkrRateAtEntry Decimal
+  paymentMethod     String?
+  notes             String?
+  isDemo            Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tradingAccount TradingAccount @relation(fields: [tradingAccountId], references: [id], onDelete: Cascade)
+
+  @@index([tradingAccountId, date])
+  @@map("expenses")
+}
+
+// ---------------------------------------------------------------------------
+// Goals / targets
+// ---------------------------------------------------------------------------
+
+model Goal {
+  id               String    @id @default(cuid())
+  tradingAccountId String
+  type             String // BALANCE | MONTHLY_PROFIT | GOLD_GRAMS | SAVINGS | NET_WORTH | CUSTOM
+  title            String
+  targetValue      Decimal
+  startValue       Decimal   @default(0)
+  unit             String    @default("USD") // USD | PKR | GRAMS
+  targetDate       DateTime?
+  achieved         Boolean   @default(false)
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  tradingAccount TradingAccount @relation(fields: [tradingAccountId], references: [id], onDelete: Cascade)
+
+  @@map("goals")
+}
+
+model MonthlyTarget {
+  id               String   @id @default(cuid())
+  tradingAccountId String
+  month            Int
+  year             Int
+
+  startingCapital       Decimal
+  targetProfit          Decimal
+  maxDrawdownPct        Decimal
+  withdrawalGoal        Decimal?
+  goldPurchaseGoalGrams Decimal?
+  savingsGoal           Decimal?
+  notes                 String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tradingAccount TradingAccount @relation(fields: [tradingAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([tradingAccountId, month, year])
+  @@map("monthly_targets")
+}
+
+// ---------------------------------------------------------------------------
+// Rate history (never overwritten)
+// ---------------------------------------------------------------------------
+
+model CurrencyRateHistory {
+  id               String   @id @default(cuid())
+  tradingAccountId String
+  rate             Decimal
+  effectiveAt      DateTime @default(now())
+  note             String?
+
+  tradingAccount TradingAccount @relation(fields: [tradingAccountId], references: [id], onDelete: Cascade)
+
+  @@index([tradingAccountId, effectiveAt])
+  @@map("currency_rate_history")
+}
+
+model GoldRateHistory {
+  id              String   @id @default(cuid())
+  tradingAccountId String
+  pricePerGramPkr Decimal
+  effectiveAt     DateTime @default(now())
+  note            String?
+
+  tradingAccount TradingAccount @relation(fields: [tradingAccountId], references: [id], onDelete: Cascade)
+
+  @@index([tradingAccountId, effectiveAt])
+  @@map("gold_rate_history")
+}
+
+// ---------------------------------------------------------------------------
+// Attachments
+// ---------------------------------------------------------------------------
+
+model Attachment {
+  id               String   @id @default(cuid())
+  tradingAccountId String
+  relatedType      String // TRADE | DAILY_JOURNAL
+  relatedId        String
+  fileName         String
+  fileUrl          String
+  fileType         String
+  fileSize         Int
+  createdAt        DateTime @default(now())
+
+  tradingAccount TradingAccount @relation(fields: [tradingAccountId], references: [id], onDelete: Cascade)
+
+  @@index([tradingAccountId, relatedType, relatedId])
+  @@map("attachments")
+}
