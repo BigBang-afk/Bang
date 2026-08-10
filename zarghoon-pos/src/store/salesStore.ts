@@ -38,6 +38,7 @@ interface SalesState {
   nextInvoiceSeq: number;
   addSale: (sale: Omit<Sale, "id" | "date" | "invoiceNo">) => Sale;
   updateSale: (id: string, patch: Partial<SaleEditableFields>) => void;
+  updateSaleGoldRate: (id: string, ratePerGram: number) => void;
   removeSale: (id: string) => void;
 }
 
@@ -72,6 +73,14 @@ export const useSalesStore = create<SalesState>()(
               total: Math.max(0, s.subtotal - discount),
             };
           }),
+        })),
+      updateSaleGoldRate: (id, ratePerGram) =>
+        set((state) => ({
+          sales: state.sales.map((s) =>
+            s.id === id
+              ? { ...s, items: s.items.map((it) => ({ ...it, ratePerGram })) }
+              : s
+          ),
         })),
       removeSale: (id) => set((state) => ({ sales: state.sales.filter((s) => s.id !== id) })),
     }),

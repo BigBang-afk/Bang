@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { X } from "lucide-react";
-import type { Sale, PaymentMethod, SaleEditableFields } from "../store/salesStore";
+import { X, Coins } from "lucide-react";
+import { useSalesStore, type Sale, type PaymentMethod, type SaleEditableFields } from "../store/salesStore";
+import { computeProfit } from "../lib/profit";
 import { formatMoney } from "../lib/format";
 
 const paymentMethods: PaymentMethod[] = ["Cash", "Card", "Bank Transfer"];
@@ -16,15 +17,26 @@ export default function EditSaleModal({
   onCancel: () => void;
   onSave: (patch: SaleEditableFields) => void;
 }) {
+  const updateSaleGoldRate = useSalesStore((s) => s.updateSaleGoldRate);
   const [customerName, setCustomerName] = useState(sale.customerName);
   const [customerPhone, setCustomerPhone] = useState(sale.customerPhone);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(sale.paymentMethod);
   const [discount, setDiscount] = useState(sale.discount);
+  const originalRate = sale.items[0]?.ratePerGram ?? 0;
+  const [goldRate, setGoldRate] = useState(originalRate);
 
   const total = Math.max(0, sale.subtotal - discount);
 
+  const previewProfit = sale.items.reduce((sum, it) => {
+    const p = computeProfit({ ...it, ratePerGram: goldRate || it.ratePerGram });
+    return sum + p.profitCash;
+  }, 0);
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (goldRate > 0 && goldRate !== originalRate) {
+      updateSaleGoldRate(sale.id, goldRate);
+    }
     onSave({
       customerName: customerName.trim(),
       customerPhone: customerPhone.trim(),
@@ -108,18 +120,41 @@ export default function EditSaleModal({
             </div>
           </div>
 
-          <label className="block">
-            <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-[#a89a7d]">
-              Discount
-            </span>
-            <input
-              type="number"
-              min={0}
-              value={discount || ""}
-              onChange={(e) => setDiscount(Number(e.target.value) || 0)}
-              className="input"
-            />
-          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-[#a89a7d]">
+                Discount
+              </span>
+              <input
+                type="number"
+                min={0}
+                value={discount || ""}
+                onChange={(e) => setDiscount(Number(e.target.value) || 0)}
+                className="input"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 flex items-center gap-1 text-xs font-medium uppercase tracking-wider text-[#a89a7d]">
+                <Coins size={12} /> Gold Rate for Profit
+              </span>
+              <input
+                type="number"
+                min={0}
+                value={goldRate || ""}
+                onChange={(e) => setGoldRate(Number(e.target.value) || 0)}
+                className="input"
+              />
+            </label>
+          </div>
+          <p className="-mt-2 text-[11px] text-ink-500">
+            Revalues this sale's gold cost basis to recalculate profit — the invoice total charged to the
+            customer stays unchanged.{" "}
+            {goldRate > 0 && (
+              <span className={previewProfit >= 0 ? "text-emerald-400" : "text-rose-400"}>
+                Profit at this rate: {formatMoney(previewProfit, currency)}
+              </span>
+            )}
+          </p>
 
           <div className="space-y-1 rounded-lg border border-gold-900/40 bg-ink-900/40 p-3 text-sm">
             <div className="flex justify-between text-ink-500">

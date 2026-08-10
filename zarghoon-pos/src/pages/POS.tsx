@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Scale, Plus, Minus, Trash2, ShoppingBag } from "lucide-react";
+import { Scale, Plus, Minus, Trash2, ShoppingBag, Coins } from "lucide-react";
 import { useInventoryStore, type Product, type Category } from "../store/inventoryStore";
 import { useGoldRateStore } from "../store/goldRateStore";
 import { useSalesStore, type PaymentMethod, type SaleLineItem, type Sale } from "../store/salesStore";
@@ -33,6 +33,11 @@ export default function POS() {
   const [discount, setDiscount] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("Cash");
   const [completedSale, setCompletedSale] = useState<Sale | null>(null);
+  const [customRate, setCustomRate] = useState<number | null>(null);
+
+  const effectiveRate = customRate !== null && customRate > 0 ? customRate : rates.k21;
+  const effectiveRates = { k21: effectiveRate };
+  const isRateOverridden = customRate !== null && customRate !== rates.k21;
 
   const categoryTabs = useMemo<(Category | "All")[]>(() => ["All", ...allCategories], [allCategories]);
 
@@ -81,7 +86,7 @@ export default function POS() {
   }
 
   const subtotal = cart.reduce((sum, l) => {
-    const { total } = computeProductPrice(l.product, rates);
+    const { total } = computeProductPrice(l.product, effectiveRates);
     return sum + total * l.qty;
   }, 0);
   const total = Math.max(0, subtotal - discount);
@@ -89,7 +94,7 @@ export default function POS() {
   function handleCheckout() {
     if (cart.length === 0) return;
     const items: SaleLineItem[] = cart.map((l) => {
-      const breakdown = computeProductPrice(l.product, rates);
+      const breakdown = computeProductPrice(l.product, effectiveRates);
       return {
         productId: l.product.id,
         name: l.product.name,
@@ -122,6 +127,7 @@ export default function POS() {
     setCustomerPhone("");
     setDiscount(0);
     setPaymentMethod("Cash");
+    setCustomRate(null);
   }
 
   return (
@@ -171,7 +177,7 @@ export default function POS() {
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
           {filtered.map((p) => {
-            const { total: price } = computeProductPrice(p, rates);
+            const { total: price } = computeProductPrice(p, effectiveRates);
             return (
               <button
                 key={p.id}
@@ -217,7 +223,7 @@ export default function POS() {
           ) : (
             <div className="space-y-3">
               {cart.map((l) => {
-                const { total: lineUnitPrice } = computeProductPrice(l.product, rates);
+                const { total: lineUnitPrice } = computeProductPrice(l.product, effectiveRates);
                 return (
                   <div key={l.product.id} className="flex items-center gap-3">
                     <ProductThumb images={l.product.images} size={40} />
@@ -290,6 +296,31 @@ export default function POS() {
             ))}
           </div>
 
+          <div className="flex items-center justify-between text-sm text-[#a89a7d]">
+            <span className="flex items-center gap-1.5">
+              <Coins size={13} /> Gold Rate /g
+            </span>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={0}
+                value={customRate ?? (rates.k21 || "")}
+                onChange={(e) => setCustomRate(Number(e.target.value) || 0)}
+                className={`w-24 rounded-md border bg-ink-950 px-2 py-1 text-right text-sm text-[#ece6d9] outline-none focus:border-gold-600/60 ${
+                  isRateOverridden ? "border-gold-600/70" : "border-gold-900/40"
+                }`}
+              />
+              {isRateOverridden && (
+                <button
+                  type="button"
+                  onClick={() => setCustomRate(null)}
+                  className="text-[10px] font-medium text-gold-500 hover:text-gold-300"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+          </div>
           <div className="flex items-center justify-between text-sm text-[#a89a7d]">
             <span>Subtotal</span>
             <span>{formatMoney(subtotal, currency)}</span>
