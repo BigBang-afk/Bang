@@ -28,7 +28,10 @@ export default function EditSaleModal({
   const total = Math.max(0, sale.subtotal - discount);
 
   const previewProfit = sale.items.reduce((sum, it) => {
-    const p = computeProfit({ ...it, ratePerGram: goldRate || it.ratePerGram });
+    const p = computeProfit(
+      { ...it, ratePerGram: goldRate || it.ratePerGram },
+      { subtotal: sale.subtotal, discount }
+    );
     return sum + p.profitCash;
   }, 0);
 

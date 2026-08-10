@@ -31,7 +31,7 @@ interface ShopInfo {
 function saleProfitTotals(sale: Sale) {
   return sale.items.reduce(
     (acc, it) => {
-      const p = computeProfit(it);
+      const p = computeProfit(it, sale);
       return {
         netWeight: acc.netWeight + p.netWeightGrams,
         buyPrice: acc.buyPrice + p.buyPrice,
@@ -253,7 +253,7 @@ export default function Profit() {
                       </thead>
                       <tbody>
                         {s.items.map((it, i) => {
-                          const p = computeProfit(it);
+                          const p = computeProfit(it, s);
                           return (
                             <tr key={i} className="border-t border-gold-900/10">
                               <td className="py-2 text-[#ece6d9]">
@@ -396,7 +396,7 @@ function ProfitReportModal({
             </thead>
             <tbody>
               {sale.items.map((it, i) => {
-                const p = computeProfit(it);
+                const p = computeProfit(it, sale);
                 return (
                   <tr key={i} className="border-b border-neutral-200">
                     <td className="py-2 pr-2">

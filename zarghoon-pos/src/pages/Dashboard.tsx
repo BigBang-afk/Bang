@@ -72,7 +72,7 @@ export default function Dashboard() {
       monthSales.reduce(
         (acc, s) => {
           for (const it of s.items) {
-            const p = computeProfit(it);
+            const p = computeProfit(it, s);
             acc.cash += p.profitCash;
             acc.gold += p.profitGold;
           }
