@@ -268,6 +268,81 @@ leaks into an indicator), and scoring edge cases (flat price action
 resolving to neutral rather than defaulting bearish, setups never being
 named without a qualifying score).
 
+### AI market analysis engine (Phase 6)
+
+`src/lib/ai/` integrates the Claude API on top of everything Phase 4/5
+already computed — it never talks to a market-data provider itself and
+never invents a value the rest of the app can't already back up:
+
+- **`types.ts`** (`AnalysisInputSnapshot`): the entire, exhaustive set of
+  data the AI is allowed to see for one symbol/timeframe — price (last
+  *closed* candle, same no-repaint discipline as the scanner), 24h change,
+  market status, a bounded window of recent candles, the full indicator
+  readout (EMA/RSI/MACD/ATR/Bollinger/ADX/relative volume/momentum),
+  trend/momentum/volatility/volume state, the scanner's technical score
+  and setup type, and support/resistance levels. Every field traces back
+  to a real computed value; a field that genuinely has no data is `null`,
+  never guessed.
+- **`levels.ts`** (`findSupportResistanceLevels`, in
+  `technical-analysis/`): detects support/resistance from clustered swing
+  highs/lows in closed candles — pure and unit-tested like the rest of the
+  technical-analysis package.
+- **`prompt.ts`**: the system prompt and user-prompt builder, both
+  server-only and reused for every request (never built from raw user
+  text — the only input is `AnalysisInputSnapshot`, assembled entirely
+  server-side). The system prompt is explicit and non-negotiable about the
+  brief's constraints: never fabricate data, `confidence_score` is an
+  analytical agreement score and *not* a probability of profit, and never
+  claim a guaranteed profit, guaranteed win rate, 100% accuracy, or
+  risk-free trading.
+- **`schema.ts`**: the zod schema every response must satisfy
+  (`market_bias`, `trend`, `momentum`, `volatility`, `key_levels`,
+  `bullish_factors`, `bearish_factors`, `invalidation_conditions`,
+  `setup_quality`, `confidence_score`, `explanation`, `risk_notes`),
+  `parseAnalysisOutput()` for validating arbitrary JSON against it, the
+  typed `AIAnalysisError` used everywhere in this module, and
+  `AI_ANALYSIS_ERROR_STATUS` — the error-code → HTTP-status table the API
+  route reads from, kept in `schema.ts` rather than inlined in the route so
+  it's independently unit-tested.
+- **`client.ts`**: the only place that calls the Claude API. Uses
+  structured outputs (`client.messages.parse` + `zodOutputFormat` built
+  from the same zod schema, not a hand-duplicated JSON schema) so a
+  malformed response is a validation failure, not a parsing crash; a
+  30-second request timeout maps to a typed `timeout` error; a
+  `stop_reason: "refusal"` maps to a typed `refused` error; and
+  `parsed_output` is re-validated through `parseAnalysisOutput()` even
+  though structured outputs already enforced the schema server-side, so
+  there's exactly one source of truth for "is this a valid analysis."
+- **`analyze.ts`** (`runAnalysis`): the orchestrator. Builds the snapshot,
+  calls Claude, and persists the result to `ai_analyses` for every
+  request — cache hit or not — so per-user history and admin usage
+  monitoring both see everything (`status: "failed"` rows are written on
+  any error too, which is exactly what the `admin/ai-usage` dashboard's
+  "Failed" counter has been reading since Phase 1). A short-lived
+  in-memory cache, keyed by asset + timeframe (same documented
+  single-process limitation as `lib/rate-limit.ts`), lets a burst of
+  requests for the same hot symbol reuse one Claude call — real cost
+  control, not just a nice-to-have. Snapshot-building, generation, and
+  persistence are all injected dependencies, so `analyze.test.ts` exercises
+  the cache/error/persistence logic without a network or database call.
+
+`app/api/ai-analysis/route.ts` follows the same shape as the market-data
+and scanner routes: `authorizeMarketDataRequest` (auth + per-user rate
+limit), then `checkDailyUsageLimit(userId, "ai_analyses_per_day")` (429
+with an upgrade message once exceeded — the same entitlement key Phase 3
+already defined for this), then `resolveAsset()` to reject an unknown
+symbol before ever building a snapshot, then `runAnalysis()`. Errors map
+through `AI_ANALYSIS_ERROR_STATUS` (unsupported market → 404, insufficient
+history → 422, timeout → 504, upstream/AI provider failure → 502,
+malformed output → 502). `/dashboard/ai-analysis` is a client panel
+(`components/dashboard/ai-analysis-panel.tsx`) with symbol/timeframe
+selection, an Analyze button, and a results view covering every field the
+brief asked for (bias/trend/momentum/volatility, key levels, supporting
+and conflicting factors, invalidation conditions, setup quality,
+confidence score, explanation, risk notes, timestamp, model) plus an
+expandable "data used for this analysis" panel so a user can see exactly
+what the AI was and wasn't given.
+
 ## 6. Security architecture
 
 - **RLS everywhere.** Every table has RLS enabled; policies are additive
@@ -356,7 +431,7 @@ comments. Summary:
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Public, safe under RLS |
 | `SUPABASE_SERVICE_ROLE_KEY` | Recommended | Server-only, admin features |
 | `NEXT_PUBLIC_SITE_URL` | Yes | Auth email redirects |
-| `ANTHROPIC_API_KEY` | No (Phase 3) | Server-only |
+| `ANTHROPIC_API_KEY` | Required for AI Analysis (Phase 6) | Server-only |
 | `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | No (later phase) | Server-only |
 | `MARKET_DATA_API_KEY` | No (Phase 2) | Server-only |
 
@@ -374,10 +449,15 @@ comments. Summary:
 - **Service-role key blast radius.** `createServiceRoleClient()` bypasses
   RLS entirely; every call site must be audited to stay server-only. It's
   currently used in exactly one place (admin user email lookup).
-- **AI cost/abuse risk (Phase 3+).** Once the Claude API is wired up,
-  per-user rate limits (backed by `plans.limits.ai_analyses_per_day` and
-  `usage_tracking`) must be enforced server-side before each call, not just
-  displayed in the UI.
+- **AI cost/abuse risk (Phase 6).** `checkDailyUsageLimit(userId,
+  "ai_analyses_per_day")` gates every request server-side before
+  `runAnalysis()` is ever called (`app/api/ai-analysis/route.ts`), backed
+  by `plans.limits.ai_analyses_per_day` and `usage_tracking` — never just
+  a disabled button in the UI. The in-memory per-symbol/timeframe cache in
+  `lib/ai/analyze.ts` further bounds real Claude spend during a burst of
+  requests for the same hot symbol, but — like `lib/rate-limit.ts` — is
+  per-process and doesn't coordinate across serverless instances; revisit
+  with a shared store (Redis or similar) before scaling out.
 - **Market data licensing/cost.** No provider is chosen yet; the schema and
   UI are deliberately provider-agnostic so this can be decided in Phase 2
   without a schema migration.

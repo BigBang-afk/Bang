@@ -27,14 +27,14 @@ export default async function AdminAiUsagePage() {
     <div>
       <PageHeader
         title="AI usage"
-        description="Every AI call is logged in ai_analyses for transparency and cost tracking. The Claude API integration itself hasn't shipped yet."
+        description="Every AI call — model, tokens, latency and outcome — is logged in ai_analyses for transparency and cost tracking."
       />
 
       {!hasData ? (
         <EmptyState
           icon={Sparkles}
           title="No AI analyses yet"
-          description="Once AI Analysis is live, every request — model, tokens, latency and outcome — will be logged here."
+          description="No one has run an AI analysis yet. Once they do, every request will show up here with its model, tokens, latency and outcome."
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

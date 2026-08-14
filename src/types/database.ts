@@ -177,6 +177,7 @@ export type AiAnalysisRow = {
   user_id: string | null;
   asset_id: string | null;
   analysis_type: AiAnalysisType;
+  timeframe: string | null;
   input_context: Record<string, unknown>;
   output_text: string | null;
   output_json: Record<string, unknown> | null;
@@ -286,7 +287,7 @@ export interface Database {
       market_assets: Tbl<MarketAssetRow, "id" | "created_at" | "updated_at">;
       watchlists: Tbl<WatchlistRow, "id" | "created_at" | "updated_at">;
       watchlist_items: Tbl<WatchlistItemRow, "id" | "created_at" | "notes" | "sort_order">;
-      ai_analyses: Tbl<AiAnalysisRow, "id" | "created_at" | "user_id" | "asset_id" | "output_text" | "output_json" | "tokens_used" | "latency_ms" | "status" | "error_message">;
+      ai_analyses: Tbl<AiAnalysisRow, "id" | "created_at" | "user_id" | "asset_id" | "timeframe" | "output_text" | "output_json" | "tokens_used" | "latency_ms" | "status" | "error_message">;
       trading_setups: Tbl<
         TradingSetupRow,
         | "id"
