@@ -51,6 +51,8 @@ src/
     config/                  Site metadata, nav items — not hard-coded in components
     validations/             Zod schemas
     plans.ts, rate-limit.ts  Plan data access, in-memory rate limiter
+    market-data/             Provider abstraction, registry, Binance.US provider
+    technical-analysis/      Indicators, no-repaint candle split, scoring engine, scanner
   types/
     database.ts             Hand-written mirror of the SQL schema (Database type)
 supabase/
@@ -209,6 +211,63 @@ fabricating data — the UI (Charts, Markets, System Status) surfaces this
 honestly instead of hiding it. Adding a provider is: implement the
 interface, add its key to env vars, add one line to the registry.
 
+### Technical analysis & scanner engine (Phase 5)
+
+`src/lib/technical-analysis/` is a pure, provider-agnostic layer computed
+entirely from `OHLCVCandle[]` — it never calls a market-data provider
+itself, so it's unit-testable without network access:
+
+- **`indicators.ts`**: SMA, EMA, RSI, MACD, ATR, Bollinger Bands, VWAP,
+  average/relative volume, momentum, and ADX (+DI/-DI), all pure functions
+  over index-aligned `Array<number | null>` series (`null` during
+  warm-up). All periods are parameters, not constants, so settings are
+  configurable end-to-end.
+- **`candles.ts`** (`splitClosedAndForming`): the no-repaint guardrail.
+  Every provider response may include a still-forming candle (its close
+  time is in the future); this function splits it off so indicator math
+  only ever runs on fully closed candles. The forming candle, if present,
+  is only ever suitable for display as a live price — feeding it into an
+  indicator would make historical values change retroactively as the
+  candle continues to form, which is exactly what "no repainting" rules
+  out.
+- **`scoring.ts`** (`analyzeSymbol`): a transparent scoring engine — every
+  field on `TechnicalSnapshot` traces back to a named, inspectable rule
+  (trend confirmation via EMA/ADX, momentum agreement, volume
+  confirmation, price-structure confirmation, volatility condition).
+  `supportingConditions`/`conflictingConditions` list the exact rules that
+  fired in plain language; `setupType` is only ever set when the score
+  clears a threshold *and* there's supporting evidence. This is
+  decision-support, not a prediction — the scanner UI states that
+  explicitly, and no code path claims a guaranteed signal.
+- **`scanner.ts`** (`runScan`): queries `market_assets` for the requested
+  market/symbol filter, and for each asset fetches OHLCV, splits
+  closed/forming, scores the closed candles, and applies the requested
+  filters (trend/volatility/momentum/volume/RSI range/EMA condition).
+  Markets with no connected provider return every asset as
+  `unsupportedCount` rather than a fabricated snapshot; a single symbol's
+  provider error only drops that symbol, not the whole scan.
+
+`app/api/scanner/route.ts` wraps this the same way the market-data routes
+do: `authorizeMarketDataRequest()` (auth + per-user rate limit), then
+`checkDailyUsageLimit(userId, "scanner_requests_per_day")` (429 with a
+plan-upgrade message once exceeded), then `recordUsage()` on success — so
+scanning is entitlement-gated the same way AI analyses are, per the
+Phase 3 entitlement system. `/dashboard/scanner` is a client panel
+(`components/dashboard/scanner-panel.tsx`) with the full filter set
+(Market, Symbol, Timeframe, Trend, Volatility, Momentum, Volume, RSI
+range, EMA condition) and a results table (Symbol, Current price, Trend,
+Momentum, Volatility, Technical score, Last update); each row expands to
+show the setup type, risk level, and the supporting/conflicting
+conditions the score is built from, so the "why" is never hidden behind a
+single number.
+
+Unit tests (`*.test.ts` next to each module, run via `npm test` /
+`vitest`) cover indicator math against hand-computed values, the
+closed/forming split (including that an anomalous forming candle never
+leaks into an indicator), and scoring edge cases (flat price action
+resolving to neutral rather than defaulting bearish, setups never being
+named without a qualifying score).
+
 ## 6. Security architecture
 
 - **RLS everywhere.** Every table has RLS enabled; policies are additive
@@ -322,3 +381,9 @@ comments. Summary:
 - **Market data licensing/cost.** No provider is chosen yet; the schema and
   UI are deliberately provider-agnostic so this can be decided in Phase 2
   without a schema migration.
+- **Scanner fetch fan-out (Phase 5).** `runScan()` fetches OHLCV for each
+  matching asset sequentially, not in parallel, to stay under the
+  provider's rate limits with today's small asset list. This will need to
+  become a bounded-concurrency batch (or a cached/precomputed snapshot
+  table) once the tracked-asset count grows enough for sequential fetches
+  to make a scan noticeably slow.
