@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
+import { getDataSource } from "@/lib/market-data";
 import { requireAdmin } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 
@@ -32,7 +33,7 @@ export default async function AdminMarketDataPage() {
     <div>
       <PageHeader
         title="Market data"
-        description="Tracked assets and their feed status. A live pricing feed connects in Phase 2 — until then, these rows are reference data only."
+        description="Tracked assets and their feed status. Crypto is live via Binance.US; other markets need a provider connected — see lib/market-data/registry.ts."
       />
 
       {!assets || assets.length === 0 ? (
@@ -72,7 +73,13 @@ export default async function AdminMarketDataPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">Not connected</Badge>
+                      {getDataSource(asset.market_type) ? (
+                        <Badge variant="default">
+                          {getDataSource(asset.market_type)?.providerName}
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline">Not connected</Badge>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

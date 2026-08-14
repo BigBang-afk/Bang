@@ -110,3 +110,81 @@ export async function removeWatchlistItemAction(formData: FormData) {
 
   revalidatePath("/dashboard/watchlist");
 }
+
+/**
+ * Same as addWatchlistItemAction but void (no useActionState) — used from
+ * the Markets page's per-row "Add to watchlist" menu, where a full form
+ * with error UI would be overkill. Still enforces the same entitlement
+ * check server-side.
+ */
+export async function quickAddToWatchlistAction(formData: FormData) {
+  const profile = await requireUser("/dashboard/markets");
+  const parsed = addItemSchema.safeParse({
+    watchlistId: formData.get("watchlistId"),
+    assetId: formData.get("assetId"),
+  });
+  if (!parsed.success) return;
+
+  const usage = await checkUsageLimit(profile.id, "watchlist_items");
+  if (!usage.allowed) return;
+
+  const supabase = await createClient();
+  await supabase.from("watchlist_items").insert({
+    watchlist_id: parsed.data.watchlistId,
+    asset_id: parsed.data.assetId,
+  });
+
+  revalidatePath("/dashboard/watchlist");
+  revalidatePath("/dashboard/markets");
+}
+
+const reorderSchema = z.object({
+  watchlistId: z.string().uuid(),
+  itemId: z.string().uuid(),
+  direction: z.enum(["up", "down"]),
+});
+
+/**
+ * Swaps an item's sort_order with its immediate neighbor in the same
+ * direction. Simple and correct for the common case of nudging an item a
+ * few places; a drag-and-drop reorder can replace this later without
+ * changing the schema (sort_order already exists for exactly this).
+ */
+export async function reorderWatchlistItemAction(formData: FormData) {
+  await requireUser("/dashboard/watchlist");
+  const parsed = reorderSchema.safeParse({
+    watchlistId: formData.get("watchlistId"),
+    itemId: formData.get("itemId"),
+    direction: formData.get("direction"),
+  });
+  if (!parsed.success) return;
+
+  const supabase = await createClient();
+  const { data: items } = await supabase
+    .from("watchlist_items")
+    .select("id, sort_order")
+    .eq("watchlist_id", parsed.data.watchlistId)
+    .order("sort_order", { ascending: true });
+
+  if (!items) return;
+
+  const index = items.findIndex((i) => i.id === parsed.data.itemId);
+  const swapIndex = parsed.data.direction === "up" ? index - 1 : index + 1;
+  if (index === -1 || swapIndex < 0 || swapIndex >= items.length) return;
+
+  const current = items[index];
+  const swap = items[swapIndex];
+
+  await Promise.all([
+    supabase
+      .from("watchlist_items")
+      .update({ sort_order: swap.sort_order })
+      .eq("id", current.id),
+    supabase
+      .from("watchlist_items")
+      .update({ sort_order: current.sort_order })
+      .eq("id", swap.id),
+  ]);
+
+  revalidatePath("/dashboard/watchlist");
+}

@@ -11,8 +11,8 @@ export default function SetupsPage() {
       title="Setups"
       description="Structured entry, stop-loss and take-profit setups with a stated risk/reward ratio."
       icon={LineChart}
-      phase="Phase 4"
-      emptyTitle="Trading setups land in Phase 4"
+      phase="Coming soon"
+      emptyTitle="Trading setups are next"
       emptyDescription="The trading_setups table is already in place. Once AI analysis and alerts are live, setups generated from that analysis will appear here."
     />
   );

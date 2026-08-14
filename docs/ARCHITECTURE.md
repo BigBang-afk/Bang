@@ -159,9 +159,12 @@ without client JS), automatic CSRF protection from Next.js, and no need to
 hand-roll request validation plumbing.
 
 Route Handlers (`app/api/*`, `app/auth/callback`) are reserved for cases
-that aren't a form submission: OAuth/email-confirmation callbacks, and (in
-later phases) webhooks from Stripe and any market-data provider, plus any
-endpoint that needs to be called from outside the Next.js app itself.
+that aren't a form submission: OAuth/email-confirmation callbacks, (in
+later phases) webhooks from Stripe, and anything a Client Component needs
+to poll/refetch dynamically — which is exactly what `app/api/market-data/*`
+is for (Phase 4): the Charts and Markets pages need to refetch on a timer
+and on user interaction (symbol/timeframe changes) without a full page
+navigation, so they call these routes instead of a Server Action.
 
 Every Server Action:
 
@@ -169,6 +172,42 @@ Every Server Action:
    client.
 2. Validates input with Zod before touching the database.
 3. Lets Supabase RLS make the final authorization call on the write itself.
+
+Every market-data Route Handler (`app/api/market-data/*`) additionally:
+
+1. Requires a signed-in user (`getCurrentProfile()`) and rate-limits per
+   user (`lib/rate-limit.ts`) — these routes are cheap for us to call but
+   not free, so they're not left open to anonymous/unbounded polling.
+2. Resolves the requested symbol against `public.market_assets` server-side
+   — the client only ever sends a symbol string, never a market type, so
+   it can't spoof which provider/market a symbol resolves to.
+3. Delegates to `lib/market-data/index.ts`, which is the only code that
+   knows which provider serves which market (`lib/market-data/registry.ts`)
+   — routes never import a provider implementation directly.
+4. Maps `MarketDataError` codes to HTTP status codes consistently
+   (`invalid_symbol`→400, `unsupported_market`→404, `rate_limited`→429,
+   `provider_unavailable`/`network_error`→502).
+
+### Market data provider abstraction (Phase 4)
+
+`src/lib/market-data/types.ts` defines the `MarketDataProvider` interface
+every data source implements: `getMarkets()`, `getTicker()`, `getOHLCV()`,
+`getMarketStatus()`, and an optional `getOrderBook()`. `capabilities`
+declares which market types, timeframes and latency class (`realtime` vs
+`delayed`) a provider supports, so the app never assumes a provider covers
+more than it actually does.
+
+`src/lib/market-data/registry.ts` maps each `market_type` to the provider
+currently serving it — the **only** place a concrete provider
+implementation gets wired into the app. Today: `crypto` → Binance.US
+(`providers/binance.ts`), real public market data, no API key required.
+`forex`/`metals`/`indices` have no entry — deliberately, since no free,
+key-less provider offers real intraday OHLCV for them (see
+`.env.example`). Calling `getTicker()`/`getOHLCV()` for an unsupported
+market throws `MarketDataError("unsupported_market", ...)` rather than
+fabricating data — the UI (Charts, Markets, System Status) surfaces this
+honestly instead of hiding it. Adding a provider is: implement the
+interface, add its key to env vars, add one line to the registry.
 
 ## 6. Security architecture
 

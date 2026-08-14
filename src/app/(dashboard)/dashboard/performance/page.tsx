@@ -11,8 +11,8 @@ export default function PerformancePage() {
       title="Performance"
       description="Win rate, average R, drawdown and other stats computed from your trade journal."
       icon={BarChart3}
-      phase="Phase 5"
-      emptyTitle="Performance analytics land in Phase 5"
+      phase="Coming soon"
+      emptyTitle="Performance analytics are next"
       emptyDescription="Log trades in your journal now — performance analytics will be computed from that history once this phase ships."
     />
   );

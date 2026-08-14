@@ -7,7 +7,8 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { AddWatchlistItemForm } from "@/components/dashboard/add-watchlist-item-form";
 import { CreateWatchlistForm } from "@/components/dashboard/create-watchlist-form";
-import { deleteWatchlistAction, removeWatchlistItemAction } from "@/lib/actions/watchlist";
+import { WatchlistItemsList } from "@/components/dashboard/watchlist-items-list";
+import { deleteWatchlistAction } from "@/lib/actions/watchlist";
 import { checkUsageLimit } from "@/lib/entitlements";
 import { requireUser } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
@@ -28,7 +29,8 @@ export default async function WatchlistPage() {
       .from("watchlists")
       .select("*, watchlist_items(*, market_assets(*))")
       .eq("user_id", profile.id)
-      .order("created_at", { ascending: true }),
+      .order("created_at", { ascending: true })
+      .order("sort_order", { referencedTable: "watchlist_items", ascending: true }),
     supabase.from("market_assets").select("*").eq("is_active", true).order("symbol"),
     checkUsageLimit(profile.id, "watchlists"),
   ]);
@@ -39,7 +41,7 @@ export default async function WatchlistPage() {
     <div>
       <PageHeader
         title="Watchlist"
-        description="Track the assets you're following. Live pricing arrives in a later phase."
+        description="Track the assets you're following, with live pricing for crypto."
       />
 
       <Card className="mb-6">
@@ -71,36 +73,7 @@ export default async function WatchlistPage() {
                 </form>
               </CardHeader>
               <CardContent className="space-y-3">
-                {list.watchlist_items.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No assets added yet.</p>
-                ) : (
-                  <ul className="space-y-2">
-                    {list.watchlist_items.map((item) => (
-                      <li
-                        key={item.id}
-                        className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm"
-                      >
-                        <div>
-                          <span className="font-medium">{item.market_assets.symbol}</span>{" "}
-                          <span className="text-muted-foreground">
-                            {item.market_assets.display_name}
-                          </span>
-                        </div>
-                        <form action={removeWatchlistItemAction}>
-                          <input type="hidden" name="itemId" value={item.id} />
-                          <Button
-                            type="submit"
-                            variant="ghost"
-                            size="icon-xs"
-                            aria-label="Remove"
-                          >
-                            <Trash2 className="size-3.5 text-muted-foreground" />
-                          </Button>
-                        </form>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                <WatchlistItemsList watchlistId={list.id} items={list.watchlist_items} />
 
                 <AddWatchlistItemForm watchlistId={list.id} assets={assets ?? []} />
               </CardContent>

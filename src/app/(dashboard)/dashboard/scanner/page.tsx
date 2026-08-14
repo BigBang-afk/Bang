@@ -11,9 +11,9 @@ export default function ScannerPage() {
       title="Scanner"
       description="Screen assets by technical conditions instead of checking each one by hand."
       icon={ScanSearch}
-      phase="Phase 3"
-      emptyTitle="Market scanner lands in Phase 3"
-      emptyDescription="Once live market data is connected, the scanner will let you filter tracked assets by trend, momentum and volatility conditions."
+      phase="Coming soon"
+      emptyTitle="Market scanner is next"
+      emptyDescription="Live crypto data is connected as of this phase (see Charts/Markets) — the scanner will filter tracked assets by trend, momentum and volatility conditions once its screening logic ships."
     />
   );
 }
