@@ -97,6 +97,32 @@ A trigger on `auth.users` (`handle_new_user`) automatically creates a
 `profiles` row and an `active` Free-plan `subscriptions` row for every new
 signup, so every user has a plan from the moment they register.
 
+### Entitlement system (Phase 3)
+
+`src/lib/entitlements.ts` is the single place that answers "is this user
+allowed to do X" — Server Components and Server Actions call it, nothing
+else decides entitlement. Two independent mechanisms, both pure data:
+
+- **Numeric limits** (`plans.limits` jsonb — e.g. `watchlists: 3`).
+  `checkUsageLimit()` counts a *capacity* resource (current row count vs.
+  cap — watchlists, watchlist items, alerts, saved setups, journal
+  entries); `checkDailyUsageLimit()` counts a *rate* resource (rows in
+  `usage_tracking` since UTC midnight — AI analyses, scanner requests).
+  `recordUsage()` appends to `usage_tracking` after a gated action
+  succeeds.
+- **Qualitative features** (`plan_features` rows — e.g.
+  `csv_export`). `hasFeatureAccess()` checks whether a
+  `(plan_id, feature_key)` row exists; absence means "not included," so
+  only positive rows are ever stored.
+
+`getUserPlan()` resolves a user's entitling plan (their
+active/trialing/past_due subscription's plan, falling back to Free) and
+is the base every other function builds on. Every gated Server Action
+(e.g. `createWatchlistAction`) calls `checkUsageLimit()` *before* writing
+— the UI may also disable a button near the limit, but that's a
+convenience, never the actual gate, per the "verify server-side" security
+requirement.
+
 ## 4. Authentication architecture
 
 - **Provider**: Supabase Auth (email/password in Phase 1; OAuth providers

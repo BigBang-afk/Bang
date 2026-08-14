@@ -4,15 +4,6 @@ import { BookOpen, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -21,10 +12,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
-import { createJournalEntryAction, deleteJournalEntryAction } from "@/lib/actions/journal";
+import { CreateJournalEntryForm } from "@/components/dashboard/create-journal-entry-form";
+import { deleteJournalEntryAction } from "@/lib/actions/journal";
+import { checkUsageLimit } from "@/lib/entitlements";
 import { requireUser } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import type { MarketAssetRow, TradeJournalRow } from "@/types/database";
@@ -37,13 +29,14 @@ export default async function JournalPage() {
   const profile = await requireUser("/dashboard/journal");
   const supabase = await createClient();
 
-  const [{ data: entries }, { data: assets }] = await Promise.all([
+  const [{ data: entries }, { data: assets }, journalUsage] = await Promise.all([
     supabase
       .from("trade_journal")
       .select("*, market_assets(*)")
       .eq("user_id", profile.id)
       .order("opened_at", { ascending: false }),
     supabase.from("market_assets").select("*").eq("is_active", true).order("symbol"),
+    checkUsageLimit(profile.id, "journal_entries"),
   ]);
 
   const rows = (entries ?? []) as unknown as EntryWithAsset[];
@@ -60,60 +53,11 @@ export default async function JournalPage() {
           <CardTitle className="text-sm">Log a trade</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={createJournalEntryAction} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="assetId">Asset</Label>
-              <Select name="assetId">
-                <SelectTrigger id="assetId" className="w-full">
-                  <SelectValue placeholder="Select an asset" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(assets ?? []).map((asset) => (
-                    <SelectItem key={asset.id} value={asset.id}>
-                      {asset.symbol}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="direction">Direction</Label>
-              <Select name="direction" defaultValue="long">
-                <SelectTrigger id="direction" className="w-full">
-                  <SelectValue placeholder="Direction" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="long">Long</SelectItem>
-                  <SelectItem value="short">Short</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="positionSize">Position size</Label>
-              <Input id="positionSize" name="positionSize" type="number" step="any" min="0" required />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="entryPrice">Entry price</Label>
-              <Input id="entryPrice" name="entryPrice" type="number" step="any" min="0" required />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="exitPrice">Exit price (optional)</Label>
-              <Input id="exitPrice" name="exitPrice" type="number" step="any" min="0" />
-            </div>
-
-            <div className="space-y-1.5 sm:col-span-2 lg:col-span-3">
-              <Label htmlFor="notes">Notes</Label>
-              <Textarea id="notes" name="notes" rows={2} maxLength={2000} />
-            </div>
-
-            <div className="sm:col-span-2 lg:col-span-3">
-              <Button type="submit">Log trade</Button>
-            </div>
-          </form>
+          <CreateJournalEntryForm
+            assets={assets ?? []}
+            used={journalUsage.used}
+            limit={journalUsage.limit}
+          />
         </CardContent>
       </Card>
 

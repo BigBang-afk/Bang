@@ -46,6 +46,58 @@ export async function updateUserRoleAction(formData: FormData) {
   revalidatePath("/admin/audit-logs");
 }
 
+const updateSubscriptionSchema = z.object({
+  subscriptionId: z.string().uuid(),
+  planId: z.string().uuid(),
+  status: z.enum(["trialing", "active", "past_due", "canceled", "incomplete", "expired"]),
+});
+
+/**
+ * Support-ops override: reassigns a subscription's plan and/or status.
+ * This is the only path (besides the signup trigger) that writes to
+ * public.subscriptions — there is deliberately no RLS policy letting a
+ * user modify their own subscription, and this action always goes
+ * through the service-role client, never the caller's session client.
+ * Superadmin-only, same bar as granting admin access.
+ */
+export async function adminUpdateSubscriptionAction(formData: FormData) {
+  const admin = await requireAdmin();
+  if (admin.role !== "superadmin") return;
+
+  const parsed = updateSubscriptionSchema.safeParse({
+    subscriptionId: formData.get("subscriptionId"),
+    planId: formData.get("planId"),
+    status: formData.get("status"),
+  });
+  if (!parsed.success) return;
+
+  let service;
+  try {
+    service = createServiceRoleClient();
+  } catch {
+    return;
+  }
+
+  const { error } = await service
+    .from("subscriptions")
+    .update({ plan_id: parsed.data.planId, status: parsed.data.status })
+    .eq("id", parsed.data.subscriptionId);
+
+  if (!error) {
+    await service.from("audit_logs").insert({
+      actor_id: admin.id,
+      actor_role: admin.role,
+      action: "subscription.updated",
+      entity_type: "subscription",
+      entity_id: parsed.data.subscriptionId,
+      metadata: { plan_id: parsed.data.planId, status: parsed.data.status },
+    });
+  }
+
+  revalidatePath("/admin/subscriptions");
+  revalidatePath("/admin/audit-logs");
+}
+
 export interface AdminUserRow {
   id: string;
   email: string | null;

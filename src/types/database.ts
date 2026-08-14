@@ -37,6 +37,8 @@ export type PlanLimits = {
   watchlist_items: number | null;
   alerts: number | null;
   ai_analyses_per_day: number | null;
+  scanner_requests_per_day: number | null;
+  saved_setups: number | null;
   journal_entries: number | null;
   markets: string[];
 }
