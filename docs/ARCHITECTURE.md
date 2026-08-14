@@ -343,6 +343,69 @@ confidence score, explanation, risk notes, timestamp, model) plus an
 expandable "data used for this analysis" panel so a user can see exactly
 what the AI was and wasn't given.
 
+### Trading setups, risk management & journal (Phase 7)
+
+`src/lib/trading/` is a pure-math package, deliberately independent of
+Supabase, Next.js, and the AI/market-data layers — every function takes
+plain numbers in and returns plain numbers out, which is what makes it
+exhaustively unit-tested (54 of this phase's new tests live here):
+
+- **`risk-reward.ts`** (`computeRiskReward`): stop distance and, per
+  take-profit target, reward distance and risk/reward ratio. Distances are
+  always magnitudes; direction is used only to *warn* (never block) when a
+  stop or target sits on the wrong side of entry — a user mid-edit has a
+  right to see that without the tool refusing to compute anything.
+- **`risk-calculator.ts`** (`calculateRisk`): dollar risk, stop distance,
+  reward and risk/reward ratio are always computable from account
+  balance/risk %/entry/stop/target alone. Position size is the one figure
+  that additionally needs a real contract specification — a "$ per point
+  per unit" value. This app only asserts that value (as `1`) for market
+  types it tracks as direct, USD-quoted spot instruments (crypto, the
+  forex pairs it tracks, stocks); for metals and indices — where a real
+  contract (e.g. a 100oz gold future, a broker-specific index CFD
+  multiplier) is needed and this app has no source for one — position size
+  is left `null` with an explicit `positionSizeUnavailableReason` rather
+  than guessed. Extending `DIRECT_UNIT_VALUE_MARKET_TYPES` is a one-line
+  change *only* once a real per-instrument contract spec is sourced —
+  never as a blanket per-market-type assumption.
+- **`trade-pnl.ts`** (`computeTradePnl`): realized P/L for a closed trade
+  journal entry, net of fees in cents plus a gross return percent.
+- **`performance.ts`** (`computePerformanceStats`): win rate, average
+  win/loss, profit factor, average R, max drawdown and the equity curve,
+  computed only from CLOSED trades with a realized P/L. Nothing here is
+  ever estimated: profit factor is `null` (not `Infinity`) when there are
+  no losing trades to normalize against, and average R only ever averages
+  over trades that recorded a risk amount — a trade logged without one is
+  excluded from that average, not assumed to carry some default risk.
+
+**Setups** (`lib/actions/setups.ts`, `/dashboard/setups`) extend the
+`trading_setups` table from Phase 1 — RLS was already correct
+(owner-private, with a `user_id is null` carve-out for a future shared
+AI/system feed that this phase never populates, since every setup created
+here has `source: 'user'`). Phase 7's migration adds `setup_quality` and
+`invalidation` columns and two new terminal `setup_status` values
+(`completed`, `invalidated`) alongside the existing
+active/triggered/expired. `checkUsageLimit(userId, "saved_setups")` — a
+limit key Phase 3 already defined — gates creation the same way every
+other capacity limit in this app does.
+
+**Trade journal** (`lib/actions/journal.ts`, `/dashboard/journal`) also
+extends its Phase 1 table: `risk_amount_cents`, `strategy`, and
+`screenshot_url` columns. Logging a trade with an exit price, or closing
+an open one later via `closeJournalEntryAction`, now actually computes and
+stores `pnl_cents`/`pnl_percent` via `trade-pnl.ts` — previously the
+column existed but nothing ever wrote to it. "Result" (win/loss/breakeven)
+is deliberately not a stored column; it's derived from `pnl_cents` at
+render time, so it can never drift out of sync with the P/L that produced
+it.
+
+**Performance** (`/dashboard/performance`) reads closed journal entries
+server-side, runs them through `computePerformanceStats`, and renders stat
+tiles plus an equity-curve chart (`components/dashboard/equity-curve-chart.tsx`,
+recharts — installed since Phase 1 scaffolding but unused until now). The
+page states outright that past performance doesn't guarantee future
+results, consistent with the risk disclaimers everywhere else in the app.
+
 ## 6. Security architecture
 
 - **RLS everywhere.** Every table has RLS enabled; policies are additive

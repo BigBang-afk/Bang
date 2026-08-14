@@ -26,7 +26,14 @@ export type AiAnalysisType =
 export type AiAnalysisStatus = "completed" | "failed";
 export type SetupDirection = "long" | "short";
 export type SetupSource = "ai" | "user" | "admin";
-export type SetupStatus = "active" | "triggered" | "expired" | "cancelled";
+export type SetupStatus =
+  | "active"
+  | "triggered"
+  | "completed"
+  | "invalidated"
+  | "expired"
+  | "cancelled";
+export type SetupQuality = "poor" | "fair" | "good" | "excellent";
 export type TradeStatus = "open" | "closed" | "cancelled";
 export type AlertType = "price_above" | "price_below" | "indicator" | "ai_signal";
 export type AlertStatus = "active" | "triggered" | "disabled";
@@ -202,8 +209,10 @@ export type TradingSetupRow = {
   take_profit_targets: number[];
   risk_reward_ratio: number | null;
   confidence_score: number | null;
+  setup_quality: SetupQuality | null;
   status: SetupStatus;
   rationale: string | null;
+  invalidation: string | null;
   created_at: string;
   updated_at: string;
   expires_at: string | null;
@@ -221,12 +230,15 @@ export type TradeJournalRow = {
   stop_loss: number | null;
   take_profit: number | null;
   fees_cents: number;
+  risk_amount_cents: number | null;
   pnl_cents: number | null;
   pnl_percent: number | null;
   status: TradeStatus;
   opened_at: string;
   closed_at: string | null;
   notes: string | null;
+  strategy: string | null;
+  screenshot_url: string | null;
   tags: string[];
   created_at: string;
   updated_at: string;
@@ -300,8 +312,10 @@ export interface Database {
         | "take_profit_targets"
         | "risk_reward_ratio"
         | "confidence_score"
+        | "setup_quality"
         | "status"
         | "rationale"
+        | "invalidation"
         | "expires_at"
       >;
       trade_journal: Tbl<
@@ -315,12 +329,15 @@ export interface Database {
         | "stop_loss"
         | "take_profit"
         | "fees_cents"
+        | "risk_amount_cents"
         | "pnl_cents"
         | "pnl_percent"
         | "status"
         | "opened_at"
         | "closed_at"
         | "notes"
+        | "strategy"
+        | "screenshot_url"
         | "tags"
       >;
       alerts: Tbl<
@@ -359,6 +376,7 @@ export interface Database {
       setup_direction: SetupDirection;
       setup_source: SetupSource;
       setup_status: SetupStatus;
+      setup_quality: SetupQuality;
       trade_status: TradeStatus;
       alert_type: AlertType;
       alert_status: AlertStatus;
