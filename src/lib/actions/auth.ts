@@ -14,6 +14,8 @@ import {
 export interface AuthActionState {
   error: string | null;
   success?: string | null;
+  /** Machine-readable hint for the UI (e.g. offer a "resend" action). */
+  code?: string | null;
 }
 
 async function requestKey(prefix: string) {
@@ -44,12 +46,49 @@ export async function loginAction(
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
 
   if (error) {
-    // Deliberately vague — never reveal whether the email exists.
+    if (error.code === "email_not_confirmed") {
+      return {
+        error: "Confirm your email before logging in — check your inbox for the link.",
+        code: "email_not_confirmed",
+      };
+    }
+    // Otherwise deliberately vague — never reveal whether the email exists.
     return { error: "Invalid email or password." };
   }
 
   const next = formData.get("next");
   redirect(typeof next === "string" && next.startsWith("/") ? next : "/dashboard");
+}
+
+export async function resendVerificationAction(
+  _prevState: AuthActionState,
+  formData: FormData
+): Promise<AuthActionState> {
+  const parsed = forgotPasswordSchema.safeParse({ email: formData.get("email") });
+  if (!parsed.success) {
+    return { error: "Enter a valid email address first." };
+  }
+
+  const limit = rateLimit(await requestKey("resend-verification"), 5, 60_000);
+  if (!limit.success) {
+    return { error: "Too many attempts. Please wait a minute and try again." };
+  }
+
+  const h = await headers();
+  const origin = h.get("origin");
+  const supabase = await createClient();
+
+  await supabase.auth.resend({
+    type: "signup",
+    email: parsed.data.email,
+    options: { emailRedirectTo: `${origin}/auth/callback` },
+  });
+
+  // Same non-enumerating pattern as forgotPasswordAction.
+  return {
+    error: null,
+    success: "If that account needs confirming, a new email is on its way.",
+  };
 }
 
 export async function registerAction(
@@ -116,7 +155,7 @@ export async function forgotPasswordAction(
   const supabase = await createClient();
 
   await supabase.auth.resetPasswordForEmail(parsed.data.email, {
-    redirectTo: `${origin}/auth/callback?next=/dashboard/settings`,
+    redirectTo: `${origin}/auth/callback?next=${encodeURIComponent("/reset-password")}`,
   });
 
   // Always return success, whether or not the email exists, to avoid

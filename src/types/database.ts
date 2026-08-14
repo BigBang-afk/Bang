@@ -264,6 +264,14 @@ export type AuditLogRow = {
   created_at: string;
 }
 
+export type UserSettingsRow = {
+  user_id: string;
+  email_notifications: boolean;
+  marketing_emails: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -327,6 +335,10 @@ export interface Database {
         | "metadata"
         | "ip_address"
         | "user_agent"
+      >;
+      user_settings: Tbl<
+        UserSettingsRow,
+        "email_notifications" | "marketing_emails" | "created_at" | "updated_at"
       >;
     };
     Views: Record<string, never>;

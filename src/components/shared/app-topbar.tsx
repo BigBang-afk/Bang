@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { LogOut, Settings, Shield } from "lucide-react";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,6 +45,7 @@ export function AppTopbar({
           render={
             <button className="flex items-center gap-2 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <Avatar className="size-8">
+                {profile.avatar_url && <AvatarImage src={profile.avatar_url} alt="" />}
                 <AvatarFallback className="bg-accent text-xs text-accent-foreground">
                   {initials || "U"}
                 </AvatarFallback>

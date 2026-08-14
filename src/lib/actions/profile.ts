@@ -46,3 +46,35 @@ export async function updateProfileAction(
   revalidatePath("/dashboard/settings");
   return { error: null, success: "Settings saved." };
 }
+
+const avatarUrlSchema = z.string().trim().url().max(2048);
+
+/**
+ * Persists the public URL of an avatar the client already uploaded to the
+ * "avatars" Storage bucket (upload itself happens client-side, scoped by
+ * storage RLS to the caller's own folder — see 0002_phase2_auth.sql).
+ */
+export async function updateAvatarAction(
+  avatarUrl: string
+): Promise<{ error: string | null }> {
+  const profile = await requireUser("/dashboard/settings");
+
+  const parsed = avatarUrlSchema.safeParse(avatarUrl);
+  if (!parsed.success) {
+    return { error: "Invalid image." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("profiles")
+    .update({ avatar_url: parsed.data })
+    .eq("id", profile.id);
+
+  if (error) {
+    return { error: "Couldn't save your new photo. Please try again." };
+  }
+
+  revalidatePath("/dashboard/settings");
+  revalidatePath("/dashboard", "layout");
+  return { error: null };
+}
