@@ -1,0 +1,39 @@
+// Prisma schema for the AI Trading platform
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// role: "USER" | "ADMIN"
+// status: "ACTIVE" | "SUSPENDED"
+model User {
+  id            String        @id @default(cuid())
+  name          String
+  email         String        @unique
+  passwordHash  String
+  role          String        @default("USER")
+  status        String        @default("ACTIVE")
+  avatarColor   String        @default("#22c55e")
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  lastLoginAt   DateTime?
+
+  watchlist     WatchlistItem[]
+}
+
+model WatchlistItem {
+  id        String   @id @default(cuid())
+  symbol    String
+  label     String?
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  @@unique([userId, symbol])
+}
