@@ -20,6 +20,11 @@ enum AccountStatus {
   SUSPENDED
 }
 
+enum SignalDirection {
+  LONG
+  SHORT
+}
+
 model User {
   id           String        @id @default(cuid())
   name         String
@@ -33,6 +38,7 @@ model User {
   lastLoginAt  DateTime?
 
   watchlist WatchlistItem[]
+  signals   Signal[]
 }
 
 model WatchlistItem {
@@ -45,4 +51,37 @@ model WatchlistItem {
   userId String
 
   @@unique([userId, symbol])
+}
+
+// One run of the multi-strategy AI confluence engine for a pair/timeframe.
+model Signal {
+  id        String          @id @default(cuid())
+  symbol    String
+  timeframe String
+  direction SignalDirection
+  price     Float
+
+  confidence      Int
+  agreeingCount   Int
+  totalStrategies Int
+
+  entry       Float?
+  stopLoss    Float?
+  takeProfit1 Float?
+  takeProfit2 Float?
+  takeProfit3 Float?
+  atr         Float?
+
+  backtestWinRate    Int?
+  backtestSampleSize Int?
+
+  // Array of { key, name, vote, weight, note } — the full strategy breakdown.
+  strategyBreakdown Json
+
+  createdAt DateTime @default(now())
+
+  requestedBy   User?   @relation(fields: [requestedById], references: [id], onDelete: SetNull)
+  requestedById String?
+
+  @@index([symbol, createdAt])
 }

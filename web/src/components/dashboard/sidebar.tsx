@@ -11,10 +11,12 @@ import {
   Wallet,
   ShieldCheck,
   Settings,
+  Sparkles,
 } from "lucide-react";
 
 const navItems = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
+  { href: "/dashboard/signals", label: "AI Signals", icon: Sparkles },
   { href: "/dashboard/markets", label: "Markets", icon: LineChart },
   { href: "/dashboard/watchlist", label: "Watchlist", icon: Star },
   { href: "/dashboard/portfolio", label: "Portfolio", icon: Wallet },
