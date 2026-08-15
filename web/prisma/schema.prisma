@@ -5,25 +5,34 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
-// role: "USER" | "ADMIN"
-// status: "ACTIVE" | "SUSPENDED"
-model User {
-  id            String        @id @default(cuid())
-  name          String
-  email         String        @unique
-  passwordHash  String
-  role          String        @default("USER")
-  status        String        @default("ACTIVE")
-  avatarColor   String        @default("#22c55e")
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  lastLoginAt   DateTime?
+enum Role {
+  USER
+  ADMIN
+}
 
-  watchlist     WatchlistItem[]
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+model User {
+  id           String        @id @default(cuid())
+  name         String
+  email        String        @unique
+  passwordHash String
+  role         Role          @default(USER)
+  status       AccountStatus @default(ACTIVE)
+  avatarColor  String        @default("#22c55e")
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  lastLoginAt  DateTime?
+
+  watchlist WatchlistItem[]
 }
 
 model WatchlistItem {
