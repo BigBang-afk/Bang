@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Ip, Param, Patch, Post, Put, Req } from '@nestjs/common';
+import { Body, Controller, Get, Ip, Param, Patch, Post, Put, Req } from '@nestjs/common';
 import { Request } from 'express';
 import { RequirePermissions } from '../../../common/decorators/require-permissions.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
@@ -8,6 +8,7 @@ import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { AssignRolesDto } from './dto/assign-roles.dto';
+import { AssignBranchesDto } from './dto/assign-branches.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 
 @Controller('users')
@@ -69,19 +70,23 @@ export class UsersController {
     return this.usersService.update(id, dto, user.userId, ip, req.headers['user-agent'] as string);
   }
 
-  @Delete(':id')
-  @RequirePermissions(PERMISSIONS.USERS_DEACTIVATE)
-  deactivate(
+  @Post(':id/disable')
+  @RequirePermissions(PERMISSIONS.USERS_DISABLE)
+  disable(
     @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
     @Ip() ip: string,
     @Req() req: Request,
   ) {
-    return this.usersService.deactivate(id, user.userId, ip, req.headers['user-agent'] as string);
+    return this.usersService.disable(id, user.userId, ip, req.headers['user-agent'] as string);
   }
 
+  // Gated by roles.manage, not users.update: assigning a role is granting
+  // permissions, so it belongs behind the same permission that controls
+  // role definitions — a user with only users.update (e.g. HR-style data
+  // entry) must not be able to promote anyone, including themselves.
   @Put(':id/roles')
-  @RequirePermissions(PERMISSIONS.USERS_UPDATE)
+  @RequirePermissions(PERMISSIONS.ROLES_MANAGE)
   assignRoles(
     @Param('id') id: string,
     @Body() dto: AssignRolesDto,
@@ -92,6 +97,25 @@ export class UsersController {
     return this.usersService.assignRoles(
       id,
       dto.roleIds,
+      user.userId,
+      ip,
+      req.headers['user-agent'] as string,
+    );
+  }
+
+  @Put(':id/branches')
+  @RequirePermissions(PERMISSIONS.USERS_UPDATE)
+  assignBranches(
+    @Param('id') id: string,
+    @Body() dto: AssignBranchesDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Ip() ip: string,
+    @Req() req: Request,
+  ) {
+    return this.usersService.assignBranches(
+      id,
+      dto.branchAccessType,
+      dto.branchIds,
       user.userId,
       ip,
       req.headers['user-agent'] as string,

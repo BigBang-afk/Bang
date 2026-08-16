@@ -13,12 +13,20 @@ async function bootstrap() {
 
   app.use(
     helmet({
-      contentSecurityPolicy: false, // Phase 1 UI is same-origin static assets; revisit once media/CDN are added.
+      // The API is JSON-only and consumed by a separate frontend origin;
+      // there is no server-rendered HTML here for a CSP to protect.
+      contentSecurityPolicy: false,
     }),
   );
   app.use(cookieParser());
-  app.enableCors({ origin: true, credentials: true });
-  app.setGlobalPrefix('api');
+  // Reflects the request origin only in development so the Vite dev server
+  // (any localhost port) can call the API with credentials; in production
+  // it is pinned to the configured frontend origin.
+  app.enableCors({
+    origin: config.isProduction ? config.appUrl : true,
+    credentials: true,
+  });
+  app.setGlobalPrefix('api/v1');
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -30,7 +38,7 @@ async function bootstrap() {
 
   await app.listen(config.port);
   // eslint-disable-next-line no-console
-  console.log(`Bang Identity & Access API listening on http://localhost:${config.port}`);
+  console.log(`Zarghoon Jewellers ERP API listening on http://localhost:${config.port}/api/v1`);
 }
 
 bootstrap();

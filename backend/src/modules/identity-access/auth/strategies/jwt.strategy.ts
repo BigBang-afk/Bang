@@ -6,7 +6,6 @@ import { AuthenticatedUser } from '../../../../common/types/authenticated-user.i
 
 interface AccessTokenPayload {
   sub: string;
-  email: string;
   roles: string[];
   permissions: string[];
 }
@@ -24,7 +23,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   validate(payload: AccessTokenPayload): AuthenticatedUser {
     return {
       userId: payload.sub,
-      email: payload.email,
       roles: payload.roles,
       permissions: payload.permissions,
     };

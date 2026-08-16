@@ -54,8 +54,8 @@ export class RolesService {
     await this.audit.log({
       actorUserId,
       action: 'role.created',
-      targetType: 'Role',
-      targetId: role.id,
+      entityType: 'Role',
+      entityId: role.id,
       metadata: { name: role.name, permissionIds: dto.permissionIds },
       ipAddress: ip,
       userAgent,
@@ -72,6 +72,9 @@ export class RolesService {
     userAgent?: string,
   ) {
     const existing = await this.findOne(id);
+    if (existing.isSystem && dto.permissionIds) {
+      throw new BadRequestException("System roles' permission sets cannot be modified");
+    }
 
     if (dto.permissionIds) {
       await this.assertPermissionsExist(dto.permissionIds);
@@ -94,15 +97,32 @@ export class RolesService {
       });
     });
 
-    await this.audit.log({
-      actorUserId,
-      action: 'role.updated',
-      targetType: 'Role',
-      targetId: id,
-      metadata: { before: { name: existing.name }, after: dto },
-      ipAddress: ip,
-      userAgent,
-    });
+    if (dto.name !== undefined || dto.description !== undefined) {
+      await this.audit.log({
+        actorUserId,
+        action: 'role.updated',
+        entityType: 'Role',
+        entityId: id,
+        metadata: {
+          before: { name: existing.name },
+          after: { name: dto.name, description: dto.description },
+        },
+        ipAddress: ip,
+        userAgent,
+      });
+    }
+    if (dto.permissionIds) {
+      const before = existing.permissions.map((rp) => rp.permission.code).sort();
+      await this.audit.log({
+        actorUserId,
+        action: 'permission.changed',
+        entityType: 'Role',
+        entityId: id,
+        metadata: { roleName: existing.name, before, after: [...dto.permissionIds].sort() },
+        ipAddress: ip,
+        userAgent,
+      });
+    }
 
     return role;
   }
@@ -117,8 +137,8 @@ export class RolesService {
     await this.audit.log({
       actorUserId,
       action: 'role.deleted',
-      targetType: 'Role',
-      targetId: id,
+      entityType: 'Role',
+      entityId: id,
       metadata: { name: role.name },
       ipAddress: ip,
       userAgent,

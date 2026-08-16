@@ -20,9 +20,9 @@ interface RequestContext {
   userAgent?: string;
 }
 
-const APP_NAME = 'Bang Jewelry Platform';
+const APP_NAME = 'Zarghoon Jewellers ERP';
 
-type UserWithRoles = NonNullable<Awaited<ReturnType<UsersService['findByEmailInternal']>>>;
+type UserWithRoles = NonNullable<Awaited<ReturnType<UsersService['findByIdentifierInternal']>>>;
 
 function buildAuthClaims(user: UserWithRoles) {
   const roles = user.roles.map((ur) => ur.role.name);
@@ -36,6 +36,11 @@ function buildAuthClaims(user: UserWithRoles) {
 function toClientUser(user: UserWithRoles) {
   const { roles, permissions } = buildAuthClaims(user);
   return { ...toSafeUser(user), roleNames: roles, permissions };
+}
+
+/** Best-effort human label for a user who may have no email on file. */
+function displayIdentifier(user: { email: string | null; username: string | null; id: string }) {
+  return user.email ?? user.username ?? user.id;
 }
 
 @Injectable()
@@ -53,38 +58,50 @@ export class AuthService {
   private signAccessToken(user: UserWithRoles): string {
     const { roles, permissions } = buildAuthClaims(user);
     return this.jwtService.sign(
-      { sub: user.id, email: user.email, roles, permissions },
+      { sub: user.id, roles, permissions },
       { secret: this.config.jwtAccessSecret, expiresIn: this.config.jwtAccessTtl },
     );
   }
 
-  async login(email: string, password: string, totpCode: string | undefined, ctx: RequestContext) {
-    const user = await this.usersService.findByEmailInternal(email);
+  async login(
+    identifier: string,
+    password: string,
+    totpCode: string | undefined,
+    ctx: RequestContext,
+  ) {
+    const user = await this.usersService.findByIdentifierInternal(identifier);
 
     if (!user) {
       await this.audit.log({
         action: 'auth.login.failure',
-        metadata: { email, reason: 'no_such_user' },
+        result: 'FAILURE',
+        metadata: { identifier, reason: 'no_such_user' },
         ipAddress: ctx.ip,
         userAgent: ctx.userAgent,
       });
-      throw new UnauthorizedException('Invalid email or password');
+      throw new UnauthorizedException('Invalid credentials');
     }
 
-    if (user.lockedUntil && user.lockedUntil > new Date()) {
+    if (user.status === 'LOCKED' || (user.lockedUntil && user.lockedUntil > new Date())) {
       await this.audit.log({
         actorUserId: user.id,
         action: 'auth.login.blocked_locked',
+        entityType: 'User',
+        entityId: user.id,
+        result: 'FAILURE',
         ipAddress: ctx.ip,
         userAgent: ctx.userAgent,
       });
-      throw new ForbiddenException('Account is temporarily locked due to failed login attempts');
+      throw new ForbiddenException('Account is locked');
     }
 
     if (user.status !== 'ACTIVE') {
       await this.audit.log({
         actorUserId: user.id,
         action: 'auth.login.blocked_status',
+        entityType: 'User',
+        entityId: user.id,
+        result: 'FAILURE',
         metadata: { status: user.status },
         ipAddress: ctx.ip,
         userAgent: ctx.userAgent,
@@ -98,11 +115,14 @@ export class AuthService {
       await this.audit.log({
         actorUserId: user.id,
         action: 'auth.login.failure',
+        entityType: 'User',
+        entityId: user.id,
+        result: 'FAILURE',
         metadata: { reason: 'bad_password' },
         ipAddress: ctx.ip,
         userAgent: ctx.userAgent,
       });
-      throw new UnauthorizedException('Invalid email or password');
+      throw new UnauthorizedException('Invalid credentials');
     }
 
     if (user.mfaEnabled) {
@@ -110,6 +130,8 @@ export class AuthService {
         await this.audit.log({
           actorUserId: user.id,
           action: 'auth.login.mfa_required',
+          entityType: 'User',
+          entityId: user.id,
           ipAddress: ctx.ip,
           userAgent: ctx.userAgent,
         });
@@ -121,6 +143,9 @@ export class AuthService {
         await this.audit.log({
           actorUserId: user.id,
           action: 'auth.login.mfa_failed',
+          entityType: 'User',
+          entityId: user.id,
+          result: 'FAILURE',
           ipAddress: ctx.ip,
           userAgent: ctx.userAgent,
         });
@@ -139,6 +164,8 @@ export class AuthService {
     await this.audit.log({
       actorUserId: user.id,
       action: 'auth.login.success',
+      entityType: 'User',
+      entityId: user.id,
       ipAddress: ctx.ip,
       userAgent: ctx.userAgent,
     });
@@ -171,6 +198,8 @@ export class AuthService {
       await this.audit.log({
         actorUserId: userId,
         action: 'auth.account.locked',
+        entityType: 'User',
+        entityId: userId,
         metadata: { attempts },
       });
     }
@@ -185,8 +214,11 @@ export class AuthService {
     if (result.status === 'reuse_detected') {
       await this.audit.log({
         actorUserId: result.userId,
-        action: 'auth.refresh.reuse_detected',
-        metadata: { note: 'All sessions revoked as a precaution' },
+        action: 'session.revoked',
+        entityType: 'User',
+        entityId: result.userId,
+        result: 'FAILURE',
+        metadata: { reason: 'refresh_token_reuse_detected' },
         ipAddress: ctx.ip,
         userAgent: ctx.userAgent,
       });
@@ -206,6 +238,8 @@ export class AuthService {
     await this.audit.log({
       actorUserId: user.id,
       action: 'auth.refresh.success',
+      entityType: 'User',
+      entityId: user.id,
       ipAddress: ctx.ip,
       userAgent: ctx.userAgent,
     });
@@ -225,15 +259,17 @@ export class AuthService {
     await this.audit.log({
       actorUserId: ctx.userId,
       action: 'auth.logout',
+      entityType: ctx.userId ? 'User' : undefined,
+      entityId: ctx.userId,
       ipAddress: ctx.ip,
       userAgent: ctx.userAgent,
     });
   }
 
-  async requestPasswordReset(email: string, ctx: RequestContext) {
-    const user = await this.usersService.findByEmailInternal(email);
+  async requestPasswordReset(identifier: string, ctx: RequestContext) {
+    const user = await this.usersService.findByIdentifierInternal(identifier);
     // Always behave the same way whether or not the account exists, so the
-    // endpoint can't be used to enumerate registered emails.
+    // endpoint can't be used to enumerate registered usernames/emails/phones.
     if (!user) {
       return { requested: true };
     }
@@ -249,17 +285,20 @@ export class AuthService {
     await this.audit.log({
       actorUserId: user.id,
       action: 'auth.password_reset.requested',
+      entityType: 'User',
+      entityId: user.id,
       ipAddress: ctx.ip,
       userAgent: ctx.userAgent,
     });
 
-    // Phase 1 has no transactional email provider wired up yet: log the
+    // Phase 1 has no transactional email/SMS provider wired up yet: log the
     // reset link server-side so it can be delivered manually / picked up by
     // an email integration in a later phase. Never expose the raw token in
-    // the API response — that would let anyone reset anyone's password.
+    // the API response or audit log — that would let anyone reset anyone's
+    // password.
     // eslint-disable-next-line no-console
     console.log(
-      `[password-reset] token for ${user.email}: ${raw} (expires ${expiresAt.toISOString()})`,
+      `[password-reset] token for ${displayIdentifier(user)}: ${raw} (expires ${expiresAt.toISOString()})`,
     );
 
     return { requested: true, devToken: this.config.isProduction ? undefined : raw };
@@ -280,13 +319,19 @@ export class AuthService {
     await this.prisma.$transaction(async (tx) => {
       await tx.user.update({
         where: { id: resetToken.userId },
-        data: { passwordHash, failedLoginAttempts: 0, lockedUntil: null },
+        data: {
+          passwordHash,
+          failedLoginAttempts: 0,
+          lockedUntil: null,
+          updatedBy: resetToken.userId,
+        },
       });
       await tx.passwordResetToken.update({
         where: { id: resetToken.id },
         data: { usedAt: new Date() },
       });
-      await tx.refreshToken.updateMany({
+      // Password reset invalidates every existing session (spec §12).
+      await tx.session.updateMany({
         where: { userId: resetToken.userId, revokedAt: null },
         data: { revokedAt: new Date() },
       });
@@ -295,6 +340,17 @@ export class AuthService {
     await this.audit.log({
       actorUserId: resetToken.userId,
       action: 'auth.password_reset.completed',
+      entityType: 'User',
+      entityId: resetToken.userId,
+      ipAddress: ctx.ip,
+      userAgent: ctx.userAgent,
+    });
+    await this.audit.log({
+      actorUserId: resetToken.userId,
+      action: 'session.revoked',
+      entityType: 'User',
+      entityId: resetToken.userId,
+      metadata: { reason: 'password_reset' },
       ipAddress: ctx.ip,
       userAgent: ctx.userAgent,
     });
@@ -314,7 +370,7 @@ export class AuthService {
       data: { mfaPendingSecret: secret },
     });
 
-    const otpauthUrl = authenticator.keyuri(user.email, APP_NAME, secret);
+    const otpauthUrl = authenticator.keyuri(displayIdentifier(user), APP_NAME, secret);
     const qrCodeDataUrl = await QRCode.toDataURL(otpauthUrl);
 
     return { secret, otpauthUrl, qrCodeDataUrl };
@@ -344,6 +400,8 @@ export class AuthService {
     await this.audit.log({
       actorUserId: userId,
       action: 'auth.mfa.enabled',
+      entityType: 'User',
+      entityId: userId,
       ipAddress: ctx.ip,
       userAgent: ctx.userAgent,
     });
@@ -370,6 +428,8 @@ export class AuthService {
     await this.audit.log({
       actorUserId: userId,
       action: 'auth.mfa.disabled',
+      entityType: 'User',
+      entityId: userId,
       ipAddress: ctx.ip,
       userAgent: ctx.userAgent,
     });

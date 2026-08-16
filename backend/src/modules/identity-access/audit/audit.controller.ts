@@ -14,14 +14,14 @@ export class AuditController {
     @Query('take') take?: string,
     @Query('actorUserId') actorUserId?: string,
     @Query('action') action?: string,
-    @Query('targetType') targetType?: string,
+    @Query('entityType') entityType?: string,
   ) {
     return this.auditService.findAll({
       skip: skip ? Number(skip) : undefined,
       take: take ? Number(take) : undefined,
       actorUserId,
       action,
-      targetType,
+      entityType,
     });
   }
 }

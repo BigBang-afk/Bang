@@ -1,0 +1,3 @@
+# Redis persistence dump (created by running redis-server from this directory locally)
+dump.rdb
+*.rdb

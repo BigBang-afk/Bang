@@ -1,4 +1,4 @@
-/* Bang Jewelry Platform — Luxury Gold + Black design tokens & shared components */
+/* Zarghoon Jewellers ERP — Luxury Gold + Black design tokens */
 
 :root {
   --color-bg: #0b0b0c;
@@ -27,8 +27,8 @@
   --shadow-elevated: 0 20px 60px rgba(0, 0, 0, 0.55);
 
   --font-display: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
-  --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
-    sans-serif;
+  --font-body:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
 * {
@@ -36,16 +36,17 @@
 }
 
 html,
-body {
+body,
+#root {
   margin: 0;
   padding: 0;
+  min-height: 100%;
 }
 
 body {
   background: radial-gradient(circle at top, #141416 0%, var(--color-bg) 60%);
   color: var(--color-text);
   font-family: var(--font-body);
-  min-height: 100vh;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -81,6 +82,7 @@ h3 {
   font-weight: 700;
   font-size: 1.1rem;
   color: var(--color-gold-bright);
+  flex-shrink: 0;
 }
 
 .brand-title {
@@ -138,7 +140,9 @@ textarea {
   padding: 0.7rem 0.85rem;
   font-size: 0.95rem;
   font-family: var(--font-body);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 input:focus,
@@ -147,6 +151,32 @@ textarea:focus {
   outline: none;
   border-color: var(--color-gold);
   box-shadow: 0 0 0 3px rgba(201, 162, 77, 0.18);
+}
+
+.password-field {
+  position: relative;
+}
+
+.password-field input {
+  padding-right: 2.6rem;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 0.6rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.password-toggle:hover {
+  color: var(--color-gold-bright);
 }
 
 .btn {
@@ -161,11 +191,20 @@ textarea:focus {
   letter-spacing: 0.03em;
   cursor: pointer;
   border: 1px solid transparent;
-  transition: transform 0.1s ease, filter 0.15s ease;
+  transition:
+    transform 0.1s ease,
+    filter 0.15s ease,
+    opacity 0.15s ease;
   text-decoration: none;
+  font-family: var(--font-body);
 }
 
-.btn:active {
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn:active:not(:disabled) {
   transform: translateY(1px);
 }
 
@@ -175,7 +214,7 @@ textarea:focus {
   width: 100%;
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   filter: brightness(1.08);
 }
 
@@ -185,7 +224,7 @@ textarea:focus {
   color: var(--color-text);
 }
 
-.btn-secondary:hover {
+.btn-secondary:hover:not(:disabled) {
   border-color: var(--color-gold);
   color: var(--color-gold-bright);
 }
@@ -196,7 +235,7 @@ textarea:focus {
   color: var(--color-danger);
 }
 
-.btn-danger:hover {
+.btn-danger:hover:not(:disabled) {
   background: var(--color-danger-bg);
 }
 
@@ -217,11 +256,6 @@ textarea:focus {
   padding: 0.7rem 0.9rem;
   font-size: 0.85rem;
   margin-bottom: 1.1rem;
-  display: none;
-}
-
-.alert.visible {
-  display: block;
 }
 
 .alert-error {
@@ -253,11 +287,14 @@ textarea:focus {
   position: sticky;
   top: 0;
   z-index: 10;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .app-header nav {
   display: flex;
   gap: 1.5rem;
+  flex-wrap: wrap;
 }
 
 .app-header nav a {
@@ -297,6 +334,8 @@ textarea:focus {
   align-items: baseline;
   justify-content: space-between;
   margin-bottom: 1.5rem;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .section-title h2 {
@@ -312,6 +351,10 @@ textarea:focus {
   margin-bottom: 1.5rem;
 }
 
+.table-scroll {
+  overflow-x: auto;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -323,6 +366,7 @@ td {
   text-align: left;
   padding: 0.65rem 0.75rem;
   border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
 }
 
 th {
@@ -346,6 +390,7 @@ tr:hover td {
   letter-spacing: 0.02em;
   border: 1px solid var(--color-border-strong);
   color: var(--color-text-muted);
+  white-space: nowrap;
 }
 
 .badge-gold {
@@ -368,6 +413,7 @@ tr:hover td {
   gap: 0.5rem;
   margin-bottom: 1.5rem;
   border-bottom: 1px solid var(--color-border);
+  flex-wrap: wrap;
 }
 
 .tab {
@@ -385,14 +431,6 @@ tr:hover td {
 .tab.active {
   color: var(--color-gold-bright);
   border-bottom-color: var(--color-gold);
-}
-
-.tab-panel {
-  display: none;
-}
-
-.tab-panel.active {
-  display: block;
 }
 
 .stat-grid {
@@ -437,24 +475,23 @@ tr:hover td {
 .form-row {
   display: flex;
   gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .form-row .field {
   flex: 1;
+  min-width: 160px;
 }
 
 .modal-backdrop {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.6);
-  display: none;
+  display: flex;
   align-items: center;
   justify-content: center;
   z-index: 100;
-}
-
-.modal-backdrop.visible {
-  display: flex;
+  padding: 1rem;
 }
 
 .checkbox-list {
@@ -473,4 +510,28 @@ tr:hover td {
   padding: 0.25rem 0;
   text-transform: none;
   color: var(--color-text);
+}
+
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(23, 19, 10, 0.35);
+  border-top-color: #17130a;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.centered-loading {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
 }

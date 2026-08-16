@@ -1,6 +1,6 @@
-# Bang — Jewelry Business Platform Architecture
+# Zarghoon Jewellers ERP — Architecture
 
-Status: **Approved** (Phase 0 baseline + Phase 1 enhancements incorporated)
+Status: **Approved** (Phase 0 baseline + enhancements incorporated; Phase 1 delivered)
 Last updated: 2026-08-16
 
 ## 1. System Shape
@@ -10,204 +10,217 @@ partitioned into modules with explicit boundaries (own Prisma models, own
 service layer, no reaching into another module's internals — cross-module
 calls go through the other module's exported service/interface only).
 
-Rationale: this is a single-store (initially) jewelry retail system. Running
-it as microservices today would add operational cost (service discovery,
-distributed transactions for a sale that touches inventory + pricing +
-CRM + loyalty, network failure handling) with no corresponding benefit at
-this scale. Module boundaries are kept clean specifically so that any module
-*can* be peeled off into its own service later if the business grows
-(multi-branch, high transaction volume, separate teams owning separate
-modules) without a rewrite — only a redeployment of an already-isolated
-module behind a network boundary.
+Rationale: this is a single-store (initially) jewelry retail system, going
+multi-branch as it grows. Running it as microservices today would add
+operational cost (service discovery, distributed transactions for a sale that
+touches inventory + pricing + CRM + loyalty, network failure handling) with
+no corresponding benefit at this scale. Module boundaries are kept clean
+specifically so that any module *can* be peeled off into its own service
+later if the business grows (many branches, high transaction volume,
+separate teams owning separate modules) without a rewrite — only a
+redeployment of an already-isolated module behind a network boundary.
 
 **Enforcement of boundaries at this size is by convention + code review**,
-not by separate processes: each module lives under `src/modules/<name>`,
+not by separate processes: each module lives under `backend/src/modules/<name>`,
 exposes a `*.module.ts` with a small set of exported providers, and other
 modules only import from that export surface (never deep-import a sibling
 module's repository/service internals). Shared, cross-cutting concerns
-(Prisma client, config, guards, decorators, logging) live under
-`src/common`.
+(Prisma client, config, guards, decorators) live under `backend/src/common`.
+The database mirrors this: each module's tables live in their own Postgres
+**schema** (`identity`, later `audit` gets company — `product`, `inventory`,
+`sales`, ...), so a future service split doesn't need a data migration, just
+a connection-string change.
 
 ### Tech stack
 
 | Layer | Choice | Why |
 |---|---|---|
-| Runtime | Node.js 22 + TypeScript | matches team familiarity, strong typing for a financial/inventory domain |
-| Framework | NestJS | first-class module system maps directly onto "modular monolith with clear boundaries"; DI, guards, interceptors give us auth/audit/permission enforcement as cross-cutting concerns instead of copy-pasted checks |
-| Database | PostgreSQL | relational integrity for money/inventory, JSONB for flexible metadata (media, pricing snapshots, document metadata), mature and battle-tested for financial data |
+| Runtime | Node.js 22 + TypeScript | strong typing for a financial/inventory domain |
+| Backend framework | NestJS | first-class module system maps directly onto "modular monolith with clear boundaries"; DI, guards, interceptors give us auth/audit/permission enforcement as cross-cutting concerns instead of copy-pasted checks |
+| Database | PostgreSQL (schema-per-module) | relational integrity for money/inventory, JSONB for flexible metadata, mature and battle-tested for financial data |
 | ORM / migrations | Prisma | typed schema, explicit versioned migrations (required for auditability of a financial system) |
-| Object storage | S3-compatible bucket (AWS S3 / MinIO for self-hosted) | binary media (photos, videos, certificates) never goes into Postgres rows — see §2 |
-| Auth | JWT access tokens + rotating opaque refresh tokens, bcrypt password hashing, TOTP for MFA | stateless-verifiable access tokens, revocable sessions via refresh-token table, MFA path ready without forcing it on day one |
-| Frontend (Phase 1) | Server-served static HTML/CSS/vanilla JS, "Luxury Gold + Black" theme | Phase 1 is Identity & Access only — no need for a full SPA framework yet. The design system (tokens, components) is established now so later modules build on it consistently. |
-
-A richer frontend framework (React/Next) can be introduced in a later phase
-once there's enough interactive surface (POS screens, dashboards) to justify
-it; the module boundary between "API" and "UI" is already clean (UI talks to
-the API purely over HTTP), so that swap doesn't touch backend modules.
+| Cache / rate-limit store | Redis | shared, process-independent store for login rate limiting today; available for sessions/background jobs as later modules need them |
+| Object storage | S3-compatible bucket (AWS S3 / MinIO) | binary media (photos, videos, certificates) never goes into Postgres rows — Phase 2 |
+| Auth | JWT access tokens + rotating opaque refresh tokens ("sessions"), bcrypt password hashing, TOTP for MFA | stateless-verifiable access tokens, revocable sessions via a DB-backed session table, MFA path ready without forcing it on day one |
+| Frontend | React + TypeScript (Vite), "Luxury Gold + Black" design system | a real SPA from Phase 1 since the spec calls for it explicitly; the design tokens (colors, type, components) are established now so later modules build on them consistently |
+| API convention | `/api/v1/...`, versioned from day one | lets the API evolve without breaking whatever else ends up calling it (POS terminals, a future mobile app) |
 
 ### Module map (target — not all built yet)
 
 ```
-identity-access   [PHASE 1 — this delivery]
+identity-access   [PHASE 1 — delivered]  users, roles, permissions, branches, sessions, audit
 product-master    [later]  products, media, certificates/documents
 pricing           [later]  gold rate management, price calculation engine, price snapshots
 sales-pos         [later]  guided sell flow, invoices, payments
-inventory         [later]  stock, branch inventory, reservations, repairs
+inventory         [later]  stock, branch inventory, reservations, repairs, karigar/work-orders
 crm               [later]  customers, leads, appointments
+finance           [later]  expenses, ledgers, receivables/payables
 marketing         [later]  campaigns, attribution
 dashboard         [later]  owner executive dashboard (reads from other modules, writes nothing)
 ```
 
-Each future module is designed below at the data-model level so Phase 1's
-schema doesn't paint us into a corner (e.g. `AuditLog` and `User` are
+Each future module is designed at the data-model level so Phase 1's schema
+doesn't paint us into a corner (e.g. `User`, `AuditLog`, and `Branch` are
 designed to be referenced by every later module).
 
 ---
 
-## 2. Enhancements incorporated into the baseline architecture
+## 2. Cross-cutting foundations Phase 1 establishes
 
-These eight requirements were reviewed and are now part of the target
-architecture. None require a different system shape — all fit inside the
-modular monolith. Only **Identity & Access** (Module 1) is implemented in
-this delivery; the rest are captured here as the target data/behavior
-contract for the modules that implement them later, so Phase 1's foundation
-(especially `User`, `AuditLog`, permission model) doesn't need to change
-shape underneath them.
+Because every later module depends on them, Identity & Access deliberately
+builds these as reusable, not bespoke to auth:
 
-### 2.1 Jewelry product photography (`product-master` module, later)
-
-- `Product` has a `ProductMedia` child table: `mediaType` (IMAGE, VIDEO,
-  AI_MARKETING_VIDEO, BEFORE_AFTER), `role` (PRIMARY, THUMBNAIL, GALLERY,
-  HI_RES), `storageKey` (pointer into object storage — **never** a BLOB in
-  Postgres), `status` (PENDING_UPLOAD, PROCESSING, READY, FAILED, ARCHIVED),
-  `uploadedByUserId` (FK → `User`, from Module 1), `uploadedAt`, plus
-  free-form `metadata` JSONB (dimensions, duration, checksum).
-- Postgres stores only metadata rows + storage keys/URLs; actual bytes live
-  in S3-compatible object storage. This keeps the database small, backups
-  fast, and lets us front media with a CDN.
-- Before/after pairs are modeled as two `ProductMedia` rows linked by a
-  shared `pairId`, not a special-cased column.
-
-### 2.2 Product pricing transparency (`pricing` + `sales-pos` modules, later)
-
-- The **price calculation engine** is a pure function of
-  `(weights, purity, gold rate, making/wastage rules, stone value, other
-  charges, discount) → final price`, versioned as `PricingRuleVersion`.
-- Every sold line item gets a `PriceSnapshot` row created at time of sale,
-  storing every input and the result verbatim: gross weight, stone weight,
-  net gold weight, purity, fine gold weight, gold rate used, gold value,
-  making charge, wastage, stone value, other charges, discount, final
-  selling price, and which `PricingRuleVersion`/gold rate record produced
-  it.
-- Invoices render from `PriceSnapshot`, never by re-running the calculator
-  against current rates. Changing today's gold rate or a pricing rule
-  **cannot** alter a historical invoice — the snapshot is immutable
-  (insert-only, no update path in the service layer).
-
-### 2.3 Jewelry certificate / document management (`product-master` module, later)
-
-- `ProductDocument`: `documentType` (DIAMOND_CERTIFICATE,
-  GEMSTONE_CERTIFICATE, PURCHASE_DOCUMENT, SUPPLIER_DOCUMENT, OTHER),
-  `documentNumber`, `issuingOrganization`, `issueDate`, `expiryDate`
-  (nullable), `fileStorageKey` (object storage, same as media),
-  `verificationStatus` (UNVERIFIED, VERIFIED, REJECTED) — **defaults to
-  `UNVERIFIED`**. The UI must never render a "Verified" / "Genuine" badge
-  unless a staff member with the appropriate permission has explicitly set
-  `verificationStatus = VERIFIED` (recorded with `verifiedByUserId` +
-  `verifiedAt`, audit-logged). No automatic or inferred verification.
-
-### 2.4 Customer experience — appointments (`crm` module, later)
-
-- `Appointment`: `consultationType` (GENERAL, BRIDAL, CUSTOM_JEWELRY,
-  PRODUCT_VIEWING), `requestedAt`, `preferredDateTime`, `status`
-  (REQUESTED → CONFIRMED → ARRIVED → COMPLETED, or CANCELLED / NO_SHOW),
-  linked to `Customer` or `Lead` (see 2.5 — a request can come in before
-  the person is a known customer), optional `assignedUserId`.
-- Status transitions are staff-driven and audit-logged; the customer-facing
-  request flow only ever creates a `REQUESTED` appointment.
-
-### 2.5 Lead management (`crm` module, later)
-
-- `crm` distinguishes `Customer` (transacted at least once, or explicitly
-  onboarded) from `Lead` (not yet converted). A `Lead` converts into a
-  `Customer` via an explicit `convertedToCustomerId` link — history is
-  preserved, not overwritten.
-- `Lead`: `source` (INSTAGRAM, FACEBOOK, TIKTOK, WHATSAPP, WEBSITE, PHONE,
-  WALK_IN, REFERRAL), `productInterestedIn` (FK → `Product`, nullable),
-  `estimatedValue`, `status` (NEW → CONTACTED → QUALIFIED → APPOINTMENT →
-  STORE_VISIT → NEGOTIATION → WON/LOST), `assignedUserId`, `lastContactAt`,
-  `nextFollowUpAt`, `conversionStatus`.
-
-### 2.6 Marketing analytics (`marketing` + `crm` modules, later)
-
-- Attribution chain is modeled explicitly as foreign keys, not inferred:
-  `Campaign 1→N Lead 1→1 Customer(optional) 1→N Appointment 1→N StoreVisit
-  1→N Sale`. Every link is a nullable FK set by an explicit event (a lead
-  was created *from* a campaign; a sale's invoice was created *for* a
-  customer who *has* a lead with a campaign link).
-- Reporting (leads/campaign, cost/lead, appointments, store visits,
-  conversion rate, revenue/profit per campaign) is computed by walking
-  those FKs. **Revenue is only attributed to a campaign when that FK chain
-  actually exists end-to-end** — there is no heuristic/last-touch guessing
-  in v1. A sale with no traceable lead→campaign link is simply unattributed
-  revenue, reported as such, not silently assigned to a campaign.
-
-### 2.7 Owner executive dashboard (`dashboard` module, later)
-
-- Read-only aggregation module. It queries the other modules' data (sales,
-  inventory, CRM, marketing) through their exported read services / views —
-  it never writes, and never becomes the source of truth for anything.
-- Because the underlying figures (profit, inventory value, CLV, marketing
-  ROI) are expensive aggregates, the dashboard module owns its own
-  materialized/cached summary tables refreshed on a schedule or on
-  relevant writes — but always clearly derived data, rebuildable from the
-  source modules at any time.
-
-### 2.8 Owner-first experience
-
-- This is a UX/workflow requirement, not a new subsystem: every module
-  exposes both a full CRUD API (for power users / integrations) and one or
-  more **guided flows** (wizard-style, one decision per screen) for the
-  operations the owner and staff do every day:
-  - `UPDATE GOLD RATE` — a single-screen guided flow in `pricing`.
-  - `ADD PRODUCT` — an 11-step wizard in `product-master` (info → category
-    → weight → purity → stone → making → cost → selling price → photo →
-    barcode → save).
-  - `SELL PRODUCT` — a 6-step guided flow in `sales-pos` (scan/search →
-    customer → verify price → payment → confirm → invoice).
-  These guided flows are thin orchestration on top of the same underlying
-  service APIs — no parallel business logic — so the "simple mode" and the
-  "power user" API path never drift apart or disagree.
+- **`User`** (`identity.users`) — referenced by every future "who did this"
+  field (`assignedUserId`, `verifiedByUserId`, `actorUserId`, ...). Supports
+  username, email, and phone as alternate login identifiers (a person only
+  needs one), an `employeeCode` staff reference distinct from the internal
+  UUID, and soft `createdBy`/`updatedBy` stamps.
+- **`AuditLog`** (`audit.audit_logs`) — a single, generic, append-only audit
+  table (`actorUserId`, `action`, `entityType`, `entityId`, `result`
+  [SUCCESS/FAILURE], `metadata` JSONB, `ipAddress`, `userAgent`,
+  `createdAt`). Every module writes to it through one shared `AuditService`;
+  nobody invents a second audit mechanism, and nothing in the application
+  ever updates or deletes a row — inserts only.
+- **RBAC (`Role`, `Permission`, `UserRole`, `RolePermission`)** — permission
+  codes are plain, module-prefixed strings (`users.read`, `products.create`,
+  `sales.reverse`, ...) recorded once in a shared catalog. A role is just a
+  named set of these codes; **authorization is never decided by role name**,
+  only by permission membership, so a later module only needs to register
+  its own codes and guard its routes — it never touches the auth mechanism
+  itself. See §4 for the specific role set and how privilege escalation is
+  prevented.
+- **`Branch` / `UserBranch`** (`identity.branches`, `identity.user_branches`)
+  — a deliberately minimal branch reference (code, name) with a
+  `branchAccessType` on `User` (`SINGLE` / `MULTIPLE` / `ALL`) and a join
+  table for the explicit grants. The full Branch/Warehouse module (address,
+  contacts, operating hours, per-branch settings) is a later phase; this is
+  only the identity-side relationship so branch-scoped modules (inventory,
+  sales) can filter on it from day one without a schema change.
 
 ---
 
-## 3. Cross-cutting foundations Phase 1 must establish
+## 3. Product & business-domain design (target for later phases)
 
-Because every later module depends on them, Module 1 (Identity & Access)
-deliberately builds these as reusable, not bespoke to auth:
+Captured here so Phase 1's foundation doesn't need to change shape
+underneath them once they're built.
 
-- **`User`** — referenced by every future "who did this" field
-  (`uploadedByUserId`, `assignedUserId`, `verifiedByUserId`,
-  `actorUserId`, ...).
-- **`AuditLog`** — a single, generic, append-only audit table
-  (`actorUserId`, `action`, `targetType`, `targetId`, `metadata` JSONB,
-  `ipAddress`, `userAgent`, `createdAt`). Every module writes to it through
-  one shared `AuditService`; nobody invents a second audit mechanism.
-- **RBAC (`Role`, `Permission`)** — permission codes are namespaced by
-  module (e.g. `identity-access.users.create`,
-  `product-master.certificates.verify`) so later modules register their
-  own permissions into the same table/guard mechanism instead of building
-  a parallel authorization system.
+### 3.1 Jewelry product photography (`product-master`, later)
+`Product` has a `ProductMedia` child table: `mediaType` (IMAGE, VIDEO,
+AI_MARKETING_VIDEO, BEFORE_AFTER), `role` (PRIMARY, THUMBNAIL, GALLERY,
+HI_RES), `storageKey` (object storage — never a BLOB in Postgres), `status`,
+`uploadedByUserId`, `uploadedAt`, free-form `metadata` JSONB.
+
+### 3.2 Product pricing transparency (`pricing` + `sales-pos`, later)
+The price calculator is a pure function of `(weights, purity, gold rate,
+making/wastage rules, stone value, other charges, discount) → final price`.
+Every sold line item gets an immutable `PriceSnapshot` row at time of sale
+recording every input and the result. Invoices render from the snapshot,
+never by re-running the calculator — changing today's gold rate cannot
+alter a historical invoice. Money and jewelry weights are stored as fixed-
+point/decimal types, never floating point.
+
+### 3.3 Certificate / document management (`product-master`, later)
+`ProductDocument`: `documentType` (DIAMOND_CERTIFICATE, GEMSTONE_CERTIFICATE,
+PURCHASE_DOCUMENT, SUPPLIER_DOCUMENT, OTHER), `documentNumber`,
+`issuingOrganization`, `issueDate`, `expiryDate`, `fileStorageKey`,
+`verificationStatus` (UNVERIFIED default, VERIFIED, REJECTED). The UI must
+never render a "Verified" badge unless a permitted staff member has
+explicitly set it, recorded with `verifiedByUserId`/`verifiedAt` and
+audit-logged.
+
+### 3.4 Appointments & leads (`crm`, later)
+`Appointment` (consultation type, requested/preferred time, status
+REQUESTED→CONFIRMED→ARRIVED→COMPLETED or CANCELLED/NO_SHOW). `crm`
+distinguishes `Customer` from `Lead` (source: Instagram/Facebook/TikTok/
+WhatsApp/Website/Phone/Walk-in/Referral; status NEW→CONTACTED→QUALIFIED→
+APPOINTMENT→STORE_VISIT→NEGOTIATION→WON/LOST), converting explicitly via a
+`convertedToCustomerId` link that preserves history.
+
+### 3.5 Marketing attribution (`marketing` + `crm`, later)
+Attribution is explicit foreign keys only — `Campaign → Lead → Customer? →
+Appointment → StoreVisit → Sale` — never inferred. Revenue is attributed to
+a campaign only when that FK chain exists end-to-end; unattributed sales
+are reported as unattributed, not guessed at.
+
+### 3.6 Owner executive dashboard (later)
+Read-only aggregation module. Queries other modules' data through their
+exported read services — never writes, never becomes a source of truth.
+
+### 3.7 Owner-first guided flows
+Every module exposes a full CRUD API plus one or more guided, wizard-style
+flows for the operations staff do every day (`UPDATE GOLD RATE` as a single
+screen; `ADD PRODUCT` as an 11-step wizard; `SELL PRODUCT` as a 6-step
+scan→customer→verify price→payment→confirm→invoice flow). These are thin
+orchestration on top of the same service APIs, never parallel business
+logic.
 
 ---
 
-## 4. Phase Plan
+## 4. Identity & Access — as delivered (Phase 1)
 
-- **Phase 1 (this delivery): Identity & Access.** Users, roles,
-  permissions, authentication (login/logout/refresh/reset), MFA-ready
-  (TOTP), audit logging, initial Luxury Gold + Black UI shell (login,
-  password reset, MFA setup, dashboard placeholder, user/role
-  administration). No POS, inventory, sales, or marketing.
+### Roles
+
+Six roles, seeded as system roles (cannot be deleted; a system role's
+*permission set* also cannot be edited, only its name/description — see
+"privilege escalation" below):
+
+| Role | Intent |
+|---|---|
+| `OWNER` | Full system access |
+| `BRANCH_MANAGER` | Full operational access within their branch(es) — product, inventory, sales, customers, reports; no user/role/settings administration |
+| `CASHIER` | POS-related permissions only (products read, sales, customers) |
+| `KARIGAR_COORDINATOR` | Karigar/work-order-adjacent permissions (products, inventory, reports) |
+| `ACCOUNTANT` | Finance, reports, and read access to sales/customers |
+| `MARKETING` | Product content read + marketing management |
+
+### Preventing privilege escalation
+
+- Authorization is permission-based, never role-name-based (§2).
+- Assigning a role to a user requires `roles.manage`, not merely
+  `users.update` — granting permissions is gated by the same permission
+  that governs role definitions themselves, not by general "can edit
+  users."
+- A user can never assign roles to *themselves*, even as OWNER — enforced
+  server-side regardless of what permission they hold.
+- A system role's permission set is immutable through the API (name/
+  description can still be edited); only new custom roles can have their
+  permissions changed, and only by someone holding `roles.manage`.
+
+### Sessions, tokens, and CSRF
+
+- Access tokens are short-lived signed JWTs (roles + permission codes
+  embedded, so a guard never needs a DB round-trip to authorize a request).
+- Refresh tokens ("sessions", `identity.sessions`) are opaque random values;
+  only their SHA-256 hash is stored. They live in an httpOnly, `SameSite=Lax`
+  cookie scoped to `/api/v1/auth`, and rotate on every use — presenting an
+  already-rotated token is treated as token theft and revokes every session
+  for that user.
+- A non-httpOnly, JS-readable CSRF cookie is issued alongside the refresh
+  cookie at login/refresh. `POST /auth/refresh` and `POST /auth/logout` —
+  the two endpoints that act purely on the ambient refresh cookie — require
+  a matching `X-CSRF-Token` header (double-submit pattern): a cross-site
+  request can't read the cookie to also send it as a header.
+- Password change and password reset both revoke every existing session for
+  that user, not just issue a new token for the current one.
+
+### Rate limiting
+
+Login and password-reset-request are throttled to 5 requests/minute per IP
+(on top of a general 100/minute default), backed by Redis so the limit
+holds across multiple API instances, not just one process's memory.
+
+---
+
+## 5. Phase Plan
+
+- **Phase 1 (delivered): Identity & Access.** Users (username/email/phone
+  login, employee code, status ACTIVE/INACTIVE/LOCKED), roles, permissions,
+  branch-access foundation, authentication (login/logout/refresh/reset),
+  MFA-ready (TOTP), account lockout, audit logging, React + TypeScript
+  "Luxury Gold + Black" UI (login, forgot/reset password, MFA setup,
+  dashboard placeholder, user/role administration). No Product Master, Gold
+  Rates, Pricing, Inventory, POS, Sales, Purchases, Customers, CRM, Karigar,
+  Old Gold/Exchange, Finance, Marketing, Website, or AI.
 - **Phase 2:** Product Master (catalog, media, pricing engine, price
   snapshots, certificates/documents).
 - **Phase 3:** Sales/POS + Inventory.
@@ -216,4 +229,5 @@ deliberately builds these as reusable, not bespoke to auth:
 - **Phase 6:** Owner executive dashboard.
 
 Each phase is additive at the module level and reuses the Phase 1
-foundations (`User`, `AuditLog`, RBAC) rather than re-implementing them.
+foundations (`User`, `AuditLog`, RBAC, `Branch`) rather than
+re-implementing them.

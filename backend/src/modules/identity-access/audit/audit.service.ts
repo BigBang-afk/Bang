@@ -2,20 +2,25 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 
+export type AuditResult = 'SUCCESS' | 'FAILURE';
+
 export interface AuditLogInput {
   actorUserId?: string | null;
   action: string;
-  targetType?: string;
-  targetId?: string;
+  entityType?: string;
+  entityId?: string;
+  result?: AuditResult;
   metadata?: Record<string, unknown>;
   ipAddress?: string;
   userAgent?: string;
 }
 
 /**
- * Single append-only audit trail shared by every module. Nobody in the
- * identity-access module writes to AuditLog except through this service,
- * so log shape/semantics stay consistent as later modules adopt it too.
+ * Single append-only audit trail shared by every module. Nobody writes to
+ * AuditLog except through this service, so log shape/semantics stay
+ * consistent as later modules adopt it too. Never pass passwords, tokens,
+ * or other secrets into `metadata` — this table is read via the API by
+ * anyone with audit.read.
  */
 @Injectable()
 export class AuditService {
@@ -26,8 +31,9 @@ export class AuditService {
       data: {
         actorUserId: input.actorUserId ?? null,
         action: input.action,
-        targetType: input.targetType,
-        targetId: input.targetId,
+        entityType: input.entityType,
+        entityId: input.entityId,
+        result: input.result ?? 'SUCCESS',
         metadata: input.metadata as Prisma.InputJsonValue,
         ipAddress: input.ipAddress,
         userAgent: input.userAgent,
@@ -40,13 +46,13 @@ export class AuditService {
     take?: number;
     actorUserId?: string;
     action?: string;
-    targetType?: string;
+    entityType?: string;
   }) {
-    const { skip = 0, take = 50, actorUserId, action, targetType } = params;
+    const { skip = 0, take = 50, actorUserId, action, entityType } = params;
     const where = {
       ...(actorUserId ? { actorUserId } : {}),
       ...(action ? { action } : {}),
-      ...(targetType ? { targetType } : {}),
+      ...(entityType ? { entityType } : {}),
     };
 
     const [items, total] = await Promise.all([

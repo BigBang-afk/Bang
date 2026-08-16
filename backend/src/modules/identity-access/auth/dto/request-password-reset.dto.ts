@@ -1,6 +1,8 @@
-import { IsEmail } from 'class-validator';
+import { IsString, MinLength } from 'class-validator';
 
 export class RequestPasswordResetDto {
-  @IsEmail()
-  email!: string;
+  /** Username, email, or phone — whichever the account was set up with. */
+  @IsString()
+  @MinLength(1)
+  identifier!: string;
 }

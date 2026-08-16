@@ -51,4 +51,16 @@ export class AppConfigService {
   get lockoutMinutes(): number {
     return Number(this.config.get<string>('LOCKOUT_MINUTES') ?? 15);
   }
+
+  get redisUrl(): string {
+    return this.config.get<string>('REDIS_URL') ?? 'redis://localhost:6379';
+  }
+
+  get apiUrl(): string {
+    return this.config.get<string>('API_URL') ?? `http://localhost:${this.port}`;
+  }
+
+  get appUrl(): string {
+    return this.config.get<string>('APP_URL') ?? 'http://localhost:5173';
+  }
 }

@@ -1,10 +1,11 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { User } from '@prisma/client';
+import { BranchAccessType, User } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { PasswordService } from '../password.service';
@@ -14,6 +15,7 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 
 const USER_INCLUDE = {
   roles: { include: { role: { include: { permissions: { include: { permission: true } } } } } },
+  branches: { include: { branch: true } },
 } as const;
 
 function toSafeUser<T extends User>(
@@ -52,10 +54,13 @@ export class UsersService {
     return toSafeUser(user);
   }
 
-  /** Internal — includes secrets, used only by AuthService. */
-  async findByEmailInternal(email: string) {
-    return this.prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
+  /** Internal — includes secrets, used only by AuthService. Matches username, email, or phone. */
+  async findByIdentifierInternal(identifier: string) {
+    const normalized = identifier.trim().toLowerCase();
+    return this.prisma.user.findFirst({
+      where: {
+        OR: [{ email: normalized }, { username: normalized }, { phone: identifier.trim() }],
+      },
       include: USER_INCLUDE,
     });
   }
@@ -64,13 +69,59 @@ export class UsersService {
     return this.prisma.user.findUnique({ where: { id }, include: USER_INCLUDE });
   }
 
-  async create(dto: CreateUserDto, actorUserId: string, ip?: string, userAgent?: string) {
-    const existing = await this.prisma.user.findUnique({
-      where: { email: dto.email.toLowerCase() },
+  private async assertIdentityFieldsAvailable(
+    fields: { username?: string; email?: string; phone?: string; employeeCode?: string },
+    excludeUserId?: string,
+  ) {
+    const orClauses = [];
+    if (fields.username) orClauses.push({ username: fields.username.toLowerCase() });
+    if (fields.email) orClauses.push({ email: fields.email.toLowerCase() });
+    if (fields.phone) orClauses.push({ phone: fields.phone });
+    if (fields.employeeCode) orClauses.push({ employeeCode: fields.employeeCode });
+    if (orClauses.length === 0) return;
+
+    const existing = await this.prisma.user.findFirst({
+      where: {
+        OR: orClauses,
+        ...(excludeUserId ? { id: { not: excludeUserId } } : {}),
+      },
     });
     if (existing) {
-      throw new ConflictException('A user with this email already exists');
+      throw new ConflictException(
+        'A user with this username, email, phone, or employee code already exists',
+      );
     }
+  }
+
+  private validateBranchAssignment(
+    branchAccessType: BranchAccessType | undefined,
+    branchIds: string[] | undefined,
+  ) {
+    const type = branchAccessType ?? 'SINGLE';
+    if (type === 'ALL') return;
+
+    const ids = branchIds ?? [];
+    if (type === 'SINGLE' && ids.length !== 1) {
+      throw new BadRequestException('branchAccessType SINGLE requires exactly one branchId');
+    }
+    if (type === 'MULTIPLE' && ids.length < 1) {
+      throw new BadRequestException('branchAccessType MULTIPLE requires at least one branchId');
+    }
+  }
+
+  private async assertBranchesExist(branchIds: string[]) {
+    if (branchIds.length === 0) return;
+    const count = await this.prisma.branch.count({ where: { id: { in: branchIds } } });
+    if (count !== new Set(branchIds).size) {
+      throw new BadRequestException('One or more branchIds do not exist');
+    }
+  }
+
+  async create(dto: CreateUserDto, actorUserId: string, ip?: string, userAgent?: string) {
+    if (!dto.username && !dto.email && !dto.phone) {
+      throw new BadRequestException('At least one of username, email, or phone is required');
+    }
+    await this.assertIdentityFieldsAvailable(dto);
 
     if (dto.roleIds && dto.roleIds.length > 0) {
       const count = await this.prisma.role.count({ where: { id: { in: dto.roleIds } } });
@@ -79,17 +130,33 @@ export class UsersService {
       }
     }
 
+    const branchAccessType = dto.branchAccessType ?? 'SINGLE';
+    this.validateBranchAssignment(branchAccessType, dto.branchIds);
+    if (branchAccessType !== 'ALL') {
+      await this.assertBranchesExist(dto.branchIds ?? []);
+    }
+
     const passwordHash = await this.passwordService.hash(dto.temporaryPassword);
 
     const user = await this.prisma.user.create({
       data: {
-        email: dto.email.toLowerCase(),
+        employeeCode: dto.employeeCode,
+        username: dto.username?.toLowerCase(),
+        email: dto.email?.toLowerCase(),
+        phone: dto.phone,
         firstName: dto.firstName,
         lastName: dto.lastName,
         passwordHash,
+        branchAccessType,
+        createdBy: actorUserId,
+        updatedBy: actorUserId,
         roles: dto.roleIds
           ? { create: dto.roleIds.map((roleId) => ({ roleId, assignedBy: actorUserId })) }
           : undefined,
+        branches:
+          branchAccessType !== 'ALL' && dto.branchIds
+            ? { create: dto.branchIds.map((branchId) => ({ branchId, grantedBy: actorUserId })) }
+            : undefined,
       },
       include: USER_INCLUDE,
     });
@@ -97,9 +164,14 @@ export class UsersService {
     await this.audit.log({
       actorUserId,
       action: 'user.created',
-      targetType: 'User',
-      targetId: user.id,
-      metadata: { email: user.email, roleIds: dto.roleIds ?? [] },
+      entityType: 'User',
+      entityId: user.id,
+      metadata: {
+        username: user.username,
+        email: user.email,
+        roleIds: dto.roleIds ?? [],
+        branchAccessType,
+      },
       ipAddress: ip,
       userAgent,
     });
@@ -115,13 +187,20 @@ export class UsersService {
     userAgent?: string,
   ) {
     await this.findOne(id);
+    await this.assertIdentityFieldsAvailable(dto, id);
 
     const user = await this.prisma.user.update({
       where: { id },
       data: {
         firstName: dto.firstName ?? undefined,
         lastName: dto.lastName ?? undefined,
+        employeeCode: dto.employeeCode ?? undefined,
+        username: dto.username?.toLowerCase() ?? undefined,
+        email: dto.email?.toLowerCase() ?? undefined,
+        phone: dto.phone ?? undefined,
         status: dto.status ?? undefined,
+        branchAccessType: dto.branchAccessType ?? undefined,
+        updatedBy: actorUserId,
       },
       include: USER_INCLUDE,
     });
@@ -129,8 +208,8 @@ export class UsersService {
     await this.audit.log({
       actorUserId,
       action: 'user.updated',
-      targetType: 'User',
-      targetId: id,
+      entityType: 'User',
+      entityId: id,
       metadata: { ...dto },
       ipAddress: ip,
       userAgent,
@@ -139,16 +218,16 @@ export class UsersService {
     return toSafeUser(user);
   }
 
-  async deactivate(id: string, actorUserId: string, ip?: string, userAgent?: string) {
+  async disable(id: string, actorUserId: string, ip?: string, userAgent?: string) {
     await this.findOne(id);
 
     const user = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.user.update({
         where: { id },
-        data: { status: 'INACTIVE' },
+        data: { status: 'INACTIVE', updatedBy: actorUserId },
         include: USER_INCLUDE,
       });
-      await tx.refreshToken.updateMany({
+      await tx.session.updateMany({
         where: { userId: id, revokedAt: null },
         data: { revokedAt: new Date() },
       });
@@ -157,9 +236,9 @@ export class UsersService {
 
     await this.audit.log({
       actorUserId,
-      action: 'user.deactivated',
-      targetType: 'User',
-      targetId: id,
+      action: 'user.disabled',
+      entityType: 'User',
+      entityId: id,
       ipAddress: ip,
       userAgent,
     });
@@ -174,6 +253,9 @@ export class UsersService {
     ip?: string,
     userAgent?: string,
   ) {
+    if (id === actorUserId) {
+      throw new ForbiddenException('You cannot change your own role assignment');
+    }
     await this.findOne(id);
 
     if (roleIds.length > 0) {
@@ -190,15 +272,59 @@ export class UsersService {
           data: roleIds.map((roleId) => ({ userId: id, roleId, assignedBy: actorUserId })),
         });
       }
+      await tx.user.update({ where: { id }, data: { updatedBy: actorUserId } });
       return tx.user.findUniqueOrThrow({ where: { id }, include: USER_INCLUDE });
     });
 
     await this.audit.log({
       actorUserId,
-      action: 'user.roles_assigned',
-      targetType: 'User',
-      targetId: id,
+      action: 'role.changed',
+      entityType: 'User',
+      entityId: id,
       metadata: { roleIds },
+      ipAddress: ip,
+      userAgent,
+    });
+
+    return toSafeUser(user);
+  }
+
+  async assignBranches(
+    id: string,
+    branchAccessType: BranchAccessType | undefined,
+    branchIds: string[],
+    actorUserId: string,
+    ip?: string,
+    userAgent?: string,
+  ) {
+    await this.findOne(id);
+
+    const type = branchAccessType ?? 'SINGLE';
+    this.validateBranchAssignment(type, branchIds);
+    if (type !== 'ALL') {
+      await this.assertBranchesExist(branchIds);
+    }
+
+    const user = await this.prisma.$transaction(async (tx) => {
+      await tx.userBranch.deleteMany({ where: { userId: id } });
+      if (type !== 'ALL' && branchIds.length > 0) {
+        await tx.userBranch.createMany({
+          data: branchIds.map((branchId) => ({ userId: id, branchId, grantedBy: actorUserId })),
+        });
+      }
+      return tx.user.update({
+        where: { id },
+        data: { branchAccessType: type, updatedBy: actorUserId },
+        include: USER_INCLUDE,
+      });
+    });
+
+    await this.audit.log({
+      actorUserId,
+      action: 'user.branches_assigned',
+      entityType: 'User',
+      entityId: id,
+      metadata: { branchAccessType: type, branchIds },
       ipAddress: ip,
       userAgent,
     });
@@ -214,14 +340,24 @@ export class UsersService {
 
     const valid = await this.passwordService.compare(dto.currentPassword, user.passwordHash);
     if (!valid) {
+      await this.audit.log({
+        actorUserId: id,
+        action: 'auth.password_change.failure',
+        entityType: 'User',
+        entityId: id,
+        result: 'FAILURE',
+        ipAddress: ip,
+        userAgent,
+      });
       throw new BadRequestException('Current password is incorrect');
     }
 
     const passwordHash = await this.passwordService.hash(dto.newPassword);
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.user.update({ where: { id }, data: { passwordHash } });
-      await tx.refreshToken.updateMany({
+      await tx.user.update({ where: { id }, data: { passwordHash, updatedBy: id } });
+      // Password change invalidates every other active session (spec §12).
+      await tx.session.updateMany({
         where: { userId: id, revokedAt: null },
         data: { revokedAt: new Date() },
       });
@@ -229,9 +365,9 @@ export class UsersService {
 
     await this.audit.log({
       actorUserId: id,
-      action: 'user.password_changed',
-      targetType: 'User',
-      targetId: id,
+      action: 'auth.password_change.success',
+      entityType: 'User',
+      entityId: id,
       ipAddress: ip,
       userAgent,
     });

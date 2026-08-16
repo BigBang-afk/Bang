@@ -31,7 +31,7 @@ export class TokenService {
     const raw = randomBytes(48).toString('hex');
     const expiresAt = new Date(Date.now() + this.config.jwtRefreshTtlDays * 24 * 60 * 60 * 1000);
 
-    await this.prisma.refreshToken.create({
+    await this.prisma.session.create({
       data: {
         userId,
         tokenHash: this.hash(raw),
@@ -46,7 +46,7 @@ export class TokenService {
 
   async findValidByRaw(raw: string) {
     const tokenHash = this.hash(raw);
-    return this.prisma.refreshToken.findUnique({ where: { tokenHash } });
+    return this.prisma.session.findUnique({ where: { tokenHash } });
   }
 
   async rotate(raw: string, ip?: string, userAgent?: string) {
@@ -57,7 +57,7 @@ export class TokenService {
     if (existing.revokedAt) {
       // A revoked/rotated token was presented again: possible token theft.
       // Invalidate the whole session family for this user.
-      await this.prisma.refreshToken.updateMany({
+      await this.prisma.session.updateMany({
         where: { userId: existing.userId, revokedAt: null },
         data: { revokedAt: new Date() },
       });
@@ -68,16 +68,16 @@ export class TokenService {
     }
 
     const next = await this.issueRefreshToken(existing.userId, ip, userAgent);
-    await this.prisma.refreshToken.update({
+    await this.prisma.session.update({
       where: { id: existing.id },
       data: { revokedAt: new Date() },
     });
     // Best-effort link for forensics; not required for correctness.
-    const created = await this.prisma.refreshToken.findUnique({
+    const created = await this.prisma.session.findUnique({
       where: { tokenHash: this.hash(next.raw) },
     });
     if (created) {
-      await this.prisma.refreshToken.update({
+      await this.prisma.session.update({
         where: { id: existing.id },
         data: { replacedById: created.id },
       });
@@ -88,14 +88,14 @@ export class TokenService {
 
   async revoke(raw: string): Promise<void> {
     const tokenHash = this.hash(raw);
-    await this.prisma.refreshToken.updateMany({
+    await this.prisma.session.updateMany({
       where: { tokenHash, revokedAt: null },
       data: { revokedAt: new Date() },
     });
   }
 
   async revokeAllForUser(userId: string): Promise<void> {
-    await this.prisma.refreshToken.updateMany({
+    await this.prisma.session.updateMany({
       where: { userId, revokedAt: null },
       data: { revokedAt: new Date() },
     });

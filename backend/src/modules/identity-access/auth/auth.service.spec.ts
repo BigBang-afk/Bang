@@ -5,7 +5,10 @@ import { AuthService } from './auth.service';
 function buildUser(overrides: Record<string, unknown> = {}) {
   return {
     id: 'user-1',
-    email: 'jane@bang.local',
+    employeeCode: 'ZJ-0002',
+    username: 'jane',
+    email: 'jane@zarghoon.local',
+    phone: null,
     passwordHash: 'hashed',
     firstName: 'Jane',
     lastName: 'Doe',
@@ -17,16 +20,20 @@ function buildUser(overrides: Record<string, unknown> = {}) {
     failedLoginAttempts: 0,
     lockedUntil: null,
     lastLoginAt: null,
+    branchAccessType: 'SINGLE',
     createdAt: new Date(),
     updatedAt: new Date(),
+    createdBy: null,
+    updatedBy: null,
     roles: [
       {
         role: {
-          name: 'STAFF',
-          permissions: [{ permission: { code: 'identity-access.users.read' } }],
+          name: 'CASHIER',
+          permissions: [{ permission: { code: 'sales.read' } }],
         },
       },
     ],
+    branches: [],
     ...overrides,
   };
 }
@@ -60,7 +67,7 @@ describe('AuthService.login', () => {
     };
     audit = { log: jest.fn().mockResolvedValue(undefined) };
     passwordService = { compare: jest.fn() };
-    usersService = { findByEmailInternal: jest.fn() };
+    usersService = { findByIdentifierInternal: jest.fn() };
 
     service = new AuthService(
       prisma,
@@ -73,34 +80,44 @@ describe('AuthService.login', () => {
     );
   });
 
-  it('rejects login when no user exists for the email', async () => {
-    usersService.findByEmailInternal.mockResolvedValue(null);
+  it('rejects login when no user exists for the identifier', async () => {
+    usersService.findByIdentifierInternal.mockResolvedValue(null);
 
-    await expect(service.login('nobody@bang.local', 'x', undefined, {})).rejects.toThrow(
+    await expect(service.login('nobody', 'x', undefined, {})).rejects.toThrow(
       UnauthorizedException,
     );
     expect(audit.log).toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'auth.login.failure' }),
+      expect.objectContaining({ action: 'auth.login.failure', result: 'FAILURE' }),
     );
   });
 
-  it('rejects login for a locked account', async () => {
-    usersService.findByEmailInternal.mockResolvedValue(
+  it('rejects login for an account with an active temporary lock', async () => {
+    usersService.findByIdentifierInternal.mockResolvedValue(
       buildUser({ lockedUntil: new Date(Date.now() + 60_000) }),
     );
 
-    await expect(service.login('jane@bang.local', 'x', undefined, {})).rejects.toThrow(
-      ForbiddenException,
-    );
+    await expect(service.login('jane', 'x', undefined, {})).rejects.toThrow(ForbiddenException);
+  });
+
+  it('rejects login for an account with status LOCKED', async () => {
+    usersService.findByIdentifierInternal.mockResolvedValue(buildUser({ status: 'LOCKED' }));
+
+    await expect(service.login('jane', 'x', undefined, {})).rejects.toThrow(ForbiddenException);
+  });
+
+  it('rejects login for an inactive account', async () => {
+    usersService.findByIdentifierInternal.mockResolvedValue(buildUser({ status: 'INACTIVE' }));
+
+    await expect(service.login('jane', 'x', undefined, {})).rejects.toThrow(ForbiddenException);
   });
 
   it('rejects login with the wrong password and records the failed attempt', async () => {
     const user = buildUser();
-    usersService.findByEmailInternal.mockResolvedValue(user);
+    usersService.findByIdentifierInternal.mockResolvedValue(user);
     passwordService.compare.mockResolvedValue(false);
     prisma.user.findUniqueOrThrow.mockResolvedValue(user);
 
-    await expect(service.login('jane@bang.local', 'wrong', undefined, {})).rejects.toThrow(
+    await expect(service.login('jane', 'wrong', undefined, {})).rejects.toThrow(
       UnauthorizedException,
     );
     expect(prisma.user.update).toHaveBeenCalledWith(
@@ -113,11 +130,11 @@ describe('AuthService.login', () => {
 
   it('locks the account once the failure threshold is reached', async () => {
     const user = buildUser({ failedLoginAttempts: 4 });
-    usersService.findByEmailInternal.mockResolvedValue(user);
+    usersService.findByIdentifierInternal.mockResolvedValue(user);
     passwordService.compare.mockResolvedValue(false);
     prisma.user.findUniqueOrThrow.mockResolvedValue(user);
 
-    await expect(service.login('jane@bang.local', 'wrong', undefined, {})).rejects.toThrow(
+    await expect(service.login('jane', 'wrong', undefined, {})).rejects.toThrow(
       UnauthorizedException,
     );
     expect(prisma.user.update).toHaveBeenCalledWith(
@@ -129,16 +146,17 @@ describe('AuthService.login', () => {
 
   it('logs in successfully with correct credentials and no MFA', async () => {
     const user = buildUser();
-    usersService.findByEmailInternal.mockResolvedValue(user);
+    usersService.findByIdentifierInternal.mockResolvedValue(user);
     passwordService.compare.mockResolvedValue(true);
 
-    const result = await service.login('jane@bang.local', 'correct', undefined, {});
+    const result = await service.login('jane', 'correct', undefined, {});
 
     expect(result.mfaRequired).toBe(false);
     if (!result.mfaRequired) {
       expect(result.accessToken).toBe('signed.jwt.token');
       expect(result.refreshToken).toBe('raw-refresh');
-      expect(result.user.permissions).toContain('identity-access.users.read');
+      expect(result.user.permissions).toContain('sales.read');
+      expect(result.user).not.toHaveProperty('passwordHash');
     }
     expect(tokenService.issueRefreshToken).toHaveBeenCalledWith('user-1', undefined, undefined);
   });
@@ -146,21 +164,21 @@ describe('AuthService.login', () => {
   it('requires an MFA code when MFA is enabled and none was provided', async () => {
     const secret = authenticator.generateSecret();
     const user = buildUser({ mfaEnabled: true, mfaSecret: secret });
-    usersService.findByEmailInternal.mockResolvedValue(user);
+    usersService.findByIdentifierInternal.mockResolvedValue(user);
     passwordService.compare.mockResolvedValue(true);
 
-    const result = await service.login('jane@bang.local', 'correct', undefined, {});
+    const result = await service.login('jane', 'correct', undefined, {});
     expect(result).toEqual({ mfaRequired: true });
   });
 
   it('rejects an invalid MFA code', async () => {
     const secret = authenticator.generateSecret();
     const user = buildUser({ mfaEnabled: true, mfaSecret: secret });
-    usersService.findByEmailInternal.mockResolvedValue(user);
+    usersService.findByIdentifierInternal.mockResolvedValue(user);
     passwordService.compare.mockResolvedValue(true);
     prisma.user.findUniqueOrThrow.mockResolvedValue(user);
 
-    await expect(service.login('jane@bang.local', 'correct', '000000', {})).rejects.toThrow(
+    await expect(service.login('jane', 'correct', '000000', {})).rejects.toThrow(
       UnauthorizedException,
     );
   });
@@ -169,10 +187,10 @@ describe('AuthService.login', () => {
     const secret = authenticator.generateSecret();
     const validCode = authenticator.generate(secret);
     const user = buildUser({ mfaEnabled: true, mfaSecret: secret });
-    usersService.findByEmailInternal.mockResolvedValue(user);
+    usersService.findByIdentifierInternal.mockResolvedValue(user);
     passwordService.compare.mockResolvedValue(true);
 
-    const result = await service.login('jane@bang.local', 'correct', validCode, {});
+    const result = await service.login('jane', 'correct', validCode, {});
     expect(result.mfaRequired).toBe(false);
   });
 });
