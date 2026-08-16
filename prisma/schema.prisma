@@ -1,0 +1,166 @@
+// Zarghoon Jewellers AI Business OS — Phase 1 database schema.
+// See DATABASE.md for entity documentation and design rationale.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Authorization: Role / Permission / RolePermission
+// ---------------------------------------------------------------------------
+
+model Role {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String   @unique
+  description String?
+  /// System roles (OWNER) are seeded and cannot be deleted or renamed.
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       User[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// Stable machine key, e.g. "gold_rate:create". Read via requirePermission().
+  key         String   @unique
+  module      String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  roles RolePermission[]
+
+  @@index([module])
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  roleId       String   @db.Uuid
+  permissionId String   @db.Uuid
+  createdAt    DateTime @default(now())
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+// ---------------------------------------------------------------------------
+// Users
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String
+  email        String    @unique
+  passwordHash String
+  roleId       String    @db.Uuid
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  role             Role            @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  goldRatesCreated GoldRate[]
+  settingsUpdated  SystemSetting[]
+  auditLogs        AuditLog[]
+
+  @@index([roleId])
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Daily Gold Rate System
+// ---------------------------------------------------------------------------
+
+enum GoldPurity {
+  K24
+  K22
+  K21
+  K18
+  SILVER
+}
+
+/// One immutable row per rate entry. Historical rows are never updated or
+/// deleted — see GOLD-RATE-ENGINE.md for the append-only rationale. The
+/// "effective" rate for a (businessDate, purity) pair is the row with the
+/// latest createdAt, which lets an owner correct a same-day mistake without
+/// ever mutating history.
+model GoldRate {
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  businessDate DateTime   @db.Date
+  purity       GoldPurity
+  ratePerGram  Decimal    @db.Decimal(14, 2)
+  createdById  String     @db.Uuid
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  createdBy User @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([businessDate])
+  @@index([businessDate, purity, createdAt])
+  @@map("gold_rates")
+}
+
+// ---------------------------------------------------------------------------
+// System settings (key/value business configuration)
+// ---------------------------------------------------------------------------
+
+model SystemSetting {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key         String   @unique
+  value       String
+  description String?
+  updatedById String?  @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  updatedBy User? @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@map("system_settings")
+}
+
+// ---------------------------------------------------------------------------
+// Audit log
+// ---------------------------------------------------------------------------
+
+enum AuditAction {
+  LOGIN
+  LOGIN_FAILED
+  LOGOUT
+  GOLD_RATE_CREATED
+  GOLD_RATE_CORRECTED
+  SETTINGS_CHANGED
+  USER_CREATED
+  ROLE_CHANGED
+}
+
+model AuditLog {
+  id        String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String?     @db.Uuid
+  action    AuditAction
+  entity    String
+  entityId  String?
+  /// Non-sensitive context only. Never store passwords, tokens, or secrets here.
+  metadata  Json?
+  createdAt DateTime    @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
