@@ -16,7 +16,7 @@ export function Topbar({
   businessName: string;
 }) {
   return (
-    <header className="flex h-16 shrink-0 items-center gap-3 border-b border-border bg-surface px-4 sm:px-6">
+    <header className="flex h-16 shrink-0 items-center gap-3 border-b border-border bg-surface px-4 sm:px-6 print:hidden">
       <MobileNav />
 
       <div className="min-w-0 flex-1">

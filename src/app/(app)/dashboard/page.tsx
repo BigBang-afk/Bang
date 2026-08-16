@@ -1,12 +1,14 @@
-import { TrendingUp, Coins, Users, Boxes, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
+import { TrendingUp, Coins, Users, ArrowDownToLine, ArrowUpFromLine, Boxes, Wallet, TrendingUp as ProfitIcon } from "lucide-react";
 import { requireUser } from "@/lib/auth/dal";
 import { prisma } from "@/lib/db/prisma";
 import { getEffectiveRatesForDate, getTodayBusinessDate } from "@/services/gold-rate.service";
 import { calculateGoldValue } from "@/services/gold-calculation.service";
-import { formatDate } from "@/lib/format";
+import { getInventorySummary } from "@/services/inventory-item.service";
+import { formatDate, formatCurrency } from "@/lib/format";
 import { GoldRateSummary } from "@/components/dashboard/gold-rate-summary";
 import { SystemStatus, type SystemStatusItem } from "@/components/dashboard/system-status";
 import { FutureMetricCard } from "@/components/dashboard/future-metric-card";
+import { RealMetricCard } from "@/components/dashboard/real-metric-card";
 import { GoldCalculator } from "@/components/calculator/gold-calculator";
 
 export const metadata = {
@@ -39,9 +41,10 @@ export default async function DashboardPage() {
   const user = await requireUser();
   const businessDate = getTodayBusinessDate();
 
-  const [rates, dbHealthy] = await Promise.all([
+  const [rates, dbHealthy, inventorySummary] = await Promise.all([
     getEffectiveRatesForDate(businessDate),
     checkDatabase(),
+    getInventorySummary(),
   ]);
 
   const statusItems: SystemStatusItem[] = [
@@ -67,13 +70,34 @@ export default async function DashboardPage() {
 
       <div>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Inventory
+        </h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <RealMetricCard icon={Boxes} label="Total Items" value={inventorySummary.totalItems.toLocaleString()} href="/inventory" />
+          <RealMetricCard
+            icon={Wallet}
+            label="Selling Value"
+            value={formatCurrency(inventorySummary.totalSellingValue)}
+            href="/inventory"
+          />
+          <RealMetricCard
+            icon={ProfitIcon}
+            label="Expected Gross Profit"
+            value={formatCurrency(inventorySummary.expectedGrossProfit)}
+            href="/inventory"
+          />
+          <RealMetricCard icon={Coins} label="Sold" value={inventorySummary.sold.toLocaleString()} href="/inventory?status=SOLD" />
+        </div>
+      </div>
+
+      <div>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Coming in upcoming phases
         </h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           <FutureMetricCard icon={TrendingUp} label="Today's Sales" />
           <FutureMetricCard icon={Coins} label="Gold Sold" />
           <FutureMetricCard icon={Users} label="Customers" />
-          <FutureMetricCard icon={Boxes} label="Inventory Value" />
           <FutureMetricCard icon={ArrowDownToLine} label="Receivables" />
           <FutureMetricCard icon={ArrowUpFromLine} label="Payables" />
         </div>

@@ -9,6 +9,7 @@ import { toBusinessDate, getTodayBusinessDate } from "@/lib/business-date";
 export { toBusinessDate, getTodayBusinessDate };
 
 export type EffectiveRateRow = {
+  id: string;
   purity: GoldPurity;
   ratePerGram: Prisma.Decimal;
   createdAt: Date;
@@ -27,6 +28,7 @@ export async function getEffectiveRatesForDate(businessDate: Date): Promise<Effe
     orderBy: [{ purity: "asc" }, { createdAt: "desc" }],
     distinct: ["purity"],
     select: {
+      id: true,
       purity: true,
       ratePerGram: true,
       createdAt: true,

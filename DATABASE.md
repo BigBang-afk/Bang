@@ -21,10 +21,17 @@ carry `updatedAt`.
 
 ## Money & precision
 
-`GoldRate.ratePerGram` is `Decimal(14, 2)` — a fixed-point SQL numeric type,
-never `float`/`double precision`. Application code never performs money
-arithmetic on this column's value using native JS numbers; see
-`GOLD-RATE-ENGINE.md` and `ARCHITECTURE.md` for the `decimal.js` policy.
+`GoldRate.ratePerGram` and every money column on `InventoryItem`
+(`goldValue`, `makingCharge`, `stoneCharge`, `diamondCharge`, `otherCharge`,
+`totalCost`, `sellingPrice`, `expectedProfit`) are `Decimal(14, 2)` — a
+fixed-point SQL numeric type, never `float`/`double precision`. Weight
+columns (`netWeight`, `wastageWeight`, `grossWeight`) are `Decimal(10, 3)`
+— at least 3 decimal places, per the spec. Application code never performs
+money or weight arithmetic on these columns' values using native JS
+numbers; see `GOLD-RATE-ENGINE.md`, `INVENTORY.md`, and `ARCHITECTURE.md`
+for the `decimal.js` policy — including the Server→Client Component
+serialization pitfall it causes (`Decimal` values can't be passed directly
+into a `"use client"` component).
 
 ## Entities
 
@@ -105,6 +112,96 @@ removed.
 Indexed on `userId`, `(entity, entityId)`, and `createdAt` for the
 history/reporting queries a future Phase will add.
 
+Phase 2 adds `CATEGORY_CREATED`, `STOCK_CREATED`, `STOCK_UPDATED`,
+`STOCK_STATUS_CHANGED`, `STOCK_ARCHIVED`, `FINANCIAL_FIELDS_CHANGED`,
+`BARCODE_GENERATED`, and `BARCODE_PRINTED` to `AuditAction` — same table,
+same append-only pattern, no new entity.
+
+### `ProductCategory` *(Phase 2)*
+
+| Column        | Type        | Notes                                    |
+| ------------- | ----------- | ------------------------------------------ |
+| `id`          | uuid (PK)   |                                            |
+| `name`        | text, unique | Rings, Necklaces, ... — 14 seeded in `prisma/seed.ts`, matching the spec's list |
+| `description` | text, nullable |                                          |
+| `isSystem`    | boolean, default false | seeded defaults; owners/admins can add more via Inventory → Categories |
+
+### `Product` *(Phase 2)*
+
+The reusable "design" record — see INVENTORY.md for why this is a separate
+table from `InventoryItem` rather than one merged model.
+
+| Column         | Type        | Notes                                    |
+| -------------- | ----------- | ------------------------------------------ |
+| `id`           | uuid (PK)   |                                            |
+| `name`         | text        |                                            |
+| `categoryId`   | uuid (FK → ProductCategory, `onDelete: Restrict`) |                |
+| `subcategory`, `designNumber`, `supplier`, `karigar` | text, nullable | plain fields for now — normalizing Supplier/Karigar into their own tables is future scope (Purchases, Karigar Management) |
+| `imageUrl`     | text, nullable | `/uploads/products/<uuid>.<ext>` — a reference, never raw image bytes (see INVENTORY.md) |
+| `notes`        | text, nullable |                                          |
+| `createdById`  | uuid (FK → User, `onDelete: Restrict`) |                    |
+| `createdAt` / `updatedAt` | timestamp |                              |
+
+Indexed on `categoryId`, `designNumber`, `supplier`, `karigar` for filtering.
+
+### `InventoryItem` *(Phase 2)*
+
+One physical, barcoded jewelry piece — the "stock" record. See
+`INVENTORY.md` for the full calculation flow and `GOLD-RATE-ENGINE.md` for
+the weight formulas this table's values come from.
+
+| Column         | Type          | Notes                                  |
+| -------------- | ------------- | ----------------------------------------- |
+| `id`           | uuid (PK)     |                                            |
+| `productId`    | uuid (FK → Product, `onDelete: Restrict`) |               |
+| `purity`       | enum `GoldPurity` | shared with `GoldRate`                |
+| `netWeight`, `wastageWeight`, `grossWeight` | `Decimal(10,3)` |          |
+| `wastageType`  | enum `WastageType` (`PERCENTAGE`, `FIXED_GRAMS`) |            |
+| `wastagePercent` | `Decimal(6,3)`, nullable | only set when `wastageType = PERCENTAGE` |
+| `goldRatePerGram` | `Decimal(14,2)` | **snapshot** — the rate actually used to cost this item, frozen forever |
+| `goldRateSourceId` | uuid, nullable (FK → GoldRate, `onDelete: SetNull`) | provenance only — set when the submitted rate matched today's official rate exactly; never the source of truth for the price |
+| `goldValue`, `makingCharge`, `stoneCharge`, `diamondCharge`, `otherCharge`, `totalCost`, `sellingPrice`, `expectedProfit` | `Decimal(14,2)` |          |
+| `profitMarginPercent` | `Decimal(7,2)` | can be negative (a loss) |
+| `status`       | enum `StockStatus` (`IN_STOCK`, `RESERVED`, `SOLD`, `RETURNED`, `DAMAGED`, `LOST`) |  |
+| `archivedAt`   | timestamp, nullable | soft-delete marker — null means active; see "Deletion policy" in INVENTORY.md |
+| `createdById`  | uuid (FK → User, `onDelete: Restrict`) |                    |
+| `createdAt` / `updatedAt` | timestamp |                              |
+
+Indexed on `productId`, `status`, `createdAt`, `archivedAt`.
+
+### `Barcode` *(Phase 2)*
+
+| Column            | Type        | Notes                                    |
+| ----------------- | ----------- | ------------------------------------------ |
+| `id`              | uuid (PK)   |                                            |
+| `sequence`        | `Int`, unique, `@default(autoincrement())` | the real identity — a Postgres-native SERIAL/IDENTITY column, so uniqueness under concurrent inserts is guaranteed by the database, not application logic. See `BARCODE-SYSTEM.md`. |
+| `inventoryItemId` | uuid, unique (FK → InventoryItem, `onDelete: Restrict`) | 1:1 |
+| `printCount`      | `Int`, default 0 |                                       |
+| `lastPrintedAt`   | timestamp, nullable |                                    |
+| `createdAt`       | timestamp   |                                            |
+
+The human-readable "ZJ-000001" code is *derived* from `sequence` at read
+time (`src/lib/barcode-code.ts`), never stored redundantly — one source of
+truth, no risk of the two going out of sync.
+
+### `StockMovement` *(Phase 2)*
+
+Append-only ledger — the audit trail that will connect to POS/Sales.
+
+| Column           | Type        | Notes                                    |
+| ---------------- | ----------- | ------------------------------------------ |
+| `id`             | uuid (PK)   |                                            |
+| `inventoryItemId`| uuid (FK → InventoryItem, `onDelete: Restrict`) |               |
+| `movementType`   | enum `StockMovementType` (`STOCK_CREATED`, `STOCK_UPDATED`, `STOCK_RESERVED`, `STOCK_SOLD`, `STOCK_RETURNED`, `STOCK_ADJUSTED`, `STOCK_DAMAGED`, `STOCK_LOST`, `STOCK_ARCHIVED`) |  |
+| `previousStatus`, `newStatus` | enum `StockStatus`, nullable |               |
+| `weight`         | `Decimal(10,3)`, nullable | the item's gross weight at the time of the movement |
+| `notes`          | text, nullable |                                          |
+| `metadata`       | jsonb, nullable | e.g. `{ changes: { sellingPrice: { before, after } } }` for an edit |
+| `userId`         | uuid, nullable (FK → User, `onDelete: SetNull`) |               |
+| `createdAt`      | timestamp   |                                            |
+
+Indexed on `inventoryItemId`, `createdAt`.
+
 ## Entity relationship summary
 
 ```
@@ -113,6 +210,15 @@ Role 1---* RolePermission *---1 Permission
 User 1---* GoldRate (createdBy)
 User 1---* SystemSetting (updatedBy)
 User 1---* AuditLog
+
+ProductCategory 1---* Product
+Product 1---* InventoryItem
+InventoryItem 1---1 Barcode
+InventoryItem 1---* StockMovement
+GoldRate 1---* InventoryItem (goldRateSource, optional provenance)
+User 1---* Product (createdBy)
+User 1---* InventoryItem (createdBy)
+User 1---* StockMovement
 ```
 
 ## Regenerating / migrating

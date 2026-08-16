@@ -36,8 +36,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Inventory",
     href: "/inventory",
     icon: Boxes,
-    status: "soon",
-    description: "Jewelry stock, barcoding, and item-level valuation.",
+    status: "active",
   },
   {
     label: "Customers",
@@ -103,4 +102,15 @@ export const NAV_ITEMS: NavItem[] = [
     description: "Conversational business assistant.",
   },
   { label: "Settings", href: "/settings", icon: Settings, status: "active" },
+];
+
+export type SubNavItem = { label: string; href: string };
+
+export const INVENTORY_SUB_NAV: SubNavItem[] = [
+  { label: "All Stock", href: "/inventory" },
+  { label: "Add Stock", href: "/inventory/add" },
+  { label: "Stock Movements", href: "/inventory/movements" },
+  { label: "Categories", href: "/inventory/categories" },
+  { label: "Barcodes", href: "/inventory/barcodes" },
+  { label: "Old Stock", href: "/inventory/old-stock" },
 ];

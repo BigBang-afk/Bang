@@ -8,6 +8,10 @@ export const PERMISSIONS = {
   GOLD_RATE_READ: "gold_rate:read",
   SETTINGS_MANAGE: "settings:manage",
   USER_MANAGE: "user:manage",
+  INVENTORY_VIEW: "inventory:view",
+  INVENTORY_MANAGE: "inventory:manage",
+  CATEGORY_MANAGE: "category:manage",
+  BARCODE_PRINT: "barcode:print",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

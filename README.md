@@ -1,15 +1,23 @@
 # Zarghoon Jewellers — AI Business OS
 
 A production-grade jewelry ERP + POS + CRM + AI marketing platform, built
-phase by phase. This is **Phase 1: Foundation** — project scaffolding,
-authentication, the database, the application shell, the daily gold rate
-system, and the jewelry weight calculation engine.
+phase by phase.
 
-See [`PHASE-1-STATUS.md`](./PHASE-1-STATUS.md) for exactly what is and isn't
-built yet, [`ARCHITECTURE.md`](./ARCHITECTURE.md) for how the codebase is
-organized, [`DATABASE.md`](./DATABASE.md) for the schema, and
-[`GOLD-RATE-ENGINE.md`](./GOLD-RATE-ENGINE.md) for the pricing/weight
-formulas.
+- **Phase 1: Foundation** — project scaffolding, authentication, the
+  database, the application shell, the daily gold rate system, and the
+  jewelry weight calculation engine.
+- **Phase 2: Inventory, Stock & ZJ Barcode System** — full inventory
+  management, product categories, atomic barcode generation, stock status
+  and movement tracking, and barcode/product label printing.
+
+See [`PHASE-1-STATUS.md`](./PHASE-1-STATUS.md) and
+[`PHASE-2-STATUS.md`](./PHASE-2-STATUS.md) for exactly what is and isn't
+built, [`ARCHITECTURE.md`](./ARCHITECTURE.md) for how the codebase is
+organized, [`DATABASE.md`](./DATABASE.md) for the schema,
+[`GOLD-RATE-ENGINE.md`](./GOLD-RATE-ENGINE.md) for the gold pricing/weight
+formulas, [`INVENTORY.md`](./INVENTORY.md) for the inventory/stock
+architecture, and [`BARCODE-SYSTEM.md`](./BARCODE-SYSTEM.md) for the
+barcode system.
 
 ## Technology stack
 
@@ -23,7 +31,9 @@ formulas.
   cookies signed with `jose`, a centralized Data Access Layer for
   authorization (see `ARCHITECTURE.md`)
 - **Precision math**: `decimal.js` for every weight and money calculation
-- **Testing**: Vitest (unit) + Playwright (end-to-end)
+- **Barcodes**: `jsbarcode` (CODE128, rendered client-side as a real
+  scannable symbol) — see `BARCODE-SYSTEM.md`
+- **Testing**: Vitest (unit + integration) + Playwright (end-to-end)
 
 ## Getting started
 
@@ -38,7 +48,7 @@ formulas.
 npm install
 cp .env.example .env      # then fill in DATABASE_URL and AUTH_SECRET
 npm run db:migrate        # create the database schema
-npm run db:seed           # seed roles, permissions, and the default owner
+npm run db:seed           # seed roles, permissions, categories, and the default owner
 npm run dev                # http://localhost:3000
 ```
 
@@ -75,10 +85,13 @@ development.
 
 ```
 prisma/                  Schema, migrations, seed script
+public/uploads/          Product images (gitignored, created at runtime)
 src/
   app/                    Routes (App Router)
     login/                 Public login page
     (app)/                 Authenticated shell — sidebar/topbar + every module
+      inventory/            All Stock, Add Stock, item detail/edit, print,
+                             Categories, Barcodes, Old Stock, Movements
   components/             UI: primitives, layout, feature components
   services/               Business logic — no React, no HTTP, no Next.js APIs
   lib/
@@ -86,25 +99,28 @@ src/
     validation/             Zod schemas
     actions/                Server Actions
     db/                     Prisma client singleton
+    uploads/                Local product-image storage
   types/                  Shared TypeScript types
   proxy.ts                Optimistic route-protection (Next.js 16 "Proxy")
-tests/                    Vitest unit tests
+tests/                    Vitest unit + integration tests
 e2e/                      Playwright end-to-end tests
 ```
 
-## Known limitations (Phase 1)
+## Known limitations
 
 - Business date for gold rates uses the server's local calendar day — no
   per-store timezone configuration yet.
 - No self-service password reset or MFA.
 - Only `OWNER` and `ADMIN` roles are seeded; the additional roles named in
-  the long-term vision (`MANAGER`, `CASHIER`, etc.) are modeled by the
-  schema but not yet exposed in a role-management UI.
-- Every module other than Dashboard and Settings renders a "coming in next
-  phase" placeholder — no fake data, no fake functionality.
+  the long-term vision (`MANAGER`, `CASHIER`, `INVENTORY_MANAGER`, etc.)
+  are modeled by the schema but not yet exposed in a role-management UI.
+- Product images are stored on local disk, not object storage (see
+  `INVENTORY.md`).
+- Every module other than Dashboard, Settings, and Inventory renders a
+  "coming in next phase" placeholder — no fake data, no fake functionality.
 
 ## Next phase
 
-See the end of `PHASE-1-STATUS.md` for the recommended Phase 2 scope
-(Inventory, ZJ Barcode System, POS, and Sales — the modules that depend most
-directly on the gold rate and calculation engine built in this phase).
+See the end of `PHASE-2-STATUS.md` for the recommended Phase 3 scope
+(POS + Sales — the modules that consume the barcode system and
+InventoryItem/StockMovement model built in Phase 2).

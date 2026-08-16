@@ -10,7 +10,7 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-surface md:flex">
+    <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-surface md:flex print:hidden">
       <div className="flex h-16 items-center gap-2.5 border-b border-border px-5">
         <div className="flex size-9 items-center justify-center rounded-md border border-gold-muted/40 bg-gold-soft">
           <Gem className="size-4.5 text-gold" />

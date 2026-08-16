@@ -32,6 +32,20 @@ Each service owns one concern:
   "effective rate per day" read model. Talks to Prisma.
 - `system-setting.service.ts` — key/value business settings.
 - `audit.service.ts` — writes to the append-only audit log.
+- `inventory-pricing.service.ts` *(Phase 2)* — the cost/profit calculation
+  (`goldValue + charges = totalCost`, `sellingPrice - totalCost = profit`,
+  ...). Pure, `decimal.js`-based, same pattern as the gold calculation
+  engine — deliberately kept separate from it so weight/gold-value math and
+  cost/profit math each stay a single-purpose function. See `INVENTORY.md`.
+- `inventory-item.service.ts` *(Phase 2)* — Product/InventoryItem/Barcode
+  CRUD, status transitions, search/filter/pagination, the inventory
+  dashboard summary, and old-stock aging. Talks to Prisma; orchestrates the
+  two pure calculation services above plus `stock-movement.service.ts` and
+  `audit.service.ts` inside a single `$transaction`.
+- `stock-movement.service.ts` *(Phase 2)* — the append-only movement ledger
+  for a single InventoryItem. `recordStockMovement()` must always be called
+  from inside the same transaction as the state change it records.
+- `product-category.service.ts` *(Phase 2)* — category list/create.
 
 ### `src/lib/auth/`
 
@@ -89,10 +103,11 @@ because the client-side form already validated it.
   is the shadcn/ui pattern, hand-adapted to the Zarghoon gold/black tokens
   defined in `src/app/globals.css` rather than pulled in via the shadcn CLI.
 - `layout/` — the application shell: `Sidebar`, `Topbar`, `MobileNav`,
-  `ComingSoon`.
-- `gold-rate/`, `calculator/`, `dashboard/`, `auth/` — feature components.
-  These call Server Actions and services but contain no business math
-  themselves.
+  `ComingSoon`, `SubNavTabs` (the sub-navigation pattern Inventory
+  introduced in Phase 2 — reusable for any future module that needs it).
+- `gold-rate/`, `calculator/`, `dashboard/`, `auth/`, `inventory/` — feature
+  components. These call Server Actions and services but contain no
+  business math themselves.
 
 ### `src/app/`
 
@@ -101,6 +116,12 @@ because the client-side form already validated it.
   the single place that (a) requires a session, (b) checks whether today's
   gold rate has been entered, and (c) renders the sidebar/topbar shell
   around every authenticated page.
+- `(app)/inventory/` *(Phase 2)* — its own nested `layout.tsx` requires
+  `inventory:view` once and renders the All Stock/Add Stock/Movements/
+  Categories/Barcodes/Old Stock sub-nav tabs around every page beneath it.
+  `[id]/` is the single-item detail/edit/print routes; `barcodes/print` and
+  `[id]/print/*` are dedicated print-only routes (no app chrome — see
+  `BARCODE-SYSTEM.md`).
 
 ## Authentication design
 
@@ -140,6 +161,12 @@ Role-Based Access Control, stored in the database (`Role`, `Permission`,
   `settings:manage`, ...) declared once in `PERMISSIONS`
   (`src/lib/auth/permissions.ts`) and seeded into the `permissions` table.
   No component or action ever checks a raw string like `role === "ADMIN"`.
+- Phase 2 adds `inventory:view`, `inventory:manage`, `category:manage`, and
+  `barcode:print`, following the exact same pattern — declared in
+  `PERMISSIONS`, seeded, granted to `OWNER`/`ADMIN` in `prisma/seed.ts`.
+  `INVENTORY_VIEW` gates read access (the whole `(app)/inventory` route
+  group checks it once in `inventory/layout.tsx`); `INVENTORY_MANAGE` gates
+  every mutation (create/edit/status-change/archive).
 
 ## Precision & money handling
 
@@ -157,9 +184,32 @@ Role-Based Access Control, stored in the database (`Role`, `Permission`,
 
 ## Why a Server Action recomputes the calculator on every change
 
-`GoldCalculator` calls the `calculateGoldValueAction` Server Action (not the
-service directly) on every input change, debounced by ~200ms. This means
-the number a salesperson sees on screen is always the server's answer, not
-a client-side computation the browser could be tricked into faking — the
-same engine that will compute a real invoice total in Phase 2 already runs
-server-side today.
+`GoldCalculator` and `StockForm` both call a Server Action
+(`calculateGoldValueAction`, `previewInventoryPricingAction`) on every input
+change, debounced by ~200ms, instead of running the math client-side. This
+means the number a salesperson sees on screen is always the server's
+answer, not a client-side computation the browser could be tricked into
+faking — the same two services that compute the live preview also compute
+the value that actually gets saved, via `inventory-item.service.ts`.
+
+## Pitfall: Prisma `Decimal` can't cross the Server → Client Component boundary
+
+Every `Decimal` (`GoldRate.ratePerGram`, every money/weight column on
+`InventoryItem`, ...) comes back from Prisma as a `Decimal` instance, not a
+plain number or string. React's RSC serialization rejects it outright —
+passing one as a prop from a Server Component into a `"use client"`
+component throws *"Only plain objects can be passed to Client Components
+from Server Components. Decimal objects are not supported."* at runtime
+(TypeScript does not catch this — the types line up fine).
+
+Two real instances of this bug were caught during Phase 1/2 development
+(the Phase 1 dashboard's `<GoldCalculator>`, and Phase 2's `<StockForm>` /
+`<BarcodeSelectionGrid>`) precisely because it's a runtime-only failure.
+The fix is always the same: convert every `Decimal` to a `string` (via
+`.toString()`, or a dedicated mapper like
+`toEditableStockItem()` in `inventory-item.service.ts`) *before* the value
+crosses into a Client Component, never after. Passing a `Decimal` into
+another **Server** Component (e.g. `GoldRateSummary`, `StockHistoryTimeline`,
+the print sheets) is fine — the restriction only applies at the
+Server → Client boundary. When adding a new client component that takes a
+Prisma row as a prop, check this first.

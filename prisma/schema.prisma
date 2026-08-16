@@ -72,10 +72,13 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  role             Role            @relation(fields: [roleId], references: [id], onDelete: Restrict)
-  goldRatesCreated GoldRate[]
-  settingsUpdated  SystemSetting[]
-  auditLogs        AuditLog[]
+  role                  Role            @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  goldRatesCreated      GoldRate[]
+  settingsUpdated       SystemSetting[]
+  auditLogs             AuditLog[]
+  productsCreated       Product[]
+  inventoryItemsCreated InventoryItem[]
+  stockMovements        StockMovement[]
 
   @@index([roleId])
   @@map("users")
@@ -107,7 +110,8 @@ model GoldRate {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
-  createdBy User @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  createdBy              User            @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  inventoryItemSnapshots InventoryItem[]
 
   @@index([businessDate])
   @@index([businessDate, purity, createdAt])
@@ -145,6 +149,14 @@ enum AuditAction {
   SETTINGS_CHANGED
   USER_CREATED
   ROLE_CHANGED
+  CATEGORY_CREATED
+  STOCK_CREATED
+  STOCK_UPDATED
+  STOCK_STATUS_CHANGED
+  STOCK_ARCHIVED
+  FINANCIAL_FIELDS_CHANGED
+  BARCODE_GENERATED
+  BARCODE_PRINTED
 }
 
 model AuditLog {
@@ -163,4 +175,184 @@ model AuditLog {
   @@index([entity, entityId])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2 — Inventory, Stock & ZJ Barcode System
+// ---------------------------------------------------------------------------
+
+/// Mirrors the WastageType union in src/types/gold.ts — kept in sync by hand
+/// since the calculation engine's TS types are provider-agnostic on purpose.
+enum WastageType {
+  PERCENTAGE
+  FIXED_GRAMS
+}
+
+enum StockStatus {
+  IN_STOCK
+  RESERVED
+  SOLD
+  RETURNED
+  DAMAGED
+  LOST
+}
+
+enum StockMovementType {
+  STOCK_CREATED
+  STOCK_UPDATED
+  STOCK_RESERVED
+  STOCK_SOLD
+  STOCK_RETURNED
+  STOCK_ADJUSTED
+  STOCK_DAMAGED
+  STOCK_LOST
+  STOCK_ARCHIVED
+}
+
+model ProductCategory {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String   @unique
+  description String?
+  /// Seeded default categories — not protected from renaming, but the seed
+  /// never re-creates one that was deliberately removed.
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  products Product[]
+
+  @@map("product_categories")
+}
+
+/// A jewelry "design" — the reusable descriptive catalog entry. Physical,
+/// individually-weighed pieces of this design are InventoryItem rows; most
+/// designs have exactly one, but the model doesn't assume that (a design
+/// can have several physical units in stock at once, each with its own
+/// weight, barcode, cost, and status, since no two jewelry pieces weigh
+/// exactly the same).
+model Product {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String
+  categoryId   String   @db.Uuid
+  subcategory  String?
+  designNumber String?
+  supplier     String?
+  karigar      String?
+  imageUrl     String?
+  notes        String?
+  createdById  String   @db.Uuid
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  category  ProductCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  createdBy User            @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  items     InventoryItem[]
+
+  @@index([categoryId])
+  @@index([designNumber])
+  @@index([supplier])
+  @@index([karigar])
+  @@map("products")
+}
+
+/// One physical, barcoded jewelry piece. This is the "stock" record the
+/// spec refers to — weight, purity, wastage, a snapshot of the gold rate
+/// used to cost it, charges, computed cost/pricing, and status all live
+/// here. Never hard-deleted; see `archivedAt`.
+model InventoryItem {
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productId String @db.Uuid
+
+  purity         GoldPurity
+  netWeight      Decimal     @db.Decimal(10, 3)
+  wastageType    WastageType
+  wastagePercent Decimal?    @db.Decimal(6, 3)
+  wastageWeight  Decimal     @db.Decimal(10, 3)
+  grossWeight    Decimal     @db.Decimal(10, 3)
+
+  /// Snapshot of the gold rate actually used to cost this item — preserved
+  /// forever, independent of how the daily rate moves afterward. See
+  /// GOLD-RATE-ENGINE.md and INVENTORY.md "Gold rate snapshot".
+  goldRatePerGram  Decimal @db.Decimal(14, 2)
+  /// Optional provenance link to the GoldRate row this snapshot was read
+  /// from, when the submitted rate matched today's effective rate exactly.
+  /// Never the source of truth for the price — goldRatePerGram is.
+  goldRateSourceId String? @db.Uuid
+  goldValue        Decimal @db.Decimal(14, 2)
+
+  makingCharge  Decimal @default(0) @db.Decimal(14, 2)
+  stoneCharge   Decimal @default(0) @db.Decimal(14, 2)
+  diamondCharge Decimal @default(0) @db.Decimal(14, 2)
+  otherCharge   Decimal @default(0) @db.Decimal(14, 2)
+  totalCost     Decimal @db.Decimal(14, 2)
+
+  sellingPrice        Decimal @db.Decimal(14, 2)
+  expectedProfit      Decimal @db.Decimal(14, 2)
+  profitMarginPercent Decimal @db.Decimal(7, 2)
+
+  status     StockStatus @default(IN_STOCK)
+  /// Soft-delete/archive marker. Null = active. Archived items keep their
+  /// barcode, history, and audit records forever — the barcode is never
+  /// reused.
+  archivedAt DateTime?
+
+  createdById String   @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  product        Product         @relation(fields: [productId], references: [id], onDelete: Restrict)
+  createdBy      User            @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  goldRateSource GoldRate?       @relation(fields: [goldRateSourceId], references: [id], onDelete: SetNull)
+  barcode        Barcode?
+  movements      StockMovement[]
+
+  @@index([productId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([archivedAt])
+  @@map("inventory_items")
+}
+
+/// The ZJ identifier. `sequence` is a database-generated autoincrement —
+/// Postgres guarantees it is unique and monotonically increasing even under
+/// concurrent inserts, and a value is never reused (Postgres sequences
+/// don't roll back on a failed/aborted transaction). The human-readable
+/// "ZJ-000001" code and the CODE128 scan payload are both derived from this
+/// same integer at render time (src/lib/barcode-code.ts) — there is
+/// deliberately only one identifier, shown two ways.
+model Barcode {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sequence        Int       @unique @default(autoincrement())
+  inventoryItemId String    @unique @db.Uuid
+  printCount      Int       @default(0)
+  lastPrintedAt   DateTime?
+  createdAt       DateTime  @default(now())
+
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
+
+  @@map("barcodes")
+}
+
+/// Append-only movement ledger for a single InventoryItem — the audit trail
+/// that will later connect to POS/Sales (reservations, sales, returns).
+model StockMovement {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  inventoryItemId String            @db.Uuid
+  movementType    StockMovementType
+  previousStatus  StockStatus?
+  newStatus       StockStatus?
+  weight          Decimal?          @db.Decimal(10, 3)
+  notes           String?
+  /// Structured context — e.g. { changes: { sellingPrice: { before, after } } }
+  /// for an edit, never secrets.
+  metadata        Json?
+  userId          String?           @db.Uuid
+  createdAt       DateTime          @default(now())
+
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
+  user          User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([inventoryItemId])
+  @@index([createdAt])
+  @@map("stock_movements")
 }

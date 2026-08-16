@@ -25,6 +25,43 @@ const PERMISSION_CATALOG: { key: string; module: string; description: string }[]
     description: "Manage business settings.",
   },
   { key: PERMISSIONS.USER_MANAGE, module: "USER", description: "Manage staff accounts." },
+  {
+    key: PERMISSIONS.INVENTORY_VIEW,
+    module: "INVENTORY",
+    description: "View inventory and stock.",
+  },
+  {
+    key: PERMISSIONS.INVENTORY_MANAGE,
+    module: "INVENTORY",
+    description: "Create, edit, and archive stock.",
+  },
+  {
+    key: PERMISSIONS.CATEGORY_MANAGE,
+    module: "INVENTORY",
+    description: "Create and manage product categories.",
+  },
+  {
+    key: PERMISSIONS.BARCODE_PRINT,
+    module: "INVENTORY",
+    description: "Print ZJ barcode labels.",
+  },
+];
+
+const DEFAULT_CATEGORIES = [
+  "Rings",
+  "Necklaces",
+  "Bangles",
+  "Bracelets",
+  "Earrings",
+  "Chains",
+  "Pendants",
+  "Sets",
+  "Nose Pins",
+  "Boys/Men Jewelry",
+  "Girls/Women Jewelry",
+  "Diamond Jewelry",
+  "Silver Jewelry",
+  "Other",
 ];
 
 async function main() {
@@ -100,6 +137,15 @@ async function main() {
     update: {},
     create: { key: "business.currency", value: "PKR" },
   });
+
+  console.log("Seeding default product categories...");
+  for (const name of DEFAULT_CATEGORIES) {
+    await prisma.productCategory.upsert({
+      where: { name },
+      update: {},
+      create: { name, isSystem: true },
+    });
+  }
 
   console.log("\nSeed complete.");
   console.log(`Owner login: ${ownerEmail} / ${ownerPassword}`);

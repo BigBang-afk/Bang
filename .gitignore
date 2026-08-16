@@ -47,6 +47,9 @@ next-env.d.ts
 
 /src/generated/prisma
 
+# User-uploaded product photos (local filesystem storage — see INVENTORY.md)
+/public/uploads
+
 # Prisma CLI's auto-installed cross-tool skill docs (regenerate with `npx prisma init`)
 /.agents
 /.claude
