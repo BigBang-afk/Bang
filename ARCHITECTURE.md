@@ -58,9 +58,13 @@ Each service owns one concern:
   pricing preview for the New Sale screen. Wraps `sale-pricing.service.ts`
   but reports invalid lines inline instead of throwing, since a cart is
   normal to be mid-edit. See `SALES.md` "Live pricing preview".
-- `customer.service.ts` *(Phase 3)* — minimal customer search/create and
-  outstanding-balance tracking. Deliberately not a CRM — see `SALES.md`.
-- `sale-transaction.service.ts` *(Phase 3)* — `completeSale()`, the core POS
+- `customer.service.ts` *(Phase 3, extended Phase 4)* — customer identity
+  CRUD, search, duplicate detection, and the All Customers list (a raw-SQL
+  aggregate query — see "Raw SQL for aggregate customer stats" below).
+  Started in Phase 3 as a minimal POS picker; Phase 4 extends the same file
+  rather than replacing it, since POS still depends on it unchanged. See
+  `CUSTOMER-CRM.md`.
+- `sale-transaction.service.ts` *(Phase 3, ledger wiring added Phase 4)* — `completeSale()`, the core POS
   engine: validates the cart, customer, discounts, and payments; then opens
   one `$transaction` that atomically re-checks and flips each item's status
   IN_STOCK → SOLD, writes the `Sale`/`SaleItem`/`Payment`/`Invoice` rows, and
@@ -71,6 +75,26 @@ Each service owns one concern:
   `requestReturn()` (no inventory side effect) and `approveReturn()` (the
   only path that moves inventory SOLD → RETURNED, atomically with the
   `Return` and `Sale` status updates). See `SALES.md` "Returns foundation".
+- `customer-ledger.service.ts` *(Phase 4)* — `appendCustomerLedgerEntry()`,
+  the single write path for `Customer.outstandingBalance` and every
+  `CustomerLedgerEntry` row; also the company-wide ledger read model and
+  `reconcileCustomerBalance()`. See `CUSTOMER-LEDGER.md`.
+- `customer-payment.service.ts` *(Phase 4)* — `recordCustomerPayment()`,
+  the "Receive Customer Payment" transaction: validates the amount and
+  overpayment policy, then writes a `CustomerPayment` row and a ledger
+  entry together. See `CUSTOMER-LEDGER.md` "Payment transaction".
+- `customer-notes.service.ts` *(Phase 4)* — structured, multi-entry note
+  history — an edit never overwrites a previous note.
+- `customer-preference.service.ts` *(Phase 4)* — business preferences
+  (preferred purity/metal/categories/price range/contact method).
+- `customer-activity.service.ts` *(Phase 4)* — the profile page's Activity
+  tab, composed from the existing `AuditLog` architecture rather than a
+  parallel event table — see "Reusing AuditLog for customer activity" below.
+- `customer-analytics.service.ts` *(Phase 4)* — lifetime value, the
+  centralized segmentation rule set (`computeCustomerSegments()` — the only
+  place VIP/inactive/high-value/etc. logic is allowed to live), dashboard
+  summary counts, and birthday/anniversary reminders. See
+  `CUSTOMER-SEGMENTS.md`.
 
 ### `src/lib/auth/`
 
@@ -164,6 +188,16 @@ because the client-side form already validated it.
   view; `sales/[id]/invoice/page.tsx` is the print-only invoice layout (same
   `print:hidden` pattern as Phase 2's barcode print pages). See `POS.md` and
   `SALES.md`.
+- `(app)/customers/` *(Phase 4)* — its own nested `layout.tsx` requires
+  `customers:view` once and renders the All Customers/Add Customer/
+  Customer Ledger/VIP Customers/Inactive Customers/Customer Segments
+  sub-nav tabs. `[id]/page.tsx` is the profile page — a Server Component
+  that pre-renders each tab's content (Overview/Purchases/Invoices/Ledger/
+  Payments/Notes/Preferences/Activity) and hands the finished JSX to a
+  small `"use client"` `<CustomerProfileTabs>` wrapper purely for tab
+  switching, so none of that data has to be re-serialized across a
+  Server→Client boundary — see "Pitfall" below for why that matters.
+  `[id]/edit/page.tsx` is the edit form. See `CUSTOMER-CRM.md`.
 
 ## Authentication design
 
@@ -217,6 +251,18 @@ Role-Based Access Control, stored in the database (`Role`, `Permission`,
   `sales:view` can *request* a return (see `SALES.md`), but approving one
   (the step that actually moves inventory) needs the stronger grant. `OWNER`
   bypasses all three, same as every other module.
+- Phase 4 adds 8 `customers:*` permissions — `view`, `create`, `manage`,
+  `notes`, `ledger`, `payment`, `export`, `segments` — deliberately more
+  granular than Phase 2/3's 2-3 keys per module, because the spec's role
+  matrix (CASHIER can create a customer and add notes but not edit one;
+  ACCOUNTANT owns the ledger and payments; MARKETING_MANAGER owns
+  segmentation; only OWNER/ADMIN export) genuinely needs that many distinct
+  boundaries to express without collapsing two different staff
+  responsibilities into one permission. Only `OWNER`/`ADMIN` are seeded
+  with grants today (see "Known limitations" in `README.md`), but the keys
+  themselves already encode each future role's intended boundary — wiring
+  them up is a data change, not a code change, once a role-management UI
+  exists.
 
 ## Settings as data — discount limits & tax *(Phase 3)*
 
@@ -237,6 +283,61 @@ Two more policies that must never be hardcoded live in the same
 Both are read fresh on every `completeSale()` call and every live preview —
 never cached in a session or baked into a JWT — so an owner's change takes
 effect on the very next sale.
+
+## Settings as data — VIP threshold, inactivity, overpayment *(Phase 4)*
+
+Three more `SystemSetting` keys, same pattern: `customer.vip_spending_threshold`
+(default 2,000,000), `customer.inactivity_days` (default 90), and
+`customer.overpayment_allowed` (default `"false"`). `customer-analytics.service.ts`
+and `customer-payment.service.ts` read these fresh on every call — an owner
+tuning the VIP bar or the inactivity window takes effect immediately,
+everywhere, with no cache to invalidate. See `CUSTOMER-SEGMENTS.md`.
+
+## The ledger primitive — one write path, everywhere *(Phase 4)*
+
+`appendCustomerLedgerEntry(tx, input)` (`customer-ledger.service.ts`) is the
+**only** code allowed to change `Customer.outstandingBalance`. It does one
+atomic `UPDATE customers SET "outstandingBalance" = "outstandingBalance" +
+delta ... RETURNING "outstandingBalance"` — a single SQL statement, so
+Postgres's row lock serializes two concurrent writers to the same customer
+(a credit sale and a payment landing at the same instant, say) without any
+application-level locking — then creates the `CustomerLedgerEntry` row with
+the exact balance the UPDATE just returned as `balanceAfter`. Both
+`completeSale()` (Phase 3, wired to the ledger in Phase 4) and
+`recordCustomerPayment()` call this same function inside their own
+transaction; neither ever touches the `outstandingBalance` column directly.
+This is what makes the cached balance and the ledger provably unable to
+drift apart — see `CUSTOMER-LEDGER.md`.
+
+## Raw SQL for aggregate customer stats *(Phase 4)*
+
+Total spending, purchase count, and last-purchase date are **not** cached
+columns on `Customer` — they're computed live, on every read, via a
+parameterized `Prisma.sql` join against `sales` (excluding `RETURNED`
+sales). This is deliberate: a cached "total spending" column would need
+`approveReturn()` (Phase 3) to reach back and decrement it, and Phase 3's
+returns foundation was explicitly built to *not* grow that kind of
+cross-module coupling yet. A live aggregate is automatically correct
+whenever a sale's status changes for any reason, present or future, with
+nothing to keep in sync. Every dynamic filter/sort value in
+`listCustomers()`, `listVipCustomers()`, `listInactiveCustomers()`, and
+`getSegmentCounts()` is passed through `Prisma.sql`/`Prisma.join` as a
+bound parameter — never string-interpolated — so this stays injection-safe
+despite being raw SQL. Customer counts at a single jewelry store's scale
+make a full live join completely fine performance-wise; this is not a
+pattern to reach for by default at a larger scale. See `CUSTOMER-CRM.md`
+"Why spending isn't cached".
+
+## Reusing AuditLog for customer activity *(Phase 4)*
+
+The profile page's Activity tab does not introduce a parallel
+"CustomerEvent" table — it queries the existing `AuditLog` two ways: rows
+logged directly against the customer (`entity = "Customer"`, `"CustomerNote"`,
+or `"CustomerPayment"`, `entityId = customerId`), plus rows logged against
+any `Sale`/`Invoice` the customer made (matched via that customer's own
+sale IDs, since a `SALE_COMPLETED` or `INVOICE_GENERATED` entry is written
+against the `Sale`, not the `Customer` — see `SALES.md`). One audit
+architecture, two read shapes, no new write path.
 
 ## Precision & money handling
 

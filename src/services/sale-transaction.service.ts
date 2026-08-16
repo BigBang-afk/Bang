@@ -1,7 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/db/prisma";
 import { recordStockMovement } from "@/services/stock-movement.service";
-import { increaseCustomerOutstandingBalance } from "@/services/customer.service";
+import { appendCustomerLedgerEntry } from "@/services/customer-ledger.service";
 import { getMaxDiscountPercentForRole, getTaxSettings } from "@/services/sales-settings.service";
 import { writeAuditLog } from "@/services/audit.service";
 import { formatBarcodeCode } from "@/lib/barcode-code";
@@ -194,12 +194,33 @@ export async function completeSale(
       });
     }
 
-    if (input.customerId && paymentSummary.balanceAmount.gt(0)) {
-      await increaseCustomerOutstandingBalance(
-        tx,
-        input.customerId,
-        paymentSummary.balanceAmount.toString(),
-      );
+    // A sale associated with a customer always posts to their ledger — a
+    // SALE debit for the full grand total, and a PAYMENT credit for
+    // whatever was actually paid at checkout — even when the sale is paid
+    // in full (netting to a zero balance change) and even for a walk-in
+    // sale with no customer (which never touches the ledger at all,
+    // since it has no customerId). See CUSTOMER-LEDGER.md "Ledger logic".
+    if (input.customerId) {
+      await appendCustomerLedgerEntry(tx, {
+        customerId: input.customerId,
+        transactionType: "SALE",
+        referenceType: "Sale",
+        referenceId: sale.id,
+        debit: totals.grandTotal.toString(),
+        description: "Sale",
+        createdById: actingUser.id,
+      });
+      if (paymentSummary.paidAmount.gt(0)) {
+        await appendCustomerLedgerEntry(tx, {
+          customerId: input.customerId,
+          transactionType: "PAYMENT",
+          referenceType: "Sale",
+          referenceId: sale.id,
+          credit: paymentSummary.paidAmount.toString(),
+          description: "Payment at checkout",
+          createdById: actingUser.id,
+        });
+      }
     }
 
     const invoice = await tx.invoice.create({ data: { saleId: sale.id } });

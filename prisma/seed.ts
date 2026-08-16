@@ -57,6 +57,38 @@ const PERMISSION_CATALOG: { key: string; module: string; description: string }[]
     module: "SALES",
     description: "Approve a return and move inventory back to Returned.",
   },
+  { key: PERMISSIONS.CUSTOMERS_VIEW, module: "CUSTOMERS", description: "Search and view customers." },
+  {
+    key: PERMISSIONS.CUSTOMERS_CREATE,
+    module: "CUSTOMERS",
+    description: "Create new customer records.",
+  },
+  {
+    key: PERMISSIONS.CUSTOMERS_MANAGE,
+    module: "CUSTOMERS",
+    description: "Edit, archive, and change the status/type of existing customers.",
+  },
+  { key: PERMISSIONS.CUSTOMERS_NOTES, module: "CUSTOMERS", description: "Add customer notes." },
+  {
+    key: PERMISSIONS.CUSTOMERS_LEDGER,
+    module: "CUSTOMERS",
+    description: "View the customer financial ledger.",
+  },
+  {
+    key: PERMISSIONS.CUSTOMERS_PAYMENT,
+    module: "CUSTOMERS",
+    description: "Record a customer payment against their outstanding balance.",
+  },
+  {
+    key: PERMISSIONS.CUSTOMERS_EXPORT,
+    module: "CUSTOMERS",
+    description: "Export customer data to CSV.",
+  },
+  {
+    key: PERMISSIONS.CUSTOMERS_SEGMENTS,
+    module: "CUSTOMERS",
+    description: "View VIP/inactive/segment analytics.",
+  },
 ];
 
 const DEFAULT_CATEGORIES = [
@@ -175,6 +207,35 @@ async function main() {
     create: {
       key: SETTINGS_KEYS.INVOICE_FOOTER_TEXT,
       value: "Thank you for shopping with Zarghoon Jewellers.",
+    },
+  });
+
+  console.log("Seeding customer CRM settings...");
+  await prisma.systemSetting.upsert({
+    where: { key: SETTINGS_KEYS.VIP_SPENDING_THRESHOLD },
+    update: {},
+    create: {
+      key: SETTINGS_KEYS.VIP_SPENDING_THRESHOLD,
+      value: "2000000",
+      description: "Total lifetime spending at/above which a customer earns the VIP badge.",
+    },
+  });
+  await prisma.systemSetting.upsert({
+    where: { key: SETTINGS_KEYS.CUSTOMER_INACTIVITY_DAYS },
+    update: {},
+    create: {
+      key: SETTINGS_KEYS.CUSTOMER_INACTIVITY_DAYS,
+      value: "90",
+      description: "Days since a customer's last completed purchase before they're considered inactive.",
+    },
+  });
+  await prisma.systemSetting.upsert({
+    where: { key: SETTINGS_KEYS.CUSTOMER_OVERPAYMENT_ALLOWED },
+    update: {},
+    create: {
+      key: SETTINGS_KEYS.CUSTOMER_OVERPAYMENT_ALLOWED,
+      value: "false",
+      description: "Whether a customer payment may exceed their current outstanding balance.",
     },
   });
 

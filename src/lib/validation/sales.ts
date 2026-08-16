@@ -31,27 +31,34 @@ export const completeSaleSchema = z.object({
   clientRequestId: z.string().trim().max(100).optional(),
 });
 
-export const createCustomerSchema = z.object({
-  name: z.string().trim().min(1, "Customer name is required.").max(200),
-  phone: z
+const phoneField = z
+  .string()
+  .trim()
+  .min(6, "Enter a valid phone number.")
+  .max(30, "Enter a valid phone number.")
+  .regex(/^[0-9+\-\s()]+$/, "Enter a valid phone number.");
+
+const emailField = z
+  .string()
+  .trim()
+  .max(200)
+  .optional()
+  .or(z.literal("").transform(() => undefined))
+  .refine((v) => v === undefined || z.email().safeParse(v).success, "Enter a valid email address.");
+
+/** The POS "add new customer" quick-create dialog — minimal fields only.
+ * The full Add Customer form (more fields) has its own schema in
+ * validation/customers.ts. */
+export const quickCreateCustomerSchema = z.object({
+  firstName: z.string().trim().min(1, "First name is required.").max(120),
+  lastName: z
     .string()
     .trim()
-    .min(6, "Enter a valid phone number.")
-    .max(30, "Enter a valid phone number.")
-    .regex(/^[0-9+\-\s()]+$/, "Enter a valid phone number."),
-  email: z
-    .string()
-    .trim()
-    .max(200)
-    .optional()
-    .or(z.literal("").transform(() => undefined))
-    .refine((v) => v === undefined || z.email().safeParse(v).success, "Enter a valid email address."),
-  notes: z
-    .string()
-    .trim()
-    .max(2000)
+    .max(120)
     .optional()
     .or(z.literal("").transform(() => undefined)),
+  phone: phoneField,
+  email: emailField,
 });
 
 export const customerSearchSchema = z.object({

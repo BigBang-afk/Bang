@@ -147,28 +147,28 @@ function CreateCustomerDialog({
   onOpenChange: (open: boolean) => void;
   onCreated: (customer: CustomerSearchResult) => void;
 }) {
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [pending, startTransition] = useTransition();
 
   function handleSubmit() {
     startTransition(async () => {
-      const result = await createCustomerAction({ name, phone, email: email || undefined });
+      const result = await createCustomerAction({
+        firstName,
+        lastName: lastName || undefined,
+        phone,
+        email: email || undefined,
+      });
       if (!result.ok) {
         toast.error(result.error);
         return;
       }
       toast.success("Customer added.");
-      onCreated({
-        id: result.data.id,
-        name,
-        phone,
-        email: email || null,
-        outstandingBalance: "0",
-        purchaseCount: 0,
-      });
-      setName("");
+      onCreated(result.data);
+      setFirstName("");
+      setLastName("");
       setPhone("");
       setEmail("");
     });
@@ -182,9 +182,15 @@ function CreateCustomerDialog({
           <DialogDescription>A minimal record for this sale — full CRM comes later.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-3">
-          <div className="grid gap-1.5">
-            <Label htmlFor="customer-name">Name</Label>
-            <Input id="customer-name" value={name} onChange={(e) => setName(e.target.value)} />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="customer-first-name">First name</Label>
+              <Input id="customer-first-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="customer-last-name">Last name (optional)</Label>
+              <Input id="customer-last-name" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+            </div>
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="customer-phone">Phone</Label>
@@ -199,7 +205,7 @@ function CreateCustomerDialog({
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={pending || !name.trim() || !phone.trim()}>
+          <Button onClick={handleSubmit} disabled={pending || !firstName.trim() || !phone.trim()}>
             {pending ? "Adding..." : "Add customer"}
           </Button>
         </DialogFooter>

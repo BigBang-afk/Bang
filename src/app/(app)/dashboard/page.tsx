@@ -1,14 +1,20 @@
-import { TrendingUp, Coins, Users, ArrowDownToLine, ArrowUpFromLine, Boxes, Wallet, TrendingUp as ProfitIcon } from "lucide-react";
+import { TrendingUp, Coins, Users, ArrowDownToLine, ArrowUpFromLine, Boxes, Wallet, UserCheck, Crown, UserX, Cake, HeartHandshake, TrendingUp as ProfitIcon } from "lucide-react";
 import { requireUser } from "@/lib/auth/dal";
 import { prisma } from "@/lib/db/prisma";
 import { getEffectiveRatesForDate, getTodayBusinessDate } from "@/services/gold-rate.service";
 import { calculateGoldValue } from "@/services/gold-calculation.service";
 import { getInventorySummary } from "@/services/inventory-item.service";
+import {
+  getCustomerDashboardSummary,
+  getUpcomingBirthdays,
+  getUpcomingAnniversaries,
+} from "@/services/customer-analytics.service";
 import { formatDate, formatCurrency } from "@/lib/format";
 import { GoldRateSummary } from "@/components/dashboard/gold-rate-summary";
 import { SystemStatus, type SystemStatusItem } from "@/components/dashboard/system-status";
 import { FutureMetricCard } from "@/components/dashboard/future-metric-card";
 import { RealMetricCard } from "@/components/dashboard/real-metric-card";
+import { UpcomingDatesWidget } from "@/components/customers/upcoming-dates-widget";
 import { GoldCalculator } from "@/components/calculator/gold-calculator";
 
 export const metadata = {
@@ -41,11 +47,15 @@ export default async function DashboardPage() {
   const user = await requireUser();
   const businessDate = getTodayBusinessDate();
 
-  const [rates, dbHealthy, inventorySummary] = await Promise.all([
-    getEffectiveRatesForDate(businessDate),
-    checkDatabase(),
-    getInventorySummary(),
-  ]);
+  const [rates, dbHealthy, inventorySummary, customerSummary, upcomingBirthdays, upcomingAnniversaries] =
+    await Promise.all([
+      getEffectiveRatesForDate(businessDate),
+      checkDatabase(),
+      getInventorySummary(),
+      getCustomerDashboardSummary(),
+      getUpcomingBirthdays(30),
+      getUpcomingAnniversaries(30),
+    ]);
 
   const statusItems: SystemStatusItem[] = [
     { label: "Database", operational: dbHealthy, detail: "PostgreSQL connection" },
@@ -92,13 +102,45 @@ export default async function DashboardPage() {
 
       <div>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Customers
+        </h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <RealMetricCard icon={Users} label="Total Customers" value={customerSummary.totalCustomers.toLocaleString()} href="/customers" />
+          <RealMetricCard icon={UserCheck} label="Active" value={customerSummary.active.toLocaleString()} href="/customers?status=ACTIVE" />
+          <RealMetricCard icon={Crown} label="VIP" value={customerSummary.vip.toLocaleString()} href="/customers/vip" />
+          <RealMetricCard icon={UserX} label="Inactive" value={customerSummary.inactive.toLocaleString()} href="/customers/inactive" />
+          <RealMetricCard
+            icon={ArrowDownToLine}
+            label="With Outstanding Balance"
+            value={customerSummary.withOutstandingBalance.toLocaleString()}
+            href="/customers/ledger"
+          />
+          <RealMetricCard icon={Users} label="New This Month" value={customerSummary.newThisMonth.toLocaleString()} href="/customers" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <UpcomingDatesWidget
+          icon={Cake}
+          title="Upcoming Birthdays"
+          entries={upcomingBirthdays}
+          emptyMessage="No birthdays on file in the next 30 days."
+        />
+        <UpcomingDatesWidget
+          icon={HeartHandshake}
+          title="Upcoming Anniversaries"
+          entries={upcomingAnniversaries}
+          emptyMessage="No anniversaries on file in the next 30 days."
+        />
+      </div>
+
+      <div>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Coming in upcoming phases
         </h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           <FutureMetricCard icon={TrendingUp} label="Today's Sales" />
           <FutureMetricCard icon={Coins} label="Gold Sold" />
-          <FutureMetricCard icon={Users} label="Customers" />
-          <FutureMetricCard icon={ArrowDownToLine} label="Receivables" />
           <FutureMetricCard icon={ArrowUpFromLine} label="Payables" />
         </div>
       </div>

@@ -33,7 +33,9 @@ for the `decimal.js` policy — including the Server→Client Component
 serialization pitfall it causes (`Decimal` values can't be passed directly
 into a `"use client"` component). Every Phase 3 money column on `Sale`,
 `SaleItem`, `Payment`, and `Customer.outstandingBalance` follows the same
-`Decimal(14, 2)` rule.
+`Decimal(14, 2)` rule, as do every Phase 4 money column: `CustomerPayment.amount`,
+`CustomerLedgerEntry.debit`/`credit`/`balanceAfter`, and
+`CustomerPreference.preferredPriceRangeMin`/`Max`.
 
 ## Entities
 
@@ -124,6 +126,15 @@ Phase 3 adds `SALE_COMPLETED`, `DISCOUNT_APPLIED`, `PAYMENT_CREATED`,
 `RETURN_REQUESTED`, `RETURN_APPROVED`, and `CUSTOMER_CREATED` — same table
 again.
 
+Phase 4 adds `CUSTOMER_UPDATED`, `CUSTOMER_ARCHIVED`,
+`CUSTOMER_STATUS_CHANGED`, `CUSTOMER_TYPE_CHANGED`,
+`CUSTOMER_PAYMENT_RECEIVED`, `CUSTOMER_NOTE_CREATED`,
+`CUSTOMER_NOTE_UPDATED`, `CUSTOMER_LEDGER_ADJUSTED`, `CUSTOMER_EXPORTED`,
+and `VIP_SETTING_CHANGED` — same table again. The customer activity timeline
+(`CUSTOMER-CRM.md`) reads this table directly rather than a parallel
+"CustomerEvent" table — see ARCHITECTURE.md "Reusing AuditLog for customer
+activity".
+
 ### `ProductCategory` *(Phase 2)*
 
 | Column        | Type        | Notes                                    |
@@ -209,22 +220,114 @@ Append-only ledger — the audit trail that will connect to POS/Sales.
 
 Indexed on `inventoryItemId`, `createdAt`.
 
-### `Customer` *(Phase 3)*
+### `Customer` *(Phase 3, extended Phase 4)*
 
-Deliberately minimal — see `SALES.md` for why this isn't a CRM table.
+Started minimal in Phase 3 (see `SALES.md`); Phase 4 extends the same table
+with full profile fields rather than replacing it, since POS/Sales still
+depend on the original columns (`name`, `phone`, `email`,
+`outstandingBalance`, `notes`) unchanged.
 
 | Column               | Type        | Notes                                    |
 | -------------------- | ----------- | ------------------------------------------ |
 | `id`                 | uuid (PK)   |                                            |
-| `name`               | text        |                                            |
-| `phone`              | text, unique | search key; also prevents duplicate walk-in records |
+| `customerCode`       | `Int`, unique, `@default(autoincrement())` | the real identity — Postgres-native, race-free, exactly the `Barcode`/`Invoice` pattern. "ZJC-000001" is *derived* from it at read time (`src/lib/customer-code.ts`), never stored redundantly *(Phase 4)* |
+| `name`               | text        | Phase 3 canonical display name — always kept in sync with `firstName`/`lastName` at create/update time |
+| `firstName` / `lastName` | text, nullable *(Phase 4)* | collected separately in the UI, combined into `name` |
+| `phone`              | text, unique | search key; also prevents duplicate walk-in records; the one hard duplicate constraint (see `CUSTOMER-CRM.md` "Duplicate detection") |
+| `secondaryPhone`     | text, nullable *(Phase 4)* | soft duplicate-match signal only, not unique |
 | `email`              | text, nullable |                                          |
-| `outstandingBalance` | `Decimal(14,2)`, default 0 | running total of unpaid credit sales — increment-only in Phase 3, see "Customer credit" in `SALES.md` |
-| `notes`              | text, nullable |                                          |
+| `address` / `city`   | text, nullable *(Phase 4)* |                            |
+| `dateOfBirth` / `anniversaryDate` | `date`, nullable *(Phase 4)* | see `CUSTOMER-CRM.md` "Birthday / anniversary" |
+| `gender`             | text, nullable *(Phase 4)* | freeform, optional, never used in any business rule |
+| `preferredLanguage`  | text, nullable *(Phase 4)* |                            |
+| `customerType`       | enum `CustomerType` (`REGULAR`, `VIP`, `WHOLESALE`, `CORPORATE`), default `REGULAR` *(Phase 4)* | manually set; never auto-changed by the VIP spending threshold — see `CUSTOMER-SEGMENTS.md` |
+| `status`             | enum `CustomerStatus` (`ACTIVE`, `INACTIVE`, `BLOCKED`), default `ACTIVE` *(Phase 4)* | account status — orthogonal to the computed "Inactive Customers" marketing segment, see `CUSTOMER-SEGMENTS.md` |
+| `outstandingBalance` | `Decimal(14,2)`, default 0 | Phase 3: increment-only. Phase 4: a cache of what `CustomerLedgerEntry.balanceAfter` sums to, updated exclusively by `appendCustomerLedgerEntry` in the same transaction as the ledger row — see `CUSTOMER-LEDGER.md` |
+| `notes`              | text, nullable | Phase 3 single free-text field, superseded for ongoing use by the multi-entry `CustomerNote` table below (kept for backward compatibility, not written to by the Phase 4 UI) |
 | `createdById`        | uuid (FK → User, `onDelete: Restrict`) |                    |
 | `createdAt` / `updatedAt` | timestamp |                              |
 
-Indexed on `phone`, `name`.
+Indexed on `phone`, `name`, and, added in Phase 4, `city`, `customerType`,
+`status`, `createdAt` (all filters `listCustomers()` supports — see
+`CUSTOMER-CRM.md`).
+
+### `CustomerNote` *(Phase 4)*
+
+Multi-entry, append-in-spirit — a note is never silently overwritten by a
+newer one; each stays its own row and can only be edited (never deleted),
+each edit re-auditing `CUSTOMER_NOTE_UPDATED`.
+
+| Column        | Type        | Notes                                    |
+| ------------- | ----------- | ------------------------------------------ |
+| `id`          | uuid (PK)   |                                            |
+| `customerId`  | uuid (FK → Customer, `onDelete: Cascade`) |               |
+| `note`        | text        |                                          |
+| `createdById` | uuid (FK → User, `onDelete: Restrict`) |                    |
+| `createdAt` / `updatedAt` | timestamp |                              |
+
+Indexed on `customerId`.
+
+### `CustomerPreference` *(Phase 4)*
+
+1:1 with `Customer`. Jewelry-specific business preferences — deliberately
+not a sensitive-profiling table, see `CUSTOMER-CRM.md` "Privacy".
+
+| Column                   | Type        | Notes                                  |
+| ------------------------ | ----------- | ------------------------------------------ |
+| `id`                     | uuid (PK)   |                                            |
+| `customerId`             | uuid, unique (FK → Customer, `onDelete: Cascade`) | 1:1 |
+| `preferredCategories`    | `text[]`, default `[]` |                                 |
+| `preferredPurity`        | enum `GoldPurity`, nullable | shared with `GoldRate`/`InventoryItem` |
+| `preferredMetal`         | text, nullable |                                          |
+| `preferredPriceRangeMin` / `preferredPriceRangeMax` | `Decimal(14,2)`, nullable |            |
+| `preferredContactMethod` | text, nullable |                                          |
+| `notes`                  | text, nullable |                                          |
+| `updatedAt`              | timestamp   |                                            |
+
+### `CustomerLedgerEntry` *(Phase 4)*
+
+**Append-only.** The single source of truth for `Customer.outstandingBalance`
+— every row is written by exactly one function,
+`appendCustomerLedgerEntry()`. Corrections happen via a new
+`CREDIT_ADJUSTMENT`/`DEBIT_ADJUSTMENT` row, never by editing or deleting an
+existing one. See `CUSTOMER-LEDGER.md` for the full write path and worked
+examples.
+
+| Column            | Type        | Notes                                      |
+| ------------------ | ----------- | ------------------------------------------- |
+| `id`               | uuid (PK)   |                                              |
+| `customerId`       | uuid (FK → Customer, `onDelete: Restrict`) |                |
+| `transactionType`  | enum `LedgerTransactionType` (`SALE`, `PAYMENT`, `REFUND`, `CREDIT_ADJUSTMENT`, `DEBIT_ADJUSTMENT`) |  |
+| `referenceType`    | text        | polymorphic reference, e.g. `"Sale"`, `"CustomerPayment"` — same pattern as `AuditLog.entity` |
+| `referenceId`      | text        | the referenced row's id                     |
+| `debit` / `credit` | `Decimal(14,2)`, default 0 | exactly one is non-zero per entry — a debit raises the balance owed, a credit lowers it |
+| `balanceAfter`     | `Decimal(14,2)` | the customer's running balance immediately after this entry, computed atomically alongside it, never backfilled |
+| `description`      | text, nullable |                                            |
+| `createdById`      | uuid (FK → User, `onDelete: Restrict`) |                    |
+| `createdAt`        | timestamp   |                                              |
+
+Indexed on `(customerId, createdAt)` for the ledger-tab and reconciliation
+queries.
+
+### `CustomerPayment` *(Phase 4)*
+
+A standalone payment received against outstanding balance (not tied to a
+specific sale) — the "Receive Customer Payment" flow. Every row also
+produces exactly one `CustomerLedgerEntry` (`transactionType = PAYMENT`,
+`referenceType = "CustomerPayment"`) in the same transaction.
+
+| Column        | Type        | Notes                                    |
+| ------------- | ----------- | ------------------------------------------ |
+| `id`          | uuid (PK)   |                                            |
+| `customerId`  | uuid (FK → Customer, `onDelete: Restrict`) |                |
+| `amount`      | `Decimal(14,2)` |                                        |
+| `method`      | enum `PaymentMethod` (`CASH`, `CARD`, `BANK_TRANSFER`, `OTHER`, `CREDIT`) | `CREDIT` is rejected at the service layer, not the schema — see `CUSTOMER-LEDGER.md` |
+| `reference`   | text, nullable |                                          |
+| `notes`       | text, nullable |                                          |
+| `createdById` | uuid (FK → User, `onDelete: Restrict`) |                    |
+| `createdAt`   | timestamp   |                                            |
+
+Indexed on `customerId`.
 
 ### `Sale` *(Phase 3)*
 
@@ -371,6 +474,14 @@ User 1---* Customer (createdBy)
 User 1---* Sale (createdBy)
 User 1---* Payment (createdBy)
 User 1---* Return (requestedBy / processedBy)
+
+Customer 1---* CustomerNote
+Customer 1---1 CustomerPreference (optional)
+Customer 1---* CustomerLedgerEntry
+Customer 1---* CustomerPayment
+User 1---* CustomerNote (createdBy)
+User 1---* CustomerLedgerEntry (createdBy)
+User 1---* CustomerPayment (createdBy)
 ```
 
 ## Regenerating / migrating

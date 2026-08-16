@@ -72,7 +72,7 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  role                  Role            @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  role                  Role                  @relation(fields: [roleId], references: [id], onDelete: Restrict)
   goldRatesCreated      GoldRate[]
   settingsUpdated       SystemSetting[]
   auditLogs             AuditLog[]
@@ -82,8 +82,11 @@ model User {
   customersCreated      Customer[]
   salesCreated          Sale[]
   paymentsCreated       Payment[]
-  returnsRequested      Return[]        @relation("ReturnRequestedBy")
-  returnsProcessed      Return[]        @relation("ReturnProcessedBy")
+  returnsRequested      Return[]              @relation("ReturnRequestedBy")
+  returnsProcessed      Return[]              @relation("ReturnProcessedBy")
+  customerNotesCreated  CustomerNote[]
+  customerPaymentsTaken CustomerPayment[]
+  ledgerEntriesCreated  CustomerLedgerEntry[]
 
   @@index([roleId])
   @@map("users")
@@ -171,6 +174,16 @@ enum AuditAction {
   RETURN_REQUESTED
   RETURN_APPROVED
   CUSTOMER_CREATED
+  CUSTOMER_UPDATED
+  CUSTOMER_ARCHIVED
+  CUSTOMER_STATUS_CHANGED
+  CUSTOMER_TYPE_CHANGED
+  CUSTOMER_PAYMENT_RECEIVED
+  CUSTOMER_NOTE_CREATED
+  CUSTOMER_NOTE_UPDATED
+  CUSTOMER_LEDGER_ADJUSTED
+  CUSTOMER_EXPORTED
+  VIP_SETTING_CHANGED
 }
 
 model AuditLog {
@@ -408,28 +421,57 @@ enum ReturnStatus {
   RETURNED
 }
 
-/// Minimal customer record — Phase 3 only needs enough to select a buyer at
-/// checkout and track what they owe. Full CRM (loyalty, communication
-/// history, segmentation, ...) is future scope; see SALES.md.
+/// Customer record. `name` (the Phase 3 field) stays the canonical display
+/// name — every Phase 3 read path (POS, invoices, sale history) already
+/// depends on it — while `firstName`/`lastName` are Phase 4 additions for
+/// structured data entry on the Add/Edit Customer form; the Add Customer
+/// action combines them into `name` at save time rather than replacing it,
+/// so nothing built in Phase 3 had to change. See CUSTOMER-CRM.md.
 model Customer {
-  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id                 String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// The real identity — a Postgres-native autoincrement column, exactly
+  /// the Barcode/Invoice pattern. "ZJC-000001" is derived from it at read
+  /// time (src/lib/customer-code.ts), never stored redundantly.
+  customerCode       Int            @unique @default(autoincrement())
   name               String
-  phone              String   @unique
+  firstName          String?
+  lastName           String?
+  phone              String         @unique
+  secondaryPhone     String?
   email              String?
-  /// Running total of unpaid balances across all sales — the Phase 4/5
-  /// customer ledger will build on this, not replace it. Never decremented
-  /// by Phase 3 (no "customer pays down credit" flow yet).
-  outstandingBalance Decimal  @default(0) @db.Decimal(14, 2)
+  address            String?
+  city               String?
+  dateOfBirth        DateTime?      @db.Date
+  anniversaryDate    DateTime?      @db.Date
+  /// Optional, freeform, never used in any business rule — see
+  /// CUSTOMER-CRM.md "Privacy".
+  gender             String?
+  preferredLanguage  String?
+  customerType       CustomerType   @default(REGULAR)
+  status             CustomerStatus @default(ACTIVE)
+  /// Running total of unpaid balances — a cache of what
+  /// CustomerLedgerEntry.balanceAfter would sum to, always updated in the
+  /// same transaction as the ledger entry that changes it. The ledger is
+  /// the source of truth; see CUSTOMER-LEDGER.md "Reconciliation".
+  outstandingBalance Decimal        @default(0) @db.Decimal(14, 2)
   notes              String?
-  createdById        String   @db.Uuid
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdById        String         @db.Uuid
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
 
-  createdBy User   @relation(fields: [createdById], references: [id], onDelete: Restrict)
-  sales     Sale[]
+  createdBy     User                  @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  sales         Sale[]
+  customerNotes CustomerNote[]
+  preference    CustomerPreference?
+  ledgerEntries CustomerLedgerEntry[]
+  payments      CustomerPayment[]
 
   @@index([phone])
   @@index([name])
+  @@index([city])
+  @@index([customerType])
+  @@index([status])
+  @@index([createdAt])
   @@map("customers")
 }
 
@@ -579,4 +621,125 @@ model Return {
 
   @@index([status])
   @@map("returns")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 4 — Customer CRM, Customer Ledger & Customer Intelligence
+// ---------------------------------------------------------------------------
+
+enum CustomerType {
+  REGULAR
+  VIP
+  WHOLESALE
+  CORPORATE
+}
+
+/// An ACCOUNT status, set deliberately by staff — distinct from the
+/// "Inactive Customers" MARKETING SEGMENT (no completed purchase in N
+/// days), which is computed, never stored, and never touches this field.
+/// See CUSTOMER-SEGMENTS.md.
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
+
+enum LedgerTransactionType {
+  SALE
+  PAYMENT
+  REFUND
+  CREDIT_ADJUSTMENT
+  DEBIT_ADJUSTMENT
+}
+
+/// Structured, multi-entry note history — separate from Customer.notes
+/// (a single freeform field carried over from Phase 3) specifically so an
+/// edit never silently overwrites what a previous staff member wrote.
+model CustomerNote {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customerId  String   @db.Uuid
+  note        String
+  createdById String   @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  customer  Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  createdBy User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([customerId])
+  @@map("customer_notes")
+}
+
+/// Business preferences, not sensitive profiling — "prefers 21K gold",
+/// "usually buys bridal sets". 1:1 with Customer, optional.
+model CustomerPreference {
+  id                     String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customerId             String      @unique @db.Uuid
+  preferredCategories    String[]    @default([])
+  preferredPurity        GoldPurity?
+  preferredMetal         String?
+  preferredPriceRangeMin Decimal?    @db.Decimal(14, 2)
+  preferredPriceRangeMax Decimal?    @db.Decimal(14, 2)
+  preferredContactMethod String?
+  notes                  String?
+  updatedAt              DateTime    @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@map("customer_preferences")
+}
+
+/// The customer financial ledger — append-only, the source of truth for
+/// Customer.outstandingBalance. Every row is written by
+/// appendCustomerLedgerEntry() (src/services/customer-ledger.service.ts)
+/// inside the same transaction as the event that caused it, so the ledger
+/// and the cached balance can never drift. `referenceType`/`referenceId`
+/// point at whatever caused the entry ("Sale", "CustomerPayment", ...) —
+/// a plain string pair, the same polymorphic-reference pattern AuditLog
+/// already uses, not a hard foreign key, since it can point at different
+/// tables. See CUSTOMER-LEDGER.md.
+model CustomerLedgerEntry {
+  id              String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customerId      String                @db.Uuid
+  transactionType LedgerTransactionType
+  referenceType   String
+  referenceId     String
+  debit           Decimal               @default(0) @db.Decimal(14, 2)
+  credit          Decimal               @default(0) @db.Decimal(14, 2)
+  /// The customer's running outstanding balance immediately after this
+  /// entry — computed atomically alongside it, never backfilled.
+  balanceAfter    Decimal               @db.Decimal(14, 2)
+  description     String?
+  createdById     String                @db.Uuid
+  createdAt       DateTime              @default(now())
+
+  customer  Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  createdBy User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([customerId, createdAt])
+  @@map("customer_ledger_entries")
+}
+
+/// A standalone payment against a customer's outstanding balance — "Receive
+/// Customer Payment" — distinct from Payment (a line item on one specific
+/// Sale at checkout). A customer payment pays down accumulated credit that
+/// may span several sales, so it isn't tied to a single saleId.
+model CustomerPayment {
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customerId  String        @db.Uuid
+  amount      Decimal       @db.Decimal(14, 2)
+  /// CREDIT is not a valid method here — you cannot "receive a credit
+  /// payment" — enforced in customer-payment.service.ts, not the schema,
+  /// to avoid a near-duplicate enum.
+  method      PaymentMethod
+  reference   String?
+  notes       String?
+  createdById String        @db.Uuid
+  createdAt   DateTime      @default(now())
+
+  customer  Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  createdBy User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([customerId])
+  @@map("customer_payments")
 }

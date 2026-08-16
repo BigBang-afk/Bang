@@ -14,10 +14,18 @@ phase by phase.
   transactional checkout with concurrency-safe inventory updates, a minimal
   walk-in/existing customer picker, professional printable + real-PDF
   invoices, sales history, and a two-step returns foundation.
+- **Phase 4: Customer CRM + Customer Ledger + Customer Intelligence** — a
+  full customer profile (contact, personal details, preferences, notes),
+  ZJC-numbered customer codes, duplicate-customer protection, an
+  append-only financial ledger that's the source of truth for outstanding
+  balances, standalone customer payments, rule-based segmentation
+  (VIP/inactive/high-value/credit/recent-buyer, all configurable), CSV
+  export, and birthday/anniversary reminders.
 
 See [`PHASE-1-STATUS.md`](./PHASE-1-STATUS.md),
-[`PHASE-2-STATUS.md`](./PHASE-2-STATUS.md), and
-[`PHASE-3-STATUS.md`](./PHASE-3-STATUS.md) for exactly what is and isn't
+[`PHASE-2-STATUS.md`](./PHASE-2-STATUS.md),
+[`PHASE-3-STATUS.md`](./PHASE-3-STATUS.md), and
+[`PHASE-4-STATUS.md`](./PHASE-4-STATUS.md) for exactly what is and isn't
 built, [`ARCHITECTURE.md`](./ARCHITECTURE.md) for how the codebase is
 organized, [`DATABASE.md`](./DATABASE.md) for the schema,
 [`GOLD-RATE-ENGINE.md`](./GOLD-RATE-ENGINE.md) for the gold pricing/weight
@@ -25,8 +33,12 @@ formulas, [`INVENTORY.md`](./INVENTORY.md) for the inventory/stock
 architecture, [`BARCODE-SYSTEM.md`](./BARCODE-SYSTEM.md) for the barcode
 system, [`POS.md`](./POS.md) for the point-of-sale screen,
 [`SALES.md`](./SALES.md) for the sale transaction/payment/returns
-architecture, and [`INVOICE-SYSTEM.md`](./INVOICE-SYSTEM.md) for invoice
-numbering, printing, and PDF generation.
+architecture, [`INVOICE-SYSTEM.md`](./INVOICE-SYSTEM.md) for invoice
+numbering, printing, and PDF generation, [`CUSTOMER-CRM.md`](./CUSTOMER-CRM.md)
+for the customer profile/notes/preferences architecture,
+[`CUSTOMER-LEDGER.md`](./CUSTOMER-LEDGER.md) for the financial ledger and
+payment workflow, and [`CUSTOMER-SEGMENTS.md`](./CUSTOMER-SEGMENTS.md) for
+the VIP/inactive/segmentation rules.
 
 ## Technology stack
 
@@ -105,6 +117,8 @@ src/
                              Categories, Barcodes, Old Stock, Movements
       pos/                   New Sale, Sales History, Sale Detail, Invoice
                              print, Returns, Invoices
+      customers/             All Customers, Add/Edit, Profile (tabs),
+                             Ledger, VIP, Inactive, Segments
     api/invoices/[id]/pdf/  Route Handler — real PDF invoice download
   components/             UI: primitives, layout, feature components
   services/               Business logic — no React, no HTTP, no Next.js APIs
@@ -126,8 +140,12 @@ e2e/                      Playwright end-to-end tests
   per-store timezone configuration yet.
 - No self-service password reset or MFA.
 - Only `OWNER` and `ADMIN` roles are seeded; the additional roles named in
-  the long-term vision (`MANAGER`, `CASHIER`, `INVENTORY_MANAGER`, etc.)
-  are modeled by the schema but not yet exposed in a role-management UI.
+  the long-term vision (`MANAGER`, `CASHIER`, `SALESPERSON`, `ACCOUNTANT`,
+  `MARKETING_MANAGER`, etc.) are modeled by the schema and every Phase 4
+  `customers:*` permission is scoped precisely to what the spec describes
+  for each of them, but no role-management UI exists yet to actually create
+  those roles and grant the permissions — see `CUSTOMER-CRM.md`
+  "Permissions".
 - Product images are stored on local disk, not object storage (see
   `INVENTORY.md`).
 - No payment gateway integrations — Phase 3 payments are recorded, not
@@ -137,14 +155,21 @@ e2e/                      Playwright end-to-end tests
   grand total.
 - WhatsApp sharing is a `wa.me` deep link the staff member sends manually;
   there is no WhatsApp Business API automation yet. See `INVOICE-SYSTEM.md`.
-- The customer credit ledger, Karigar accounting, and full customer CRM are
-  intentionally out of scope — Phase 3 only lays the transactional
-  foundation (`Customer.outstandingBalance`, `Return`) those phases build on.
-- Every module other than Dashboard, Settings, Inventory, and POS renders a
-  "coming in next phase" placeholder — no fake data, no fake functionality.
+- Karigar accounting is intentionally out of scope for Phase 4.
+- Returns are not yet wired to the customer ledger — approving a return
+  (Phase 3) does not post a `REFUND`/`CREDIT_ADJUSTMENT` entry yet; the
+  ledger schema supports it, but the spec explicitly deferred wiring it up
+  until a future phase builds the full exchange/refund workflow. See
+  `CUSTOMER-LEDGER.md` "Returns integration".
+- Birthday/anniversary reminders are dashboard widgets only — no automated
+  WhatsApp/SMS sending happens. See `CUSTOMER-CRM.md` "Birthday /
+  anniversary".
+- CSV import is prepared architecturally (a service-layer function
+  signature) but has no UI yet — see `CUSTOMER-CRM.md` "Customer import".
+- Every module other than Dashboard, Settings, Inventory, POS, and
+  Customers renders a "coming in next phase" placeholder — no fake data, no
+  fake functionality.
 
 ## Next phase
 
-See the end of `PHASE-3-STATUS.md` for the recommended Phase 4 scope (full
-Customer CRM, the customer ledger, and Karigar accounting — built on top of
-the `Customer`/`Return` foundation this phase introduced).
+See the end of `PHASE-4-STATUS.md` for the recommended Phase 5 scope.

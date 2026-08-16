@@ -199,7 +199,7 @@ describe("Payment calculation — partial, full, and credit sales (Tests 7, 8, 9
 
   it("splits Cash + Bank + Credit across multiple payment lines and requires a customer for the credit portion", async () => {
     const customer = await createCustomer(
-      { name: `Credit Customer ${uniqueSuffix()}`, phone: `+92300${uniqueSuffix()}` },
+      { firstName: `Credit Customer ${uniqueSuffix()}`, phone: `+92300${uniqueSuffix()}` },
       userId,
     );
     const created = await createSellableItem();

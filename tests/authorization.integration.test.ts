@@ -75,3 +75,61 @@ describe("Authorization — sales permissions (Test 16)", () => {
     await expect(userHasPermission(owner, PERMISSIONS.SALES_RETURN)).resolves.toBe(true);
   });
 });
+
+describe("Authorization — customer CRM permissions (Test 19)", () => {
+  it("a role with no grants has none of the customers:* permissions", async () => {
+    const role = await getOrCreateRoleWithNoPermissions();
+    const user = { role };
+
+    await expect(userHasPermission(user, PERMISSIONS.CUSTOMERS_VIEW)).resolves.toBe(false);
+    await expect(userHasPermission(user, PERMISSIONS.CUSTOMERS_CREATE)).resolves.toBe(false);
+    await expect(userHasPermission(user, PERMISSIONS.CUSTOMERS_MANAGE)).resolves.toBe(false);
+    await expect(userHasPermission(user, PERMISSIONS.CUSTOMERS_NOTES)).resolves.toBe(false);
+    await expect(userHasPermission(user, PERMISSIONS.CUSTOMERS_LEDGER)).resolves.toBe(false);
+    await expect(userHasPermission(user, PERMISSIONS.CUSTOMERS_PAYMENT)).resolves.toBe(false);
+    await expect(userHasPermission(user, PERMISSIONS.CUSTOMERS_EXPORT)).resolves.toBe(false);
+    await expect(userHasPermission(user, PERMISSIONS.CUSTOMERS_SEGMENTS)).resolves.toBe(false);
+    await expect(assertPermission(user, PERMISSIONS.CUSTOMERS_MANAGE)).rejects.toThrow(AuthorizationError);
+  });
+
+  it("a role granted only customers:view cannot manage, pay, or export", async () => {
+    const role = await getOrCreateRoleWithNoPermissions();
+    const permission = await prisma.permission.findUniqueOrThrow({
+      where: { key: PERMISSIONS.CUSTOMERS_VIEW },
+    });
+    await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: permission.id } });
+
+    const user = { role };
+    await expect(userHasPermission(user, PERMISSIONS.CUSTOMERS_VIEW)).resolves.toBe(true);
+    await expect(userHasPermission(user, PERMISSIONS.CUSTOMERS_MANAGE)).resolves.toBe(false);
+    await expect(userHasPermission(user, PERMISSIONS.CUSTOMERS_PAYMENT)).resolves.toBe(false);
+    await expect(userHasPermission(user, PERMISSIONS.CUSTOMERS_EXPORT)).resolves.toBe(false);
+  });
+
+  it("a role granted customers:notes can add notes without being able to manage or export", async () => {
+    const role = await getOrCreateRoleWithNoPermissions();
+    const permission = await prisma.permission.findUniqueOrThrow({
+      where: { key: PERMISSIONS.CUSTOMERS_NOTES },
+    });
+    await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: permission.id } });
+
+    const user = { role };
+    await expect(userHasPermission(user, PERMISSIONS.CUSTOMERS_NOTES)).resolves.toBe(true);
+    await expect(userHasPermission(user, PERMISSIONS.CUSTOMERS_MANAGE)).resolves.toBe(false);
+    await expect(userHasPermission(user, PERMISSIONS.CUSTOMERS_EXPORT)).resolves.toBe(false);
+  });
+
+  it("OWNER always has every customers:* permission regardless of grants", async () => {
+    const owner = { role: { id: "irrelevant-for-owner", name: "OWNER" } };
+    await expect(userHasPermission(owner, PERMISSIONS.CUSTOMERS_MANAGE)).resolves.toBe(true);
+    await expect(userHasPermission(owner, PERMISSIONS.CUSTOMERS_EXPORT)).resolves.toBe(true);
+    await expect(userHasPermission(owner, PERMISSIONS.CUSTOMERS_SEGMENTS)).resolves.toBe(true);
+  });
+
+  it("ADMIN (seeded with every current permission) can manage customers and export", async () => {
+    const adminRole = await prisma.role.findUniqueOrThrow({ where: { name: "ADMIN" } });
+    const user = { role: adminRole };
+    await expect(userHasPermission(user, PERMISSIONS.CUSTOMERS_MANAGE)).resolves.toBe(true);
+    await expect(userHasPermission(user, PERMISSIONS.CUSTOMERS_EXPORT)).resolves.toBe(true);
+  });
+});

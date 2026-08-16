@@ -41,8 +41,8 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Customers",
     href: "/customers",
     icon: Users,
-    status: "soon",
-    description: "Customer CRM, ledgers, and loyalty tracking.",
+    status: "active",
+    description: "Customer CRM, ledgers, and segmentation.",
   },
   {
     label: "Karigars",
@@ -112,4 +112,13 @@ export const POS_SUB_NAV: SubNavItem[] = [
   { label: "Sales History", href: "/pos/sales" },
   { label: "Returns", href: "/pos/returns" },
   { label: "Invoices", href: "/pos/invoices" },
+];
+
+export const CUSTOMERS_SUB_NAV: SubNavItem[] = [
+  { label: "All Customers", href: "/customers" },
+  { label: "Add Customer", href: "/customers/add" },
+  { label: "Customer Ledger", href: "/customers/ledger" },
+  { label: "VIP Customers", href: "/customers/vip" },
+  { label: "Inactive Customers", href: "/customers/inactive" },
+  { label: "Customer Segments", href: "/customers/segments" },
 ];

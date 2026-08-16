@@ -7,7 +7,7 @@ import {
   barcodeLookupSchema,
   posSearchSchema,
   completeSaleSchema,
-  createCustomerSchema,
+  quickCreateCustomerSchema,
   customerSearchSchema,
   requestReturnSchema,
   approveReturnSchema,
@@ -48,8 +48,7 @@ import type {
 } from "@/types/sales";
 import type { CustomerSearchResult } from "@/services/customer.service";
 import type { CartPreview, PaymentBalancePreview } from "@/services/sale-preview.service";
-
-export type ActionResult<T> = { ok: true; data: T } | { ok: false; error: string };
+import type { ActionResult } from "@/lib/actions/action-result";
 
 async function requireSalesCreate() {
   const user = await requireUser();
@@ -165,11 +164,11 @@ export async function searchCustomersAction(
 }
 
 export async function createCustomerAction(input: {
-  name: string;
+  firstName: string;
+  lastName?: string;
   phone: string;
   email?: string;
-  notes?: string;
-}): Promise<ActionResult<{ id: string }>> {
+}): Promise<ActionResult<CustomerSearchResult>> {
   let user;
   try {
     user = await requireSalesCreate();
@@ -178,14 +177,14 @@ export async function createCustomerAction(input: {
     throw error;
   }
 
-  const parsed = createCustomerSchema.safeParse(input);
+  const parsed = quickCreateCustomerSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid customer details." };
   }
 
   try {
     const customer = await createCustomer(parsed.data, user.id);
-    return { ok: true, data: { id: customer.id } };
+    return { ok: true, data: toCustomerSearchResult(customer) };
   } catch (error) {
     if (error instanceof DuplicateCustomerPhoneError) return { ok: false, error: error.message };
     throw error;
