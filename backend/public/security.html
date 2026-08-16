@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Security — Bang Jewelry Platform</title>
+    <link rel="stylesheet" href="/css/theme.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="app-header" id="app-header"></header>
+      <main class="app-main">
+        <div class="section-title"><h2>Security</h2></div>
+
+        <div class="panel" style="max-width: 600px">
+          <h3 style="margin-bottom: 0.5rem">Password</h3>
+          <p class="text-muted" style="margin-top: 0">Change the password used to sign in.</p>
+          <div id="pw-alert-error" class="alert alert-error"></div>
+          <div id="pw-alert-success" class="alert alert-success"></div>
+          <form id="password-form">
+            <div class="field">
+              <label for="currentPassword">Current password</label>
+              <input type="password" id="currentPassword" required />
+            </div>
+            <div class="field">
+              <label for="newPassword">New password</label>
+              <input type="password" id="newPassword" minlength="8" required />
+            </div>
+            <button type="submit" class="btn btn-secondary">Update password</button>
+          </form>
+        </div>
+
+        <div class="panel" style="max-width: 600px">
+          <h3 style="margin-bottom: 0.5rem">Two-factor authentication</h3>
+          <p class="text-muted" style="margin-top: 0">
+            Add a time-based one-time code (TOTP) requirement to your sign-in.
+          </p>
+          <div id="mfa-alert-error" class="alert alert-error"></div>
+          <div id="mfa-alert-success" class="alert alert-success"></div>
+
+          <div id="mfa-status"></div>
+
+          <div id="mfa-enroll-section" style="display: none; margin-top: 1rem">
+            <div id="qr-container" class="qr-box" style="margin-bottom: 1rem"></div>
+            <p class="text-muted" style="font-size: 0.8rem">
+              Scan with an authenticator app (Google Authenticator, 1Password, Authy), then enter
+              the 6-digit code to confirm.
+            </p>
+            <div class="field" style="max-width: 200px">
+              <label for="enrollCode">Confirmation code</label>
+              <input type="text" id="enrollCode" maxlength="6" inputmode="numeric" />
+            </div>
+            <button class="btn btn-primary" id="confirm-enroll-btn" style="width: auto">
+              Confirm &amp; enable
+            </button>
+          </div>
+
+          <div id="mfa-disable-section" style="display: none; margin-top: 1rem">
+            <div class="field" style="max-width: 200px">
+              <label for="disableCode">Current code</label>
+              <input type="text" id="disableCode" maxlength="6" inputmode="numeric" />
+            </div>
+            <button class="btn btn-danger" id="disable-btn" style="width: auto">
+              Disable two-factor
+            </button>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/nav.js"></script>
+    <script>
+      let user;
+
+      async function refreshMfaStatus() {
+        const statusEl = document.getElementById('mfa-status');
+        const enrollSection = document.getElementById('mfa-enroll-section');
+        const disableSection = document.getElementById('mfa-disable-section');
+
+        if (user.mfaEnabled) {
+          statusEl.innerHTML = '<span class="badge badge-success">Enabled</span>';
+          enrollSection.style.display = 'none';
+          disableSection.style.display = 'block';
+        } else {
+          statusEl.innerHTML = '<span class="badge">Not enabled</span>';
+          disableSection.style.display = 'none';
+        }
+      }
+
+      document.getElementById('password-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const errorBox = document.getElementById('pw-alert-error');
+        const successBox = document.getElementById('pw-alert-success');
+        errorBox.classList.remove('visible');
+        successBox.classList.remove('visible');
+        try {
+          await apiJson('/users/me/password', {
+            method: 'PATCH',
+            body: JSON.stringify({
+              currentPassword: document.getElementById('currentPassword').value,
+              newPassword: document.getElementById('newPassword').value,
+            }),
+          });
+          successBox.textContent = 'Password updated.';
+          successBox.classList.add('visible');
+          document.getElementById('password-form').reset();
+        } catch (err) {
+          errorBox.textContent = err.message;
+          errorBox.classList.add('visible');
+        }
+      });
+
+      document.getElementById('mfa-enroll-section')?.addEventListener('click', () => {});
+
+      async function startEnroll() {
+        const errorBox = document.getElementById('mfa-alert-error');
+        errorBox.classList.remove('visible');
+        try {
+          const data = await apiJson('/auth/mfa/enroll', { method: 'POST' });
+          document.getElementById('mfa-enroll-section').style.display = 'block';
+          document.getElementById('qr-container').innerHTML =
+            `<img src="${data.qrCodeDataUrl}" width="180" height="180" alt="MFA QR code" />`;
+        } catch (err) {
+          errorBox.textContent = err.message;
+          errorBox.classList.add('visible');
+        }
+      }
+
+      document.getElementById('confirm-enroll-btn').addEventListener('click', async () => {
+        const errorBox = document.getElementById('mfa-alert-error');
+        const successBox = document.getElementById('mfa-alert-success');
+        errorBox.classList.remove('visible');
+        try {
+          await apiJson('/auth/mfa/enroll/confirm', {
+            method: 'POST',
+            body: JSON.stringify({ code: document.getElementById('enrollCode').value.trim() }),
+          });
+          successBox.textContent = 'Two-factor authentication enabled.';
+          successBox.classList.add('visible');
+          user.mfaEnabled = true;
+          refreshMfaStatus();
+        } catch (err) {
+          errorBox.textContent = err.message;
+          errorBox.classList.add('visible');
+        }
+      });
+
+      document.getElementById('disable-btn').addEventListener('click', async () => {
+        const errorBox = document.getElementById('mfa-alert-error');
+        const successBox = document.getElementById('mfa-alert-success');
+        errorBox.classList.remove('visible');
+        try {
+          await apiJson('/auth/mfa/disable', {
+            method: 'POST',
+            body: JSON.stringify({ code: document.getElementById('disableCode').value.trim() }),
+          });
+          successBox.textContent = 'Two-factor authentication disabled.';
+          successBox.classList.add('visible');
+          user.mfaEnabled = false;
+          refreshMfaStatus();
+        } catch (err) {
+          errorBox.textContent = err.message;
+          errorBox.classList.add('visible');
+        }
+      });
+
+      (async () => {
+        user = await requireAuth();
+        if (!user) return;
+        renderHeader('security');
+        await refreshMfaStatus();
+        if (!user.mfaEnabled) {
+          startEnroll();
+        }
+      })();
+    </script>
+  </body>
+</html>

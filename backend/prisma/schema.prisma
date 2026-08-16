@@ -1,0 +1,152 @@
+// Bang Jewelry Platform — Phase 1: Identity & Access
+// Prisma schema for the identity-access module.
+// See /ARCHITECTURE.md for why User / AuditLog / RBAC are designed as
+// shared foundations for every future module.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  LOCKED
+  PENDING
+}
+
+enum MfaMethod {
+  NONE
+  TOTP
+}
+
+model User {
+  id                  String     @id @default(uuid())
+  email               String     @unique
+  passwordHash        String
+  firstName           String
+  lastName            String
+  status              UserStatus @default(ACTIVE)
+
+  // MFA-ready fields (§ Identity & Access — "MFA-ready architecture")
+  mfaEnabled          Boolean    @default(false)
+  mfaMethod           MfaMethod  @default(NONE)
+  mfaSecret           String?    // TOTP secret, only set once enrollment is confirmed
+  mfaPendingSecret     String?    // TOTP secret awaiting confirmation via /mfa/enable/confirm
+
+  failedLoginAttempts Int        @default(0)
+  lockedUntil         DateTime?
+  lastLoginAt         DateTime?
+
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  roles               UserRole[]
+  refreshTokens        RefreshToken[]
+  passwordResetTokens  PasswordResetToken[]
+  auditLogs            AuditLog[]
+
+  @@index([status])
+}
+
+model Role {
+  id          String           @id @default(uuid())
+  name        String           @unique
+  description String?
+  isSystem    Boolean          @default(false) // system roles (e.g. OWNER) cannot be deleted
+
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  users       UserRole[]
+  permissions RolePermission[]
+}
+
+model Permission {
+  id          String           @id @default(uuid())
+  code        String           @unique // e.g. "identity-access.users.create"
+  module      String                     // e.g. "identity-access"
+  description String?
+
+  createdAt   DateTime         @default(now())
+
+  roles       RolePermission[]
+}
+
+model UserRole {
+  userId     String
+  roleId     String
+  assignedAt DateTime @default(now())
+  assignedBy String?
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+// Refresh tokens back user "sessions": the JWT access token is short-lived
+// and stateless; this table is what actually makes a session revocable
+// (logout, admin-forced logout, rotation on reuse detection).
+model RefreshToken {
+  id           String    @id @default(uuid())
+  userId       String
+  tokenHash    String    @unique
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  replacedById String?
+  createdByIp  String?
+  userAgent    String?
+  createdAt    DateTime  @default(now())
+
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// Generic, append-only audit log shared by every module (see ARCHITECTURE.md §3).
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorUserId String?
+  action     String   // e.g. "auth.login.success", "user.created", "role.assigned"
+  targetType String?
+  targetId   String?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  actor      User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([actorUserId])
+  @@index([action])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}
