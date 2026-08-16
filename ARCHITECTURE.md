@@ -46,6 +46,31 @@ Each service owns one concern:
   for a single InventoryItem. `recordStockMovement()` must always be called
   from inside the same transaction as the state change it records.
 - `product-category.service.ts` *(Phase 2)* — category list/create.
+- `sale-pricing.service.ts` *(Phase 3)* — pure, `decimal.js`-based sale math:
+  per-item discount calculation, sale totals (subtotal/discount/tax/grand
+  total), and payment-sum validation. No Prisma, no React — the exact same
+  functions run for the live checkout preview and the authoritative
+  checkout write. See `SALES.md`.
+- `sales-settings.service.ts` *(Phase 3)* — reads/writes the
+  `SystemSetting`-backed discount-limit-by-role and tax configuration (see
+  "Settings as data" below).
+- `sale-preview.service.ts` *(Phase 3)* — read-only, non-authoritative
+  pricing preview for the New Sale screen. Wraps `sale-pricing.service.ts`
+  but reports invalid lines inline instead of throwing, since a cart is
+  normal to be mid-edit. See `SALES.md` "Live pricing preview".
+- `customer.service.ts` *(Phase 3)* — minimal customer search/create and
+  outstanding-balance tracking. Deliberately not a CRM — see `SALES.md`.
+- `sale-transaction.service.ts` *(Phase 3)* — `completeSale()`, the core POS
+  engine: validates the cart, customer, discounts, and payments; then opens
+  one `$transaction` that atomically re-checks and flips each item's status
+  IN_STOCK → SOLD, writes the `Sale`/`SaleItem`/`Payment`/`Invoice` rows, and
+  records a `StockMovement` per item. See `SALES.md`.
+- `sale.service.ts` *(Phase 3)* — read side: sale list (search/filter/
+  sort/paginate) and detail, plus invoice print/download counters.
+- `returns.service.ts` *(Phase 3)* — the two-step returns foundation:
+  `requestReturn()` (no inventory side effect) and `approveReturn()` (the
+  only path that moves inventory SOLD → RETURNED, atomically with the
+  `Return` and `Sale` status updates). See `SALES.md` "Returns foundation".
 
 ### `src/lib/auth/`
 
@@ -90,6 +115,15 @@ Server Actions — the mutation entry points. Each one:
 5. Writes an audit log entry when the action changes state.
 6. Revalidates the relevant paths.
 
+### `src/app/api/` *(Phase 3)*
+
+Route Handlers — the app's first, used only where a Server Action can't do
+the job: binary file downloads. `api/invoices/[id]/pdf/route.ts` streams a
+generated PDF back with `Content-Type: application/pdf`. Route Handlers are
+**not** wrapped by any layout, so unlike a page under `(app)/`, this file
+calls `getCurrentUser()` / `userHasPermission()` itself, explicitly, before
+touching any data — see `INVOICE-SYSTEM.md`.
+
 ### `src/lib/validation/`
 
 Zod schemas, one file per feature. Shared between client-visible field
@@ -122,6 +156,14 @@ because the client-side form already validated it.
   `[id]/` is the single-item detail/edit/print routes; `barcodes/print` and
   `[id]/print/*` are dedicated print-only routes (no app chrome — see
   `BARCODE-SYSTEM.md`).
+- `(app)/pos/` *(Phase 3)* — its own nested `layout.tsx` requires
+  `sales:view` once and renders the New Sale/Sales History/Returns/Invoices
+  sub-nav tabs. `page.tsx` is the checkout screen (`<PosScreen>`, a Client
+  Component so it can respond to a USB barcode scanner's keystrokes and
+  debounce live server previews); `sales/[id]/page.tsx` is the sale detail
+  view; `sales/[id]/invoice/page.tsx` is the print-only invoice layout (same
+  `print:hidden` pattern as Phase 2's barcode print pages). See `POS.md` and
+  `SALES.md`.
 
 ## Authentication design
 
@@ -167,6 +209,34 @@ Role-Based Access Control, stored in the database (`Role`, `Permission`,
   `INVENTORY_VIEW` gates read access (the whole `(app)/inventory` route
   group checks it once in `inventory/layout.tsx`); `INVENTORY_MANAGE` gates
   every mutation (create/edit/status-change/archive).
+- Phase 3 adds `sales:view`, `sales:create`, and `sales:return`. `SALES_VIEW`
+  gates the whole `(app)/pos` route group (checked once in `pos/layout.tsx`)
+  plus the PDF Route Handler; `SALES_CREATE` gates checkout itself
+  (`completeSaleAction` and every POS lookup/preview action);
+  `SALES_RETURN` gates `approveReturn()` only — any authenticated user with
+  `sales:view` can *request* a return (see `SALES.md`), but approving one
+  (the step that actually moves inventory) needs the stronger grant. `OWNER`
+  bypasses all three, same as every other module.
+
+## Settings as data — discount limits & tax *(Phase 3)*
+
+Two more policies that must never be hardcoded live in the same
+`SystemSetting` key/value table Phase 1 introduced for business info:
+
+- **Discount limit by role** — `discount.max_percent.<ROLE_NAME>` (see
+  `src/lib/settings-keys.ts`). `getMaxDiscountPercentForRole()` in
+  `sales-settings.service.ts` reads it, falling back to **0%** — not
+  "unlimited" — for a role that was never configured, so a missing setting
+  can never silently grant more discount than intended. `OWNER` always
+  bypasses this, identically to every permission check.
+- **Tax** — `tax.enabled` (default `"false"`) and `tax.percent` (default
+  `"0"`). Disabled by default per the spec; a business that doesn't charge
+  sales tax sees no tax line anywhere, ever, until an owner turns it on in
+  Settings.
+
+Both are read fresh on every `completeSale()` call and every live preview —
+never cached in a session or baked into a JWT — so an owner's change takes
+effect on the very next sale.
 
 ## Precision & money handling
 
@@ -191,6 +261,18 @@ means the number a salesperson sees on screen is always the server's
 answer, not a client-side computation the browser could be tricked into
 faking — the same two services that compute the live preview also compute
 the value that actually gets saved, via `inventory-item.service.ts`.
+
+`<PosScreen>` *(Phase 3)* follows the identical pattern, taken one step
+further: `sale-pricing.service.ts` (discount math, totals, payment-sum
+validation) has zero Prisma/HTTP dependencies, so it would be *technically*
+possible to import it straight into the client bundle and compute a live
+total with no network round trip. The codebase deliberately doesn't do
+that — `previewCartAction`/`previewPaymentBalanceAction` wrap it in a
+Server Action instead, so the discount-limit-by-role and tax settings
+(both DB-backed, ownership-sensitive config) never ship to the browser, and
+the number the cashier sees can never drift from what `completeSale()` will
+actually charge, because it's the exact same function call. See `SALES.md`
+"Live pricing preview".
 
 ## Pitfall: Prisma `Decimal` can't cross the Server → Client Component boundary
 

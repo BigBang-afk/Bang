@@ -6,7 +6,6 @@ import {
   Users,
   Hammer,
   Truck,
-  Receipt,
   ScrollText,
   Wallet,
   BarChart3,
@@ -29,8 +28,8 @@ export const NAV_ITEMS: NavItem[] = [
     label: "POS",
     href: "/pos",
     icon: ShoppingCart,
-    status: "soon",
-    description: "Point-of-sale billing with live gold pricing.",
+    status: "active",
+    description: "Point-of-sale billing, sales history, and invoices.",
   },
   {
     label: "Inventory",
@@ -58,13 +57,6 @@ export const NAV_ITEMS: NavItem[] = [
     icon: Truck,
     status: "soon",
     description: "Supplier purchases and incoming stock.",
-  },
-  {
-    label: "Sales",
-    href: "/sales",
-    icon: Receipt,
-    status: "soon",
-    description: "Sales history and professional invoicing.",
   },
   {
     label: "Gold Ledger",
@@ -113,4 +105,11 @@ export const INVENTORY_SUB_NAV: SubNavItem[] = [
   { label: "Categories", href: "/inventory/categories" },
   { label: "Barcodes", href: "/inventory/barcodes" },
   { label: "Old Stock", href: "/inventory/old-stock" },
+];
+
+export const POS_SUB_NAV: SubNavItem[] = [
+  { label: "New Sale", href: "/pos" },
+  { label: "Sales History", href: "/pos/sales" },
+  { label: "Returns", href: "/pos/returns" },
+  { label: "Invoices", href: "/pos/invoices" },
 ];

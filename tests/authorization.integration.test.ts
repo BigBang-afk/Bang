@@ -42,3 +42,36 @@ describe("Authorization — inventory permissions (Test 14)", () => {
     await expect(userHasPermission(user, PERMISSIONS.INVENTORY_MANAGE)).resolves.toBe(true);
   });
 });
+
+describe("Authorization — sales permissions (Test 16)", () => {
+  it("a role with no grants cannot view, create, or return sales", async () => {
+    const role = await getOrCreateRoleWithNoPermissions();
+    const user = { role };
+
+    await expect(userHasPermission(user, PERMISSIONS.SALES_VIEW)).resolves.toBe(false);
+    await expect(userHasPermission(user, PERMISSIONS.SALES_CREATE)).resolves.toBe(false);
+    await expect(userHasPermission(user, PERMISSIONS.SALES_RETURN)).resolves.toBe(false);
+    await expect(assertPermission(user, PERMISSIONS.SALES_CREATE)).rejects.toThrow(
+      AuthorizationError,
+    );
+  });
+
+  it("a role granted only sales:view cannot create sales or approve returns", async () => {
+    const role = await getOrCreateRoleWithNoPermissions();
+    const permission = await prisma.permission.findUniqueOrThrow({
+      where: { key: PERMISSIONS.SALES_VIEW },
+    });
+    await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: permission.id } });
+
+    const user = { role };
+    await expect(userHasPermission(user, PERMISSIONS.SALES_VIEW)).resolves.toBe(true);
+    await expect(userHasPermission(user, PERMISSIONS.SALES_CREATE)).resolves.toBe(false);
+    await expect(userHasPermission(user, PERMISSIONS.SALES_RETURN)).resolves.toBe(false);
+  });
+
+  it("OWNER always has sales:create and sales:return regardless of grants", async () => {
+    const owner = { role: { id: "irrelevant-for-owner", name: "OWNER" } };
+    await expect(userHasPermission(owner, PERMISSIONS.SALES_CREATE)).resolves.toBe(true);
+    await expect(userHasPermission(owner, PERMISSIONS.SALES_RETURN)).resolves.toBe(true);
+  });
+});

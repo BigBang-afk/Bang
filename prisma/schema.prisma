@@ -79,6 +79,11 @@ model User {
   productsCreated       Product[]
   inventoryItemsCreated InventoryItem[]
   stockMovements        StockMovement[]
+  customersCreated      Customer[]
+  salesCreated          Sale[]
+  paymentsCreated       Payment[]
+  returnsRequested      Return[]        @relation("ReturnRequestedBy")
+  returnsProcessed      Return[]        @relation("ReturnProcessedBy")
 
   @@index([roleId])
   @@map("users")
@@ -157,6 +162,15 @@ enum AuditAction {
   FINANCIAL_FIELDS_CHANGED
   BARCODE_GENERATED
   BARCODE_PRINTED
+  SALE_COMPLETED
+  DISCOUNT_APPLIED
+  PAYMENT_CREATED
+  INVOICE_GENERATED
+  INVOICE_PRINTED
+  INVOICE_DOWNLOADED
+  RETURN_REQUESTED
+  RETURN_APPROVED
+  CUSTOMER_CREATED
 }
 
 model AuditLog {
@@ -305,6 +319,7 @@ model InventoryItem {
   goldRateSource GoldRate?       @relation(fields: [goldRateSourceId], references: [id], onDelete: SetNull)
   barcode        Barcode?
   movements      StockMovement[]
+  saleItems      SaleItem[]
 
   @@index([productId])
   @@index([status])
@@ -347,12 +362,221 @@ model StockMovement {
   /// for an edit, never secrets.
   metadata        Json?
   userId          String?           @db.Uuid
+  /// Set for STOCK_SOLD / STOCK_RETURNED movements originating from Phase 3
+  /// POS/returns — added on top of the Phase 2 table (nullable, additive).
+  saleId          String?           @db.Uuid
   createdAt       DateTime          @default(now())
 
   inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
   user          User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  sale          Sale?         @relation(fields: [saleId], references: [id], onDelete: SetNull)
 
   @@index([inventoryItemId])
   @@index([createdAt])
+  @@index([saleId])
   @@map("stock_movements")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 3 — POS, Sales, Invoices & Barcode Checkout
+// ---------------------------------------------------------------------------
+
+enum PaymentMethod {
+  CASH
+  CARD
+  BANK_TRANSFER
+  OTHER
+  /// Not "actually paid" — the deferred portion of a sale, extended to the
+  /// customer as credit. Always exactly equal to Sale.balanceAmount when
+  /// present. See SALES.md "Payments always sum to the grand total".
+  CREDIT
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+enum SaleStatus {
+  COMPLETED
+  PARTIALLY_RETURNED
+  RETURNED
+}
+
+enum ReturnStatus {
+  RETURN_REQUESTED
+  RETURNED
+}
+
+/// Minimal customer record — Phase 3 only needs enough to select a buyer at
+/// checkout and track what they owe. Full CRM (loyalty, communication
+/// history, segmentation, ...) is future scope; see SALES.md.
+model Customer {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name               String
+  phone              String   @unique
+  email              String?
+  /// Running total of unpaid balances across all sales — the Phase 4/5
+  /// customer ledger will build on this, not replace it. Never decremented
+  /// by Phase 3 (no "customer pays down credit" flow yet).
+  outstandingBalance Decimal  @default(0) @db.Decimal(14, 2)
+  notes              String?
+  createdById        String   @db.Uuid
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  createdBy User   @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  sales     Sale[]
+
+  @@index([phone])
+  @@index([name])
+  @@map("customers")
+}
+
+/// One completed POS transaction. `customerId` null means "walk-in" — Phase
+/// 3 never creates a placeholder Customer row for a walk-in sale. Every
+/// money field here is the authoritative, server-recalculated total; see
+/// SALES.md "Sale transaction" for the full checkout flow.
+model Sale {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customerId String?  @db.Uuid
+  saleDate   DateTime @default(now())
+
+  /// Sum of every SaleItem.originalSellingPrice — before discounts.
+  subtotal   Decimal @db.Decimal(14, 2)
+  /// Sum of every SaleItem.discountAmount.
+  discount   Decimal @default(0) @db.Decimal(14, 2)
+  tax        Decimal @default(0) @db.Decimal(14, 2)
+  /// subtotal - discount + tax.
+  grandTotal Decimal @db.Decimal(14, 2)
+
+  /// Sum of Payment.amount where method != CREDIT.
+  paidAmount    Decimal @db.Decimal(14, 2)
+  /// Sum of Payment.amount where method == CREDIT — the deferred balance.
+  balanceAmount Decimal @default(0) @db.Decimal(14, 2)
+
+  status SaleStatus @default(COMPLETED)
+
+  createdById String   @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  customer  Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  createdBy User            @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  items     SaleItem[]
+  payments  Payment[]
+  invoice   Invoice?
+  movements StockMovement[]
+
+  @@index([customerId])
+  @@index([createdAt])
+  @@index([status])
+  @@map("sales")
+}
+
+/// A complete historical snapshot of one sold InventoryItem at the moment
+/// of sale — every field is copied, never a live reference. Editing the
+/// InventoryItem or Product later (or the daily gold rate) must never
+/// change what a past invoice shows. See SALES.md.
+model SaleItem {
+  id              String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  saleId          String @db.Uuid
+  inventoryItemId String @db.Uuid
+
+  productName     String
+  barcodeCode     String
+  purity          GoldPurity
+  netWeight       Decimal     @db.Decimal(10, 3)
+  wastageType     WastageType
+  wastagePercent  Decimal?    @db.Decimal(6, 3)
+  wastageWeight   Decimal     @db.Decimal(10, 3)
+  grossWeight     Decimal     @db.Decimal(10, 3)
+  goldRatePerGram Decimal     @db.Decimal(14, 2)
+  goldValue       Decimal     @db.Decimal(14, 2)
+  makingCharge    Decimal     @db.Decimal(14, 2)
+  stoneCharge     Decimal     @db.Decimal(14, 2)
+  diamondCharge   Decimal     @db.Decimal(14, 2)
+  otherCharge     Decimal     @db.Decimal(14, 2)
+
+  originalSellingPrice Decimal       @db.Decimal(14, 2)
+  discountType         DiscountType?
+  /// The raw entered value — a percent (0-100) or a fixed amount, matching
+  /// discountType. Null when discountAmount is 0.
+  discountValue        Decimal?      @db.Decimal(14, 2)
+  /// The actual currency discount applied — always server-recalculated
+  /// from discountType + discountValue, never trusted from the client.
+  discountAmount       Decimal       @default(0) @db.Decimal(14, 2)
+  finalPrice           Decimal       @db.Decimal(14, 2)
+
+  createdAt DateTime @default(now())
+
+  sale          Sale          @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
+  return        Return?
+
+  @@index([saleId])
+  @@index([inventoryItemId])
+  @@map("sale_items")
+}
+
+/// One payment line on a Sale. A sale can have several (split payment); the
+/// sum of every line, CREDIT included, always equals Sale.grandTotal
+/// exactly. See SALES.md "Payments always sum to the grand total".
+model Payment {
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  saleId      String        @db.Uuid
+  method      PaymentMethod
+  amount      Decimal       @db.Decimal(14, 2)
+  reference   String?
+  notes       String?
+  createdById String        @db.Uuid
+  createdAt   DateTime      @default(now())
+
+  sale      Sale @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  createdBy User @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([saleId])
+  @@index([method])
+  @@map("payments")
+}
+
+/// Tracks the printable invoice DOCUMENT lifecycle for a Sale — the same
+/// pattern as Barcode for InventoryItem (Phase 2). `sequence` is the single
+/// source of truth for the invoice number; "ZJ-INV-000001" is derived from
+/// it at render time (src/lib/invoice-number.ts), never stored redundantly.
+model Invoice {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sequence         Int       @unique @default(autoincrement())
+  saleId           String    @unique @db.Uuid
+  generatedAt      DateTime  @default(now())
+  printCount       Int       @default(0)
+  lastPrintedAt    DateTime?
+  downloadCount    Int       @default(0)
+  lastDownloadedAt DateTime?
+
+  sale Sale @relation(fields: [saleId], references: [id], onDelete: Restrict)
+
+  @@map("invoices")
+}
+
+/// Phase 3 returns foundation — deliberately two states only, no exchange
+/// workflow. Requesting a return never touches inventory; only approving one
+/// does (SOLD -> RETURNED via the existing Phase 2 status-transition
+/// service). See SALES.md "Returns foundation".
+model Return {
+  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  saleItemId    String       @unique @db.Uuid
+  status        ReturnStatus @default(RETURN_REQUESTED)
+  reason        String?
+  requestedById String       @db.Uuid
+  requestedAt   DateTime     @default(now())
+  processedById String?      @db.Uuid
+  processedAt   DateTime?
+
+  saleItem    SaleItem @relation(fields: [saleItemId], references: [id], onDelete: Restrict)
+  requestedBy User     @relation("ReturnRequestedBy", fields: [requestedById], references: [id], onDelete: Restrict)
+  processedBy User?    @relation("ReturnProcessedBy", fields: [processedById], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@map("returns")
 }

@@ -3,6 +3,7 @@ import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
 import { PERMISSIONS } from "../src/lib/auth/permissions";
+import { SETTINGS_KEYS, discountLimitKey } from "../src/lib/settings-keys";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
@@ -44,6 +45,17 @@ const PERMISSION_CATALOG: { key: string; module: string; description: string }[]
     key: PERMISSIONS.BARCODE_PRINT,
     module: "INVENTORY",
     description: "Print ZJ barcode labels.",
+  },
+  { key: PERMISSIONS.SALES_VIEW, module: "SALES", description: "View sales history and invoices." },
+  {
+    key: PERMISSIONS.SALES_CREATE,
+    module: "SALES",
+    description: "Operate the POS and complete sales.",
+  },
+  {
+    key: PERMISSIONS.SALES_RETURN,
+    module: "SALES",
+    description: "Approve a return and move inventory back to Returned.",
   },
 ];
 
@@ -137,6 +149,54 @@ async function main() {
     update: {},
     create: { key: "business.currency", value: "PKR" },
   });
+  await prisma.systemSetting.upsert({
+    where: { key: SETTINGS_KEYS.BUSINESS_ADDRESS },
+    update: {},
+    create: { key: SETTINGS_KEYS.BUSINESS_ADDRESS, value: "" },
+  });
+  await prisma.systemSetting.upsert({
+    where: { key: SETTINGS_KEYS.BUSINESS_PHONE },
+    update: {},
+    create: { key: SETTINGS_KEYS.BUSINESS_PHONE, value: "" },
+  });
+  await prisma.systemSetting.upsert({
+    where: { key: SETTINGS_KEYS.TAX_ENABLED },
+    update: {},
+    create: { key: SETTINGS_KEYS.TAX_ENABLED, value: "false" },
+  });
+  await prisma.systemSetting.upsert({
+    where: { key: SETTINGS_KEYS.TAX_PERCENT },
+    update: {},
+    create: { key: SETTINGS_KEYS.TAX_PERCENT, value: "0" },
+  });
+  await prisma.systemSetting.upsert({
+    where: { key: SETTINGS_KEYS.INVOICE_FOOTER_TEXT },
+    update: {},
+    create: {
+      key: SETTINGS_KEYS.INVOICE_FOOTER_TEXT,
+      value: "Thank you for shopping with Zarghoon Jewellers.",
+    },
+  });
+
+  console.log("Seeding discount limits by role...");
+  const DEFAULT_DISCOUNT_LIMITS: Record<string, string> = {
+    OWNER: "100",
+    ADMIN: "50",
+    CASHIER: "10",
+    SALESPERSON: "10",
+  };
+  for (const [roleName, maxPercent] of Object.entries(DEFAULT_DISCOUNT_LIMITS)) {
+    const key = discountLimitKey(roleName);
+    await prisma.systemSetting.upsert({
+      where: { key },
+      update: {},
+      create: {
+        key,
+        value: maxPercent,
+        description: `Maximum discount percentage a ${roleName} can apply at checkout.`,
+      },
+    });
+  }
 
   console.log("Seeding default product categories...");
   for (const name of DEFAULT_CATEGORIES) {

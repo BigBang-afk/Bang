@@ -13,6 +13,8 @@ export type RecordMovementInput = {
   notes?: string | null;
   metadata?: Prisma.InputJsonValue;
   userId: string | null;
+  /** Set for STOCK_SOLD / STOCK_RETURNED movements originating from POS/returns (Phase 3). */
+  saleId?: string | null;
 };
 
 /** Always call within the same transaction as the state change it records. */
@@ -30,6 +32,7 @@ export async function recordStockMovement(
       notes: input.notes ?? null,
       metadata: input.metadata,
       userId: input.userId,
+      saleId: input.saleId ?? null,
     },
   });
 }

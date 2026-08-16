@@ -12,6 +12,9 @@ export const PERMISSIONS = {
   INVENTORY_MANAGE: "inventory:manage",
   CATEGORY_MANAGE: "category:manage",
   BARCODE_PRINT: "barcode:print",
+  SALES_VIEW: "sales:view",
+  SALES_CREATE: "sales:create",
+  SALES_RETURN: "sales:return",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

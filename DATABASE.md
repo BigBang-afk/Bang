@@ -31,7 +31,9 @@ money or weight arithmetic on these columns' values using native JS
 numbers; see `GOLD-RATE-ENGINE.md`, `INVENTORY.md`, and `ARCHITECTURE.md`
 for the `decimal.js` policy — including the Server→Client Component
 serialization pitfall it causes (`Decimal` values can't be passed directly
-into a `"use client"` component).
+into a `"use client"` component). Every Phase 3 money column on `Sale`,
+`SaleItem`, `Payment`, and `Customer.outstandingBalance` follows the same
+`Decimal(14, 2)` rule.
 
 ## Entities
 
@@ -116,6 +118,11 @@ Phase 2 adds `CATEGORY_CREATED`, `STOCK_CREATED`, `STOCK_UPDATED`,
 `STOCK_STATUS_CHANGED`, `STOCK_ARCHIVED`, `FINANCIAL_FIELDS_CHANGED`,
 `BARCODE_GENERATED`, and `BARCODE_PRINTED` to `AuditAction` — same table,
 same append-only pattern, no new entity.
+
+Phase 3 adds `SALE_COMPLETED`, `DISCOUNT_APPLIED`, `PAYMENT_CREATED`,
+`INVOICE_GENERATED`, `INVOICE_PRINTED`, `INVOICE_DOWNLOADED`,
+`RETURN_REQUESTED`, `RETURN_APPROVED`, and `CUSTOMER_CREATED` — same table
+again.
 
 ### `ProductCategory` *(Phase 2)*
 
@@ -202,6 +209,140 @@ Append-only ledger — the audit trail that will connect to POS/Sales.
 
 Indexed on `inventoryItemId`, `createdAt`.
 
+### `Customer` *(Phase 3)*
+
+Deliberately minimal — see `SALES.md` for why this isn't a CRM table.
+
+| Column               | Type        | Notes                                    |
+| -------------------- | ----------- | ------------------------------------------ |
+| `id`                 | uuid (PK)   |                                            |
+| `name`               | text        |                                            |
+| `phone`              | text, unique | search key; also prevents duplicate walk-in records |
+| `email`              | text, nullable |                                          |
+| `outstandingBalance` | `Decimal(14,2)`, default 0 | running total of unpaid credit sales — increment-only in Phase 3, see "Customer credit" in `SALES.md` |
+| `notes`              | text, nullable |                                          |
+| `createdById`        | uuid (FK → User, `onDelete: Restrict`) |                    |
+| `createdAt` / `updatedAt` | timestamp |                              |
+
+Indexed on `phone`, `name`.
+
+### `Sale` *(Phase 3)*
+
+One completed POS transaction. `customerId` null means walk-in — Phase 3
+never creates a placeholder `Customer` row for a walk-in sale. Every money
+field is the authoritative, server-recalculated total; see `SALES.md`
+"Sale transaction" for the full checkout flow.
+
+| Column          | Type        | Notes                                    |
+| --------------- | ----------- | ------------------------------------------ |
+| `id`            | uuid (PK)   |                                            |
+| `customerId`    | uuid, nullable (FK → Customer, `onDelete: SetNull`) |          |
+| `saleDate`      | timestamp, default now |                               |
+| `subtotal`      | `Decimal(14,2)` | sum of every `SaleItem.originalSellingPrice` |
+| `discount`      | `Decimal(14,2)`, default 0 | sum of every `SaleItem.discountAmount` |
+| `tax`           | `Decimal(14,2)`, default 0 | 0 unless tax is enabled in Settings   |
+| `grandTotal`    | `Decimal(14,2)` | `subtotal - discount + tax`              |
+| `paidAmount`    | `Decimal(14,2)` | sum of `Payment.amount` where `method != CREDIT` |
+| `balanceAmount` | `Decimal(14,2)`, default 0 | sum of `Payment.amount` where `method == CREDIT` — the deferred balance |
+| `status`        | enum `SaleStatus` (`COMPLETED`, `PARTIALLY_RETURNED`, `RETURNED`), default `COMPLETED` |  |
+| `createdById`   | uuid (FK → User, `onDelete: Restrict`) |                    |
+| `createdAt` / `updatedAt` | timestamp |                              |
+
+No `invoiceNumber` column — the human-readable "ZJ-INV-000001" is derived
+from the related `Invoice.sequence` at read time, exactly like `Barcode`
+for `InventoryItem` (see `INVOICE-SYSTEM.md`).
+
+### `SaleItem` *(Phase 3)*
+
+A complete, frozen snapshot of one sold `InventoryItem` — every field an
+`InventoryItem` itself has for pricing, copied at sale time. **Do not**
+depend on the current `InventoryItem`/`Product` row to reconstruct an old
+invoice; if the product is edited or even archived later, this row is
+unaffected.
+
+| Column                | Type        | Notes                                    |
+| ---------------------- | ----------- | ----------------------------------------- |
+| `id`                   | uuid (PK)   |                                            |
+| `saleId`               | uuid (FK → Sale, `onDelete: Cascade`) |                     |
+| `inventoryItemId`      | uuid (FK → InventoryItem, `onDelete: Restrict`) | the item that was sold |
+| `productName`, `barcodeCode` | text  | copied, not looked up                    |
+| `purity`               | enum `GoldPurity` |                                       |
+| `netWeight`, `wastageWeight`, `grossWeight` | `Decimal(10,3)` |          |
+| `wastageType`          | enum `WastageType` |                                     |
+| `wastagePercent`       | `Decimal(6,3)`, nullable |                               |
+| `goldRatePerGram`, `goldValue`, `makingCharge`, `stoneCharge`, `diamondCharge`, `otherCharge` | `Decimal(14,2)` | the exact rate and charges used — never recomputed from a later gold rate |
+| `originalSellingPrice` | `Decimal(14,2)` | pre-discount price                      |
+| `discountType`         | enum `DiscountType` (`PERCENTAGE`, `FIXED`), nullable |          |
+| `discountValue`        | `Decimal(14,2)`, nullable | the raw entered percent or amount   |
+| `discountAmount`       | `Decimal(14,2)`, default 0 | server-recalculated currency discount, never trusted from the client |
+| `finalPrice`           | `Decimal(14,2)` |                                        |
+| `createdAt`            | timestamp   |                                            |
+
+Relation to `Return` is 1:1 optional (`saleItemId` unique on `Return`).
+
+### `Payment` *(Phase 3)*
+
+One payment line. A sale can have several (split payment).
+
+| Column        | Type        | Notes                                    |
+| ------------- | ----------- | ------------------------------------------ |
+| `id`          | uuid (PK)   |                                            |
+| `saleId`      | uuid (FK → Sale, `onDelete: Cascade`) |                     |
+| `method`      | enum `PaymentMethod` (`CASH`, `CARD`, `BANK_TRANSFER`, `OTHER`, `CREDIT`) |  |
+| `amount`      | `Decimal(14,2)` |                                        |
+| `reference`   | text, nullable | e.g. a card/bank reference number       |
+| `notes`       | text, nullable |                                          |
+| `createdById` | uuid (FK → User, `onDelete: Restrict`) |                    |
+| `createdAt`   | timestamp   |                                            |
+
+Indexed on `saleId`, `method`. No payment-gateway integration — this table
+records a fact ("cashier logged 200,000 as CASH"), it does not process a
+charge.
+
+### `Invoice` *(Phase 3)*
+
+Tracks the printable invoice **document** lifecycle for a `Sale` — the same
+pattern `Barcode` uses for `InventoryItem` (Phase 2).
+
+| Column             | Type        | Notes                                    |
+| ------------------ | ----------- | ------------------------------------------ |
+| `id`               | uuid (PK)   |                                            |
+| `sequence`         | `Int`, unique, `@default(autoincrement())` | the real identity — Postgres-native, race-free under concurrent sales, exactly like `Barcode.sequence` |
+| `saleId`           | uuid, unique (FK → Sale, `onDelete: Restrict`) | 1:1        |
+| `generatedAt`      | timestamp, default now |                               |
+| `printCount`       | `Int`, default 0 |                                       |
+| `lastPrintedAt`    | timestamp, nullable |                                    |
+| `downloadCount`    | `Int`, default 0 |                                       |
+| `lastDownloadedAt` | timestamp, nullable |                                    |
+
+"ZJ-INV-000001" is *derived* from `sequence` at read time
+(`src/lib/invoice-number.ts`), never stored redundantly. See
+`INVOICE-SYSTEM.md`.
+
+### `Return` *(Phase 3)*
+
+Deliberately two states only — no exchange workflow yet.
+
+| Column          | Type        | Notes                                    |
+| ---------------- | ----------- | ----------------------------------------- |
+| `id`             | uuid (PK)   |                                            |
+| `saleItemId`     | uuid, unique (FK → SaleItem, `onDelete: Restrict`) | 1:1 — at most one return per sale item |
+| `status`         | enum `ReturnStatus` (`RETURN_REQUESTED`, `RETURNED`), default `RETURN_REQUESTED` |  |
+| `reason`         | text, nullable |                                          |
+| `requestedById`  | uuid (FK → User, `onDelete: Restrict`) |                    |
+| `requestedAt`    | timestamp, default now |                               |
+| `processedById`  | uuid, nullable (FK → User, `onDelete: SetNull`) |               |
+| `processedAt`    | timestamp, nullable |                                    |
+
+Indexed on `status`. Requesting a return never touches `InventoryItem`;
+only approving one does — see `SALES.md` "Returns foundation" for why this
+is a deliberate two-step design, not an oversight.
+
+`StockMovement` also gains a nullable `saleId` (FK → Sale, `onDelete:
+SetNull`) in Phase 3, so a `STOCK_SOLD` or `STOCK_RETURNED` movement links
+back to the sale that caused it — additive, does not change any Phase 1/2
+movement row.
+
 ## Entity relationship summary
 
 ```
@@ -219,6 +360,17 @@ GoldRate 1---* InventoryItem (goldRateSource, optional provenance)
 User 1---* Product (createdBy)
 User 1---* InventoryItem (createdBy)
 User 1---* StockMovement
+
+Customer 1---* Sale
+Sale 1---* SaleItem *---1 InventoryItem
+Sale 1---* Payment
+Sale 1---1 Invoice
+Sale 1---* StockMovement (nullable saleId)
+SaleItem 1---1 Return (optional)
+User 1---* Customer (createdBy)
+User 1---* Sale (createdBy)
+User 1---* Payment (createdBy)
+User 1---* Return (requestedBy / processedBy)
 ```
 
 ## Regenerating / migrating

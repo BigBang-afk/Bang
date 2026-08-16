@@ -9,15 +9,24 @@ phase by phase.
 - **Phase 2: Inventory, Stock & ZJ Barcode System** — full inventory
   management, product categories, atomic barcode generation, stock status
   and movement tracking, and barcode/product label printing.
+- **Phase 3: POS + Sales + Invoices + Barcode Checkout** — barcode-scan and
+  search-driven point of sale, server-recalculated discounts/tax/payments,
+  transactional checkout with concurrency-safe inventory updates, a minimal
+  walk-in/existing customer picker, professional printable + real-PDF
+  invoices, sales history, and a two-step returns foundation.
 
-See [`PHASE-1-STATUS.md`](./PHASE-1-STATUS.md) and
-[`PHASE-2-STATUS.md`](./PHASE-2-STATUS.md) for exactly what is and isn't
+See [`PHASE-1-STATUS.md`](./PHASE-1-STATUS.md),
+[`PHASE-2-STATUS.md`](./PHASE-2-STATUS.md), and
+[`PHASE-3-STATUS.md`](./PHASE-3-STATUS.md) for exactly what is and isn't
 built, [`ARCHITECTURE.md`](./ARCHITECTURE.md) for how the codebase is
 organized, [`DATABASE.md`](./DATABASE.md) for the schema,
 [`GOLD-RATE-ENGINE.md`](./GOLD-RATE-ENGINE.md) for the gold pricing/weight
 formulas, [`INVENTORY.md`](./INVENTORY.md) for the inventory/stock
-architecture, and [`BARCODE-SYSTEM.md`](./BARCODE-SYSTEM.md) for the
-barcode system.
+architecture, [`BARCODE-SYSTEM.md`](./BARCODE-SYSTEM.md) for the barcode
+system, [`POS.md`](./POS.md) for the point-of-sale screen,
+[`SALES.md`](./SALES.md) for the sale transaction/payment/returns
+architecture, and [`INVOICE-SYSTEM.md`](./INVOICE-SYSTEM.md) for invoice
+numbering, printing, and PDF generation.
 
 ## Technology stack
 
@@ -33,6 +42,8 @@ barcode system.
 - **Precision math**: `decimal.js` for every weight and money calculation
 - **Barcodes**: `jsbarcode` (CODE128, rendered client-side as a real
   scannable symbol) — see `BARCODE-SYSTEM.md`
+- **PDF generation**: `@react-pdf/renderer` (real, selectable-text PDFs
+  rendered server-side, not a screenshot) — see `INVOICE-SYSTEM.md`
 - **Testing**: Vitest (unit + integration) + Playwright (end-to-end)
 
 ## Getting started
@@ -92,6 +103,9 @@ src/
     (app)/                 Authenticated shell — sidebar/topbar + every module
       inventory/            All Stock, Add Stock, item detail/edit, print,
                              Categories, Barcodes, Old Stock, Movements
+      pos/                   New Sale, Sales History, Sale Detail, Invoice
+                             print, Returns, Invoices
+    api/invoices/[id]/pdf/  Route Handler — real PDF invoice download
   components/             UI: primitives, layout, feature components
   services/               Business logic — no React, no HTTP, no Next.js APIs
   lib/
@@ -116,11 +130,21 @@ e2e/                      Playwright end-to-end tests
   are modeled by the schema but not yet exposed in a role-management UI.
 - Product images are stored on local disk, not object storage (see
   `INVENTORY.md`).
-- Every module other than Dashboard, Settings, and Inventory renders a
+- No payment gateway integrations — Phase 3 payments are recorded, not
+  processed (cash/card/bank transfer/credit are logged as facts, not
+  charged through any processor). See `SALES.md`.
+- No overpayment/change-due support — payments must sum exactly to the
+  grand total.
+- WhatsApp sharing is a `wa.me` deep link the staff member sends manually;
+  there is no WhatsApp Business API automation yet. See `INVOICE-SYSTEM.md`.
+- The customer credit ledger, Karigar accounting, and full customer CRM are
+  intentionally out of scope — Phase 3 only lays the transactional
+  foundation (`Customer.outstandingBalance`, `Return`) those phases build on.
+- Every module other than Dashboard, Settings, Inventory, and POS renders a
   "coming in next phase" placeholder — no fake data, no fake functionality.
 
 ## Next phase
 
-See the end of `PHASE-2-STATUS.md` for the recommended Phase 3 scope
-(POS + Sales — the modules that consume the barcode system and
-InventoryItem/StockMovement model built in Phase 2).
+See the end of `PHASE-3-STATUS.md` for the recommended Phase 4 scope (full
+Customer CRM, the customer ledger, and Karigar accounting — built on top of
+the `Customer`/`Return` foundation this phase introduced).

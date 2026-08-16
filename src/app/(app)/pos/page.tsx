@@ -1,12 +1,11 @@
-import { ShoppingCart } from "lucide-react";
-import { ComingSoon } from "@/components/layout/coming-soon";
+import { requirePermission } from "@/lib/auth/dal";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { PosScreen } from "@/components/pos/pos-screen";
 
-export default function PosPage() {
-  return (
-    <ComingSoon
-      icon={ShoppingCart}
-      title="Point of Sale"
-      description="Fast, gold-rate-aware billing for the counter. Arriving in the next phase."
-    />
-  );
+export const metadata = { title: "New Sale | Zarghoon Jewellers" };
+
+export default async function NewSalePage() {
+  await requirePermission(PERMISSIONS.SALES_CREATE);
+
+  return <PosScreen />;
 }

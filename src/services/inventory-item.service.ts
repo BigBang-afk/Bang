@@ -18,6 +18,7 @@ import {
   type EditableStockItem,
 } from "@/types/inventory";
 import type { GoldPurity } from "@/types/gold";
+import type { PosCatalogItem } from "@/types/sales";
 import type { Prisma, StockMovementType } from "@/generated/prisma/client";
 
 const WEIGHT_DP = 3;
@@ -374,6 +375,48 @@ function mapStatusToMovementType(status: StockStatusValue): StockMovementType {
   }
 }
 
+/**
+ * The atomic primitive behind every status change: a conditional
+ * `UPDATE ... WHERE status = <expected>` (check-and-set, immune to a
+ * concurrent writer racing the same row — see SALES.md "Concurrency") plus
+ * its StockMovement, both inside the caller's transaction. Exported so
+ * Phase 3's return-approval flow can fold this into one larger transaction
+ * (inventory status + Return + Sale status, all atomic) instead of either
+ * duplicating this logic or nesting a second top-level transaction inside
+ * it. `changeInventoryItemStatus` below is the single-purpose wrapper for
+ * every other caller.
+ */
+export async function transitionInventoryStatusInTx(
+  tx: Prisma.TransactionClient,
+  input: {
+    id: string;
+    expectedStatus: StockStatusValue;
+    newStatus: StockStatusValue;
+    weight: Prisma.Decimal | number | string;
+    userId: string;
+    notes?: string;
+    saleId?: string;
+  },
+): Promise<void> {
+  const updated = await tx.inventoryItem.updateMany({
+    where: { id: input.id, status: input.expectedStatus },
+    data: { status: input.newStatus },
+  });
+  if (updated.count !== 1) {
+    throw new InvalidStatusTransitionError(input.expectedStatus, input.newStatus);
+  }
+  await recordStockMovement(tx, {
+    inventoryItemId: input.id,
+    movementType: mapStatusToMovementType(input.newStatus),
+    previousStatus: input.expectedStatus,
+    newStatus: input.newStatus,
+    weight: input.weight,
+    notes: input.notes,
+    userId: input.userId,
+    saleId: input.saleId,
+  });
+}
+
 export async function changeInventoryItemStatus(
   id: string,
   newStatus: StockStatusValue,
@@ -391,15 +434,13 @@ export async function changeInventoryItemStatus(
   }
 
   await prisma.$transaction(async (tx) => {
-    await tx.inventoryItem.update({ where: { id }, data: { status: newStatus } });
-    await recordStockMovement(tx, {
-      inventoryItemId: id,
-      movementType: mapStatusToMovementType(newStatus),
-      previousStatus: existing.status,
+    await transitionInventoryStatusInTx(tx, {
+      id,
+      expectedStatus: existing.status,
       newStatus,
       weight: existing.grossWeight,
-      notes,
       userId,
+      notes,
     });
   });
 
@@ -460,6 +501,16 @@ export async function getInventoryItemById(id: string): Promise<InventoryItemDet
   return prisma.inventoryItem.findUnique({ where: { id }, include: ITEM_DETAIL_INCLUDE });
 }
 
+/** Used by POS barcode scan / manual code entry — see POS.md "Barcode scanning". */
+export async function getInventoryItemByBarcode(code: string): Promise<InventoryItemDetail | null> {
+  const sequence = parseBarcodeCode(code);
+  if (sequence === null) return null;
+  return prisma.inventoryItem.findFirst({
+    where: { barcode: { sequence } },
+    include: ITEM_DETAIL_INCLUDE,
+  });
+}
+
 /**
  * Projects InventoryItemDetail to plain strings/primitives — Prisma's
  * Decimal instances cannot be passed as props into a Client Component
@@ -491,6 +542,31 @@ export function toEditableStockItem(item: InventoryItemDetail): EditableStockIte
       notes: item.product.notes,
       imageUrl: item.product.imageUrl,
     },
+  };
+}
+
+/** Projects an inventory row to POS-safe serialized strings — see toEditableStockItem. */
+export function toPosCatalogItem(item: InventoryListRow): PosCatalogItem {
+  return {
+    inventoryItemId: item.id,
+    barcodeCode: item.barcode ? formatBarcodeCode(item.barcode.sequence) : null,
+    productName: item.product.name,
+    categoryName: item.product.category?.name ?? null,
+    imageUrl: item.product.imageUrl,
+    status: item.status,
+    purity: item.purity,
+    netWeight: item.netWeight.toString(),
+    wastageType: item.wastageType,
+    wastagePercent: item.wastagePercent ? item.wastagePercent.toString() : null,
+    wastageWeight: item.wastageWeight.toString(),
+    grossWeight: item.grossWeight.toString(),
+    goldRatePerGram: item.goldRatePerGram.toString(),
+    goldValue: item.goldValue.toString(),
+    makingCharge: item.makingCharge.toString(),
+    stoneCharge: item.stoneCharge.toString(),
+    diamondCharge: item.diamondCharge.toString(),
+    otherCharge: item.otherCharge.toString(),
+    sellingPrice: item.sellingPrice.toString(),
   };
 }
 
@@ -574,6 +650,14 @@ export async function listInventoryItems(
   ]);
 
   return { rows, total };
+}
+
+/** POS product search — only ever offers items that are actually sellable right now. */
+export async function searchInventoryForSale(query: string, limit = 15): Promise<PosCatalogItem[]> {
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+  const { rows } = await listInventoryItems({ search: trimmed, status: "IN_STOCK", page: 1, pageSize: limit });
+  return rows.map(toPosCatalogItem);
 }
 
 export type InventorySummary = {
