@@ -266,12 +266,15 @@ depend on the original columns (`name`, `phone`, `email`,
 | `status`             | enum `CustomerStatus` (`ACTIVE`, `INACTIVE`, `BLOCKED`), default `ACTIVE` *(Phase 4)* | account status — orthogonal to the computed "Inactive Customers" marketing segment, see `CUSTOMER-SEGMENTS.md` |
 | `outstandingBalance` | `Decimal(14,2)`, default 0 | Phase 3: increment-only. Phase 4: a cache of what `CustomerLedgerEntry.balanceAfter` sums to, updated exclusively by `appendCustomerLedgerEntry` in the same transaction as the ledger row — see `CUSTOMER-LEDGER.md` |
 | `notes`              | text, nullable | Phase 3 single free-text field, superseded for ongoing use by the multi-entry `CustomerNote` table below (kept for backward compatibility, not written to by the Phase 4 UI) |
+| `marketingConsent`   | enum `MarketingConsentStatus` (`OPTED_IN`, `OPTED_OUT`, `UNKNOWN`), default `UNKNOWN` *(Phase 7)* | `UNKNOWN` is deliberately not treated as consent — only `OPTED_IN` customers are ever eligible for a campaign message. See `WHATSAPP-INTEGRATION.md` "Consent." |
+| `consentDate` / `consentSource` | timestamp/text, nullable *(Phase 7)* | when and how consent was recorded (e.g. "in-store", "WhatsApp reply") |
+| `optOutDate`         | timestamp, nullable *(Phase 7)* | set the instant a STOP/UNSUBSCRIBE reply (or manual opt-out) is processed |
 | `createdById`        | uuid (FK → User, `onDelete: Restrict`) |                    |
 | `createdAt` / `updatedAt` | timestamp |                              |
 
 Indexed on `phone`, `name`, and, added in Phase 4, `city`, `customerType`,
 `status`, `createdAt` (all filters `listCustomers()` supports — see
-`CUSTOMER-CRM.md`).
+`CUSTOMER-CRM.md`); `marketingConsent` indexed as of Phase 7.
 
 ### `CustomerNote` *(Phase 4)*
 
@@ -787,6 +790,151 @@ decision are the only genuinely new data. See `DAILY-CLOSING.md`.
 
 Indexed on `status`.
 
+### `Campaign` *(Phase 7)*
+
+A marketing campaign — never a duplicate ledger of `Sale`/
+`CustomerLedgerEntry` data. See `CAMPAIGN-SYSTEM.md`.
+
+| Column            | Type        | Notes                                    |
+| ------------------ | ----------- | ----------------------------------------- |
+| `id`               | uuid (PK)   |                                            |
+| `name` / `description` | text/text, nullable |                                |
+| `objective`        | enum `CampaignObjective` (`AWARENESS`, `ENGAGEMENT`, `SALES`, `RETENTION`, `REACTIVATION`, `INFORMATIONAL`) | `INFORMATIONAL` pairs with `GOLD_RATE_UPDATE`, never an investment claim |
+| `campaignType`     | enum `CampaignType` (`NEW_ARRIVAL`, `VIP`, `INACTIVE_CUSTOMER`, `BIRTHDAY`, `ANNIVERSARY`, `FESTIVAL`, `SPECIAL_OFFER`, `NEW_COLLECTION`, `GOLD_RATE_UPDATE`, `FOLLOW_UP`) |                    |
+| `audienceFilters`  | jsonb, nullable | snapshot of the Audience Builder filters used to build the send list, kept for audit even if customer data later changes |
+| `channel`          | enum `MarketingChannel` (`WHATSAPP`), default `WHATSAPP` | left open for SMS/email later without a shape change |
+| `language`         | enum `MessageLanguage` (`ENGLISH`, `URDU`, `ROMAN_URDU`), default `ENGLISH` |            |
+| `productId`        | uuid, nullable (FK → InventoryItem, `onDelete: SetNull`) | optional product focus |
+| `offer`            | text, nullable | the campaign's own authorized offer text — message safety checks any discount mention against this |
+| `expiryDate`       | `date`, nullable | backs the `{{expiry_date}}` placeholder — never inferred |
+| `messageTemplate`  | text        | always contains unresolved `{{placeholder}}` tokens — see `AI-MARKETING.md` "Message personalization" |
+| `status`           | enum `CampaignStatus` (`DRAFT`, `PENDING_APPROVAL`, `SCHEDULED`, `RUNNING`, `PAUSED`, `COMPLETED`, `CANCELLED`), default `DRAFT` |    |
+| `scheduledAt` / `approvedById` / `approvedAt` / `launchedAt` / `pausedAt` / `cancelledAt` / `completedAt` | timestamp/uuid/timestamp... | one column per lifecycle transition — see `CAMPAIGN-SYSTEM.md` "Statuses" |
+| `createdById`      | uuid (FK → User, `onDelete: Restrict`) |                    |
+| `createdAt` / `updatedAt` | timestamp |                              |
+
+Indexed on `status`, `campaignType`, `createdAt`.
+
+### `CampaignMessage` *(Phase 7)*
+
+The send queue — one row per recipient. See `CAMPAIGN-SYSTEM.md` "Message
+queue."
+
+| Column              | Type        | Notes                                    |
+| -------------------- | ----------- | ----------------------------------------- |
+| `id`                 | uuid (PK)   |                                            |
+| `campaignId`         | uuid (FK → Campaign, `onDelete: Cascade`) |              |
+| `customerId`         | uuid (FK → Customer, `onDelete: Restrict`) |             |
+| `channel`            | enum `MarketingChannel` |                                |
+| `message`            | text        | fully personalized text (placeholders already substituted); retained only as long as operationally needed — see `AI-MARKETING.md` "Privacy" |
+| `providerMessageId`  | text, nullable | the provider's own id — null until sent |
+| `status`             | enum `MessageStatus` (`QUEUED`, `PROCESSING`, `SENT`, `DELIVERED`, `READ`, `FAILED`, `OPTED_OUT`, `CANCELLED`), default `QUEUED` |    |
+| `error`              | text, nullable |                                          |
+| `attempts`           | `Int`, default 0 | retry attempts so far |
+| `nextRetryAt`        | timestamp, nullable | exponential-backoff gate — `null` means due now |
+| `createdAt` / `sentAt` / `deliveredAt` / `readAt` / `repliedAt` | timestamp, nullable except `createdAt` | `repliedAt` records only that a reply happened, never the reply text — see `AI-MARKETING.md` "Privacy" |
+
+Indexed on `(campaignId, status)`, `(customerId, createdAt)`, `status`.
+
+### `CampaignAudienceExclusion` *(Phase 7)*
+
+A manual, per-campaign exclusion — on top of the automatic consent/
+opt-out/frequency exclusions computed at send time.
+
+| Column         | Type        | Notes                                    |
+| --------------- | ----------- | ----------------------------------------- |
+| `id`            | uuid (PK)   |                                            |
+| `campaignId`    | uuid (FK → Campaign, `onDelete: Cascade`) |              |
+| `customerId`    | uuid (FK → Customer, `onDelete: Cascade`) |              |
+| `reason`        | text, nullable |                                          |
+| `excludedById`  | uuid (FK → User, `onDelete: Restrict`) |                  |
+| `createdAt`     | timestamp   |                                            |
+
+Unique on `(campaignId, customerId)`.
+
+### `FollowUpTask` *(Phase 7)*
+
+"Customers to Contact" — always a task for a human, never an automatic
+send. See `AI-MARKETING.md` "AI follow-up system."
+
+| Column          | Type        | Notes                                    |
+| ---------------- | ----------- | ----------------------------------------- |
+| `id`             | uuid (PK)   |                                            |
+| `customerId`     | uuid (FK → Customer, `onDelete: Cascade`) |               |
+| `assignedToId`   | uuid, nullable (FK → User, `onDelete: SetNull`) |               |
+| `reason`         | text        | required; a factual sentence built from real recency/purchase data |
+| `priority`       | enum `FollowUpPriority` (`LOW`, `MEDIUM`, `HIGH`), default `MEDIUM` |         |
+| `dueDate`        | `date`, nullable |                                        |
+| `status`         | enum `FollowUpStatus` (`OPEN`, `IN_PROGRESS`, `COMPLETED`, `CANCELLED`), default `OPEN` |    |
+| `notes`          | text, nullable |                                          |
+| `source`         | text, default `"MANUAL"` | `"MANUAL"` \| `"AI_RECOMMENDATION"` \| `"AUTOMATION"` — informational only |
+| `createdById`    | uuid (FK → User, `onDelete: Restrict`) |                    |
+| `createdAt` / `completedAt` / `updatedAt` | timestamp, nullable except `createdAt`/`updatedAt` |    |
+
+Indexed on `status`, `customerId`, `dueDate`.
+
+### `AutomationRule` *(Phase 7)*
+
+IF (trigger + conditions) THEN (action) — never THEN (send). See
+`AUTOMATION-RULES.md`.
+
+| Column          | Type        | Notes                                    |
+| ---------------- | ----------- | ----------------------------------------- |
+| `id`             | uuid (PK)   |                                            |
+| `name`           | text        |                                            |
+| `trigger`        | enum `AutomationTrigger` (`CUSTOMER_INACTIVE`, `BIRTHDAY_UPCOMING`, `ANNIVERSARY_UPCOMING`) |    |
+| `conditions`     | jsonb       | e.g. `{ "inactiveDays": 90 }` — interpreted by `automation.service.ts`, never evaluated as code |
+| `action`         | enum `AutomationAction` (`CREATE_FOLLOW_UP_TASK`, `CREATE_CAMPAIGN_DRAFT`) | deliberately excludes any send action |
+| `actionConfig`   | jsonb, nullable |                                        |
+| `status`         | enum `AutomationStatus` (`DRAFT`, `ACTIVE`, `PAUSED`, `DISABLED`), default `DRAFT` |    |
+| `createdById`    | uuid (FK → User, `onDelete: Restrict`) |                    |
+| `approvedById`   | uuid, nullable (FK → User, `onDelete: SetNull`) | set when a human activates the rule |
+| `lastRunAt` / `nextRunAt` | timestamp, nullable | `nextRunAt` is informational only — Phase 7 ships no background scheduler |
+| `createdAt` / `updatedAt` | timestamp |                              |
+
+Indexed on `status`.
+
+### `ContentDraft` *(Phase 7)*
+
+AI-generated (or human-written) social/marketing content. Every draft
+starts `DRAFT`; nothing is ever auto-published. See `AI-MARKETING.md`
+"Content approval."
+
+| Column           | Type        | Notes                                    |
+| ----------------- | ----------- | ----------------------------------------- |
+| `id`              | uuid (PK)   |                                            |
+| `inventoryItemId` | uuid, nullable (FK → InventoryItem, `onDelete: SetNull`) |        |
+| `platform`        | enum `ContentPlatform` (`INSTAGRAM`, `FACEBOOK`, `TIKTOK`, `WHATSAPP`) |          |
+| `contentType`     | enum `ContentType` (`NEW_ARRIVAL`, `PRODUCT_SPOTLIGHT`, `EDUCATIONAL`, `GOLD_KNOWLEDGE`, `JEWELRY_CARE`, `FESTIVAL`, `BEHIND_THE_SCENES`, `CUSTOMER_APPRECIATION`) |    |
+| `title`           | text, nullable |                                          |
+| `body`            | text        |                                            |
+| `hashtags`        | text[], default `[]` |                                  |
+| `callToAction`    | text, nullable |                                          |
+| `status`          | enum `ContentStatus` (`DRAFT`, `APPROVED`, `PUBLISHED`, `REJECTED`), default `DRAFT` |    |
+| `createdById`     | uuid (FK → User, `onDelete: Restrict`) |                    |
+| `approvedById` / `approvedAt` | uuid/timestamp, nullable | set on both `APPROVED` and `REJECTED` — "who made the DRAFT decision, whichever way it went," not a separate `rejectedById` column |
+| `createdAt` / `updatedAt` | timestamp |                              |
+
+Indexed on `status`, `platform`.
+
+### `AiUsageLog` *(Phase 7)*
+
+One row per `AiProvider` call — see `AI-ARCHITECTURE.md` "AI cost
+control."
+
+| Column          | Type        | Notes                                    |
+| ---------------- | ----------- | ----------------------------------------- |
+| `id`             | uuid (PK)   |                                            |
+| `provider`       | text        | e.g. `"mock"`                             |
+| `model`          | text        |                                            |
+| `operation`      | text        | `"generateText"`, `"generateStructuredOutput"`, `"classify"`, `"summarize"` |
+| `inputTokens` / `outputTokens` | `Int`, nullable |                        |
+| `estimatedCost`  | `Decimal(10,4)`, default 0 |                             |
+| `userId`         | uuid, nullable (FK → User, `onDelete: SetNull`) |               |
+| `createdAt`      | timestamp   |                                            |
+
+Indexed on `createdAt`, `userId`.
+
 ## Entity relationship summary
 
 ```
@@ -846,6 +994,20 @@ User 1---* ExpenseCategory (createdBy)
 User 1---* Expense (createdBy / voidedBy)
 User 1---* Income (createdBy / voidedBy)
 User 1---* DailyClosing (submittedBy / closedBy / reopenedBy)
+
+Customer 1---* CampaignMessage
+Customer 1---* CampaignAudienceExclusion
+Customer 1---* FollowUpTask
+Campaign 1---* CampaignMessage
+Campaign 1---* CampaignAudienceExclusion
+InventoryItem 1---* Campaign (optional productId)
+InventoryItem 1---* ContentDraft (optional inventoryItemId)
+User 1---* Campaign (createdBy / approvedBy)
+User 1---* CampaignAudienceExclusion (excludedBy)
+User 1---* FollowUpTask (assignedTo / createdBy)
+User 1---* AutomationRule (createdBy / approvedBy)
+User 1---* ContentDraft (createdBy / approvedBy)
+User 1---* AiUsageLog (optional)
 ```
 
 ## Regenerating / migrating
@@ -863,6 +1025,33 @@ Phase 6 shipped two migrations:
 the new `AuditAction`/permission/`User`-relation additions) and
 `20260817061536_phase6_income_cash_transaction_type` (adding
 `CashTransactionType.INCOME_RECEIVED` once `income.service.ts` needed it).
+
+Phase 7 shipped four migrations, three of them small follow-ups
+discovered while the services that needed the column were being built —
+each applied independently rather than folded back into the first, so
+the migration history stays an honest record of when each column was
+actually needed:
+
+- `20260817120000_phase7_ai_marketing` — the full main Phase 7 schema:
+  `Customer.marketingConsent`/`consentDate`/`consentSource`/`optOutDate`;
+  the `Campaign`, `CampaignMessage`, `CampaignAudienceExclusion`,
+  `FollowUpTask`, `AutomationRule`, `ContentDraft`, `AiUsageLog` tables;
+  13 new enums; 16 new `AuditAction` values; new `User`/`InventoryItem`
+  relations.
+- `20260817120500_phase7_campaign_message_retry` — adds
+  `CampaignMessage.nextRetryAt`, needed once `message-queue.service.ts`'s
+  exponential-backoff retry logic was built.
+- `20260817121000_phase7_campaign_expiry_date` — adds `Campaign.expiryDate`,
+  needed once the `{{expiry_date}}` placeholder required a real backing
+  field rather than an inferred value.
+- `20260817121500_phase7_campaign_message_replied_at` — adds
+  `CampaignMessage.repliedAt`, needed once webhook reply-event handling
+  and the campaign Reply Rate metric were built.
+
+All four applied cleanly on top of the existing Phase 1-6 database with
+zero data loss, via the same non-interactive-environment workaround used
+in every prior phase (`prisma migrate diff` → hand-placed migration
+folder → `prisma migrate deploy` → `prisma generate`).
 
 The generated Prisma Client lives at `src/generated/prisma/` (gitignored) —
 Prisma 7 requires an explicit `output` path and no longer writes into

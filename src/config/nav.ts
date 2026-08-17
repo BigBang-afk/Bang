@@ -11,7 +11,6 @@ import {
   Wallet,
   BookUser,
   BarChart3,
-  Megaphone,
   Sparkles,
   Settings,
   Calculator,
@@ -104,18 +103,11 @@ export const NAV_ITEMS: NavItem[] = [
     description: "Additional operational reporting beyond Accounting.",
   },
   {
-    label: "Marketing",
-    href: "/marketing",
-    icon: Megaphone,
-    status: "soon",
-    description: "WhatsApp automation and AI marketing campaigns.",
-  },
-  {
-    label: "AI Assistant",
-    href: "/ai-assistant",
+    label: "AI Marketing",
+    href: "/ai-marketing",
     icon: Sparkles,
-    status: "soon",
-    description: "Conversational business assistant.",
+    status: "active",
+    description: "AI-assisted customer segmentation, campaigns, and marketing analytics.",
   },
   { label: "Settings", href: "/settings", icon: Settings, status: "active" },
 ];
@@ -194,4 +186,18 @@ export const ACCOUNTING_SUB_NAV: SubNavItem[] = [
   { label: "Purchase Report", href: "/accounting/purchase-report" },
   { label: "Inventory Valuation", href: "/accounting/inventory-valuation" },
   { label: "Financial Reconciliation", href: "/accounting/reconciliation" },
+];
+
+export const AI_MARKETING_SUB_NAV: SubNavItem[] = [
+  { label: "AI Dashboard", href: "/ai-marketing" },
+  { label: "Campaigns", href: "/ai-marketing/campaigns" },
+  { label: "Customers to Contact", href: "/ai-marketing/customers-to-contact" },
+  { label: "AI Message Generator", href: "/ai-marketing/message-generator" },
+  { label: "Product Marketing", href: "/ai-marketing/product-marketing" },
+  { label: "Customer Insights", href: "/ai-marketing/customer-insights" },
+  { label: "Follow-Ups", href: "/ai-marketing/follow-ups" },
+  { label: "Marketing Analytics", href: "/ai-marketing/analytics" },
+  { label: "Automation Rules", href: "/ai-marketing/automation-rules" },
+  { label: "AI Assistant", href: "/ai-marketing/assistant" },
+  { label: "Settings", href: "/ai-marketing/settings" },
 ];

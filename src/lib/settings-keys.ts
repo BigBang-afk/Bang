@@ -27,6 +27,24 @@ export const SETTINGS_KEYS = {
   RECEIVABLE_AGING_BUCKET_DAYS: "accounting.receivable_aging_bucket_days",
   /** Whether Daily Closing's unresolved-issues checklist flags any customer/supplier with an outstanding balance. Off by default — most days legitimately have open balances. See DAILY-CLOSING.md. */
   FLAG_UNPAID_BALANCES_ON_CLOSING: "accounting.flag_unpaid_balances_on_closing",
+  /** Maximum marketing messages one customer may receive in a calendar day, across all campaigns. See CAMPAIGN-SYSTEM.md "Frequency control". */
+  MARKETING_MAX_MESSAGES_PER_CUSTOMER_PER_DAY: "marketing.max_messages_per_customer_per_day",
+  /** Maximum marketing messages one customer may receive in a rolling 7-day window. */
+  MARKETING_MAX_MESSAGES_PER_CUSTOMER_PER_WEEK: "marketing.max_messages_per_customer_per_week",
+  /** Minimum hours between two campaigns targeting the same customer. */
+  MARKETING_MIN_CAMPAIGN_GAP_HOURS: "marketing.min_campaign_gap_hours",
+  /** How many messages the mock/real marketing provider may be asked to send per minute — see CAMPAIGN-SYSTEM.md "Rate limiting". */
+  MARKETING_RATE_LIMIT_PER_MINUTE: "marketing.rate_limit_per_minute",
+  /** How many messages per hour, across all campaigns. */
+  MARKETING_RATE_LIMIT_PER_HOUR: "marketing.rate_limit_per_hour",
+  /** Maximum automatic retry attempts for a temporarily-failed message before it's left FAILED. */
+  MARKETING_MAX_RETRIES: "marketing.max_retries",
+  /** Days after a campaign message is sent within which a purchase may be attributed to it. See CAMPAIGN-SYSTEM.md "Attribution". */
+  MARKETING_ATTRIBUTION_WINDOW_DAYS: "marketing.attribution_window_days",
+  /** The lookback window (days) RFM Frequency/Monetary figures are computed over. See CUSTOMER-SCORING.md. */
+  MARKETING_RFM_PERIOD_DAYS: "marketing.rfm_period_days",
+  /** JSON object of the four Business Engagement Score component weights, e.g. {"recency":25,"frequency":25,"monetary":25,"engagement":25} — must sum to 100. See CUSTOMER-SCORING.md. */
+  MARKETING_ENGAGEMENT_SCORE_WEIGHTS: "marketing.engagement_score_weights",
 } as const;
 
 /** Per-role maximum discount percentage: "discount.max_percent.<ROLE_NAME>". */

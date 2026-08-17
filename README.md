@@ -45,13 +45,33 @@ phase by phase.
   financial reconciliation (`reconcileSales`/`CustomerLedger`/
   `SupplierLedger`/`Gold`/`Cash`/`Inventory`) that flags integrity errors
   but never auto-corrects them.
+- **Phase 7: AI Automation + Marketing + Customer Re-Engagement + Smart
+  Campaigns** — an AI-assisted layer built entirely on top of Phases 1-6's
+  own data: a provider-agnostic `AiProvider` abstraction (mock-only, never
+  inventing a fact — every generation reads a caller-supplied `facts`
+  object), 11-segment AI customer segmentation composing Phase 4's
+  existing rules, a transparent configurable-weight Business Engagement
+  Score, real-purchase-history product recommendations, a full Campaign
+  system (`Campaign`/`CampaignMessage` with audience building, consent/
+  opt-out enforcement, rate-limited/retrying message queueing, DIRECT vs.
+  ASSISTED attribution), a provider-agnostic `MarketingProvider`
+  abstraction prepared for a future WhatsApp Business API integration
+  (mock-only — no real, unofficial, or scraped WhatsApp automation), an
+  AI Message Generator with message-safety validation and a closed
+  six-token placeholder set, AI product marketing/social captions with a
+  DRAFT-first content-approval workflow, a "Customers to Contact"
+  follow-up system, an Automation Rule engine restricted to
+  task/draft-creation (never auto-send), and an internal AI Assistant
+  whose every answer is routed through the exact same RBAC permission
+  checks the rest of the app already uses.
 
 See [`PHASE-1-STATUS.md`](./PHASE-1-STATUS.md),
 [`PHASE-2-STATUS.md`](./PHASE-2-STATUS.md),
 [`PHASE-3-STATUS.md`](./PHASE-3-STATUS.md),
 [`PHASE-4-STATUS.md`](./PHASE-4-STATUS.md),
-[`PHASE-5-STATUS.md`](./PHASE-5-STATUS.md), and
-[`PHASE-6-STATUS.md`](./PHASE-6-STATUS.md) for exactly what is and isn't
+[`PHASE-5-STATUS.md`](./PHASE-5-STATUS.md),
+[`PHASE-6-STATUS.md`](./PHASE-6-STATUS.md), and
+[`PHASE-7-STATUS.md`](./PHASE-7-STATUS.md) for exactly what is and isn't
 built, [`ARCHITECTURE.md`](./ARCHITECTURE.md) for how the codebase is
 organized, [`DATABASE.md`](./DATABASE.md) for the schema,
 [`GOLD-RATE-ENGINE.md`](./GOLD-RATE-ENGINE.md) for the gold pricing/weight
@@ -78,8 +98,24 @@ and "sources of truth" principle, [`EXPENSE-SYSTEM.md`](./EXPENSE-SYSTEM.md)
 for expense/income numbering and the void/reversal correction pattern,
 [`DAILY-CLOSING.md`](./DAILY-CLOSING.md) for the daily cash formula and
 closing workflow, [`PROFIT-LOSS.md`](./PROFIT-LOSS.md) for COGS methodology
-and the P&L formula, and [`FINANCIAL-REPORTS.md`](./FINANCIAL-REPORTS.md)
-for the full report suite and CSV export architecture.
+and the P&L formula, [`FINANCIAL-REPORTS.md`](./FINANCIAL-REPORTS.md)
+for the full report suite and CSV export architecture,
+[`AI-ARCHITECTURE.md`](./AI-ARCHITECTURE.md) for the `AiProvider`
+abstraction and the facts-only AI design, [`AI-ASSISTANT.md`](./AI-ASSISTANT.md)
+for the internal staff assistant and its RBAC-gated tool routing,
+[`AI-MARKETING.md`](./AI-MARKETING.md) for the Phase 7 product overview
+(segmentation, dashboard, message generation, content, privacy),
+[`WHATSAPP-INTEGRATION.md`](./WHATSAPP-INTEGRATION.md) for the
+`MarketingProvider` abstraction, consent, rate limiting, and retry logic,
+[`CAMPAIGN-SYSTEM.md`](./CAMPAIGN-SYSTEM.md) for the campaign lifecycle,
+audience builder, message queue, and attribution model,
+[`CUSTOMER-SCORING.md`](./CUSTOMER-SCORING.md) for RFM analysis, the
+Business Engagement Score, and AI segmentation,
+[`AUTOMATION-RULES.md`](./AUTOMATION-RULES.md) for the automation rule
+engine's trigger/condition/action model, and
+[`MARKETING-ANALYTICS.md`](./MARKETING-ANALYTICS.md) for marketing
+revenue reporting, message safety rules, and frequency/rate-limit
+settings.
 
 ## Technology stack
 
@@ -174,6 +210,11 @@ src/
                              Closing, Profit & Loss, Cash/Gold/Sales/
                              Purchase Reports, Receivables, Payables,
                              Inventory Valuation, Financial Reconciliation
+      ai-marketing/           AI Dashboard, Campaigns (+ wizard), Customers
+                             to Contact, AI Message Generator, Product
+                             Marketing, Customer Insights, Follow-Ups,
+                             Marketing Analytics, Automation Rules,
+                             AI Assistant, Settings
     api/invoices/[id]/pdf/  Route Handler — real PDF invoice download
   components/             UI: primitives, layout, feature components
   services/               Business logic — no React, no HTTP, no Next.js APIs
@@ -264,7 +305,25 @@ e2e/                      Playwright end-to-end tests
   now sets `fileParallelism: false` to serialize test files and eliminate
   the cross-file aggregate-read races this shared-DB approach otherwise
   produces (see `PHASE-6-STATUS.md` "Known issues").
+- Phase 7 ships only a mock `AiProvider` and a mock `MarketingProvider` —
+  no real LLM vendor and no real WhatsApp Business API integration are
+  wired up; both are architecturally prepared, not connected. See
+  `AI-ARCHITECTURE.md` and `WHATSAPP-INTEGRATION.md`.
+- No background job scheduler exists yet — an Automation Rule only runs
+  when a human clicks "Run now"; `AutomationRule.nextRunAt` is stored but
+  nothing currently reads it to trigger a run automatically. See
+  `AUTOMATION-RULES.md` "Known limitation".
+- Marketing message content (`CampaignMessage.message`) has no automated
+  purge job yet, even though it's intended to be retained only as long as
+  operationally useful — see `AI-MARKETING.md` "Privacy".
+- Everything explicitly deferred by the Phase 7 spec's "DO NOT BUILD YET"
+  list remains out of scope: real WhatsApp credentials, unofficial
+  WhatsApp automation or WhatsApp Web scraping, automatic social-media
+  publishing, AI-generated fake product info or gold rates, AI financial/
+  trading advice, automatic discounts/refunds/financial adjustments,
+  customer sensitive profiling, tax filing, payroll, and full ERP
+  accounting.
 
 ## Next phase
 
-See the end of `PHASE-6-STATUS.md` for the recommended Phase 7 scope.
+See the end of `PHASE-7-STATUS.md` for the recommended Phase 8 scope.

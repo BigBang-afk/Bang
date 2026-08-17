@@ -72,7 +72,7 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  role                     Role                   @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  role                     Role                        @relation(fields: [roleId], references: [id], onDelete: Restrict)
   goldRatesCreated         GoldRate[]
   settingsUpdated          SystemSetting[]
   auditLogs                AuditLog[]
@@ -82,8 +82,8 @@ model User {
   customersCreated         Customer[]
   salesCreated             Sale[]
   paymentsCreated          Payment[]
-  returnsRequested         Return[]               @relation("ReturnRequestedBy")
-  returnsProcessed         Return[]               @relation("ReturnProcessedBy")
+  returnsRequested         Return[]                    @relation("ReturnRequestedBy")
+  returnsProcessed         Return[]                    @relation("ReturnProcessedBy")
   customerNotesCreated     CustomerNote[]
   customerPaymentsTaken    CustomerPayment[]
   ledgerEntriesCreated     CustomerLedgerEntry[]
@@ -98,13 +98,23 @@ model User {
   goldReconciliations      GoldReconciliation[]
   cashReconciliations      CashReconciliation[]
   expenseCategoriesCreated ExpenseCategory[]
-  expensesCreated          Expense[]              @relation("ExpenseCreatedBy")
-  expensesVoided           Expense[]              @relation("ExpenseVoidedBy")
-  incomesCreated           Income[]               @relation("IncomeCreatedBy")
-  incomesVoided            Income[]               @relation("IncomeVoidedBy")
-  dailyClosingsSubmitted   DailyClosing[]         @relation("DailyClosingSubmittedBy")
-  dailyClosingsClosed      DailyClosing[]         @relation("DailyClosingClosedBy")
-  dailyClosingsReopened    DailyClosing[]         @relation("DailyClosingReopenedBy")
+  expensesCreated          Expense[]                   @relation("ExpenseCreatedBy")
+  expensesVoided           Expense[]                   @relation("ExpenseVoidedBy")
+  incomesCreated           Income[]                    @relation("IncomeCreatedBy")
+  incomesVoided            Income[]                    @relation("IncomeVoidedBy")
+  dailyClosingsSubmitted   DailyClosing[]              @relation("DailyClosingSubmittedBy")
+  dailyClosingsClosed      DailyClosing[]              @relation("DailyClosingClosedBy")
+  dailyClosingsReopened    DailyClosing[]              @relation("DailyClosingReopenedBy")
+  campaignsCreated         Campaign[]                  @relation("CampaignCreatedBy")
+  campaignsApproved        Campaign[]                  @relation("CampaignApprovedBy")
+  campaignExclusionsMade   CampaignAudienceExclusion[]
+  followUpTasksAssigned    FollowUpTask[]              @relation("FollowUpAssignedTo")
+  followUpTasksCreated     FollowUpTask[]              @relation("FollowUpCreatedBy")
+  automationRulesCreated   AutomationRule[]            @relation("AutomationCreatedBy")
+  automationRulesApproved  AutomationRule[]            @relation("AutomationApprovedBy")
+  contentDraftsCreated     ContentDraft[]              @relation("ContentCreatedBy")
+  contentDraftsApproved    ContentDraft[]              @relation("ContentApprovedBy")
+  aiUsageLogs              AiUsageLog[]
 
   @@index([roleId])
   @@map("users")
@@ -231,6 +241,22 @@ enum AuditAction {
   DAY_REOPENED
   REPORT_EXPORTED
   FINANCIAL_RECONCILIATION_PERFORMED
+  AI_RECOMMENDATION_GENERATED
+  AI_CONTENT_GENERATED
+  CAMPAIGN_CREATED
+  CAMPAIGN_APPROVED
+  CAMPAIGN_LAUNCHED
+  CAMPAIGN_PAUSED
+  CAMPAIGN_CANCELLED
+  MESSAGE_QUEUED
+  MESSAGE_SENT
+  CUSTOMER_OPTED_IN
+  CUSTOMER_OPTED_OUT
+  AUTOMATION_ENABLED
+  AUTOMATION_DISABLED
+  AI_ASSISTANT_QUERY
+  FOLLOW_UP_TASK_CREATED
+  FOLLOW_UP_TASK_COMPLETED
 }
 
 model AuditLog {
@@ -395,6 +421,8 @@ model InventoryItem {
   barcode        Barcode?
   movements      StockMovement[]
   saleItems      SaleItem[]
+  campaigns      Campaign[]
+  contentDrafts  ContentDraft[]
 
   @@index([productId])
   @@index([status])
@@ -497,43 +525,54 @@ enum ReturnStatus {
 /// action combines them into `name` at save time rather than replacing it,
 /// so nothing built in Phase 3 had to change. See CUSTOMER-CRM.md.
 model Customer {
-  id                 String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id                 String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   /// The real identity — a Postgres-native autoincrement column, exactly
   /// the Barcode/Invoice pattern. "ZJC-000001" is derived from it at read
   /// time (src/lib/customer-code.ts), never stored redundantly.
-  customerCode       Int            @unique @default(autoincrement())
+  customerCode       Int                    @unique @default(autoincrement())
   name               String
   firstName          String?
   lastName           String?
-  phone              String         @unique
+  phone              String                 @unique
   secondaryPhone     String?
   email              String?
   address            String?
   city               String?
-  dateOfBirth        DateTime?      @db.Date
-  anniversaryDate    DateTime?      @db.Date
+  dateOfBirth        DateTime?              @db.Date
+  anniversaryDate    DateTime?              @db.Date
   /// Optional, freeform, never used in any business rule — see
   /// CUSTOMER-CRM.md "Privacy".
   gender             String?
   preferredLanguage  String?
-  customerType       CustomerType   @default(REGULAR)
-  status             CustomerStatus @default(ACTIVE)
+  customerType       CustomerType           @default(REGULAR)
+  status             CustomerStatus         @default(ACTIVE)
   /// Running total of unpaid balances — a cache of what
   /// CustomerLedgerEntry.balanceAfter would sum to, always updated in the
   /// same transaction as the ledger entry that changes it. The ledger is
   /// the source of truth; see CUSTOMER-LEDGER.md "Reconciliation".
-  outstandingBalance Decimal        @default(0) @db.Decimal(14, 2)
+  outstandingBalance Decimal                @default(0) @db.Decimal(14, 2)
   notes              String?
-  createdById        String         @db.Uuid
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
+  /// Marketing consent status — see AI-MARKETING.md "Consent". Only
+  /// OPTED_IN customers are eligible for a marketing campaign message;
+  /// UNKNOWN (the default) is NOT treated as consent.
+  marketingConsent   MarketingConsentStatus @default(UNKNOWN)
+  consentDate        DateTime?
+  /// Where consent was captured, e.g. "In-store form", "WhatsApp reply" — freeform, never inferred.
+  consentSource      String?
+  optOutDate         DateTime?
+  createdById        String                 @db.Uuid
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
 
-  createdBy     User                  @relation(fields: [createdById], references: [id], onDelete: Restrict)
-  sales         Sale[]
-  customerNotes CustomerNote[]
-  preference    CustomerPreference?
-  ledgerEntries CustomerLedgerEntry[]
-  payments      CustomerPayment[]
+  createdBy          User                        @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  sales              Sale[]
+  customerNotes      CustomerNote[]
+  preference         CustomerPreference?
+  ledgerEntries      CustomerLedgerEntry[]
+  payments           CustomerPayment[]
+  campaignMessages   CampaignMessage[]
+  campaignExclusions CampaignAudienceExclusion[]
+  followUpTasks      FollowUpTask[]
 
   @@index([phone])
   @@index([name])
@@ -541,6 +580,7 @@ model Customer {
   @@index([customerType])
   @@index([status])
   @@index([createdAt])
+  @@index([marketingConsent])
   @@map("customers")
 }
 
@@ -1430,4 +1470,354 @@ model DailyClosing {
 
   @@index([status])
   @@map("daily_closings")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 7 — AI Marketing, Customer Re-Engagement & Smart Campaigns
+// ---------------------------------------------------------------------------
+//
+// AI assists staff; it never sends anything on its own. Every AI-generated
+// recommendation/message/content draft is written to a table for a human to
+// review, and a campaign requires an explicit human approval + launch step
+// (PENDING_APPROVAL -> SCHEDULED/RUNNING) unless a user-enabled Automation
+// Rule explicitly allows it. This phase introduces no new source of truth
+// for sales/inventory/gold-rate facts — recommendations, scoring, and
+// generated content all read Phase 1-6 tables, never invent them. See
+// AI-ARCHITECTURE.md and AI-MARKETING.md.
+
+/// UNKNOWN (the default) is deliberately NOT treated as consent — only
+/// OPTED_IN customers are eligible to receive a marketing message. See
+/// AI-MARKETING.md "Consent".
+enum MarketingConsentStatus {
+  OPTED_IN
+  OPTED_OUT
+  UNKNOWN
+}
+
+enum CampaignObjective {
+  AWARENESS
+  ENGAGEMENT
+  SALES
+  RETENTION
+  REACTIVATION
+  /// Gold-rate updates and similar factual notices — never paired with an
+  /// investment/return claim. See AI-MARKETING.md "Gold-rate marketing".
+  INFORMATIONAL
+}
+
+/// Only WHATSAPP is wired up (via the provider abstraction, mock-only in
+/// this phase); the enum stays open for SMS/email later without a
+/// migration to Campaign/CampaignMessage's shape. See WHATSAPP-INTEGRATION.md.
+enum MarketingChannel {
+  WHATSAPP
+}
+
+enum MessageLanguage {
+  ENGLISH
+  URDU
+  ROMAN_URDU
+}
+
+enum CampaignStatus {
+  DRAFT
+  PENDING_APPROVAL
+  SCHEDULED
+  RUNNING
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum CampaignType {
+  NEW_ARRIVAL
+  VIP
+  INACTIVE_CUSTOMER
+  BIRTHDAY
+  ANNIVERSARY
+  FESTIVAL
+  SPECIAL_OFFER
+  NEW_COLLECTION
+  /// Must stay informational — see CampaignObjective.INFORMATIONAL and
+  /// AI-MARKETING.md "Gold-rate marketing".
+  GOLD_RATE_UPDATE
+  FOLLOW_UP
+}
+
+/// A marketing campaign — never a duplicate ledger of Sale/CustomerLedgerEntry
+/// data. `audienceFilters` is a snapshot of the Audience Builder criteria
+/// used to build the send list, kept for audit even if the underlying
+/// customer data later changes. See CAMPAIGN-SYSTEM.md.
+model Campaign {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name            String
+  description     String?
+  objective       CampaignObjective
+  campaignType    CampaignType
+  /// Snapshot of the Audience Builder filters (customer type, VIP, last
+  /// purchase, spending, category, purity, city, consent, engagement score)
+  /// used to build this campaign's audience.
+  audienceFilters Json?
+  channel         MarketingChannel  @default(WHATSAPP)
+  language        MessageLanguage   @default(ENGLISH)
+  /// Optional product focus for a NEW_ARRIVAL/SPECIAL_OFFER/NEW_COLLECTION campaign.
+  productId       String?           @db.Uuid
+  offer           String?
+  /// Backs the {{expiry_date}} message placeholder — never inferred, only ever this explicit field.
+  expiryDate      DateTime?         @db.Date
+  messageTemplate String
+  status          CampaignStatus    @default(DRAFT)
+  scheduledAt     DateTime?
+  approvedById    String?           @db.Uuid
+  approvedAt      DateTime?
+  launchedAt      DateTime?
+  pausedAt        DateTime?
+  cancelledAt     DateTime?
+  completedAt     DateTime?
+  createdById     String            @db.Uuid
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  createdBy  User                        @relation("CampaignCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  approvedBy User?                       @relation("CampaignApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  product    InventoryItem?              @relation(fields: [productId], references: [id], onDelete: SetNull)
+  messages   CampaignMessage[]
+  exclusions CampaignAudienceExclusion[]
+
+  @@index([status])
+  @@index([campaignType])
+  @@index([createdAt])
+  @@map("campaigns")
+}
+
+/// The send queue for one campaign's messages — one row per recipient. See
+/// CAMPAIGN-SYSTEM.md "Message queue". `message` is the fully personalized
+/// text (placeholders already substituted); retained only as long as
+/// operationally needed — see AI-MARKETING.md "Privacy" for the documented
+/// retention consideration.
+enum MessageStatus {
+  QUEUED
+  PROCESSING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+  OPTED_OUT
+  CANCELLED
+}
+
+model CampaignMessage {
+  id                String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campaignId        String           @db.Uuid
+  customerId        String           @db.Uuid
+  channel           MarketingChannel
+  message           String
+  /// The ID the marketing provider assigned this message — null until sent.
+  providerMessageId String?
+  status            MessageStatus    @default(QUEUED)
+  error             String?
+  /// Retry attempts so far — see CAMPAIGN-SYSTEM.md "Retry logic".
+  attempts          Int              @default(0)
+  /// Set on a retryable failure — the queue processor skips this row until
+  /// this instant (exponential backoff). Null means "due now".
+  nextRetryAt       DateTime?
+  createdAt         DateTime         @default(now())
+  sentAt            DateTime?
+  deliveredAt       DateTime?
+  readAt            DateTime?
+  /// Set when the provider reports an inbound reply to this message — the
+  /// reply text itself is never persisted (see AI-MARKETING.md "Privacy"),
+  /// only that a reply happened and when, for the campaign's Reply Rate.
+  repliedAt         DateTime?
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+
+  @@index([campaignId, status])
+  @@index([customerId, createdAt])
+  @@index([status])
+  @@map("campaign_messages")
+}
+
+/// A manual, per-campaign audience exclusion (on top of the automatic
+/// consent/opt-out/frequency exclusions computed at send time). See
+/// CAMPAIGN-SYSTEM.md "Audience builder" / "Campaign exclusions".
+model CampaignAudienceExclusion {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campaignId   String   @db.Uuid
+  customerId   String   @db.Uuid
+  reason       String?
+  excludedById String   @db.Uuid
+  createdAt    DateTime @default(now())
+
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  excludedBy User     @relation(fields: [excludedById], references: [id], onDelete: Restrict)
+
+  @@unique([campaignId, customerId])
+  @@map("campaign_audience_exclusions")
+}
+
+enum FollowUpPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum FollowUpStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+/// A human task — "Customers to Contact" — never an automatic send. Every
+/// AI-generated task's `reason` must be a factual sentence built from real
+/// data (see follow-up.service.ts) — the schema does not distinguish
+/// AI-generated from manually-created rows beyond the `source` field, since
+/// both are equally just tasks for a human to act on.
+model FollowUpTask {
+  id           String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customerId   String           @db.Uuid
+  assignedToId String?          @db.Uuid
+  reason       String
+  priority     FollowUpPriority @default(MEDIUM)
+  dueDate      DateTime?        @db.Date
+  status       FollowUpStatus   @default(OPEN)
+  notes        String?
+  /// "MANUAL" | "AI_RECOMMENDATION" | "AUTOMATION" — informational only.
+  source       String           @default("MANUAL")
+  createdById  String           @db.Uuid
+  createdAt    DateTime         @default(now())
+  completedAt  DateTime?
+  updatedAt    DateTime         @updatedAt
+
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  assignedTo User?    @relation("FollowUpAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  createdBy  User     @relation("FollowUpCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([status])
+  @@index([customerId])
+  @@index([dueDate])
+  @@map("follow_up_tasks")
+}
+
+enum AutomationTrigger {
+  CUSTOMER_INACTIVE
+  BIRTHDAY_UPCOMING
+  ANNIVERSARY_UPCOMING
+}
+
+/// Deliberately limited to non-messaging actions — an automation rule can
+/// never queue or send a message by itself. See AUTOMATION-RULES.md
+/// "Safety" for why CREATE_CAMPAIGN_DRAFT still requires a human to
+/// approve and launch the resulting DRAFT campaign like any other.
+enum AutomationAction {
+  CREATE_FOLLOW_UP_TASK
+  CREATE_CAMPAIGN_DRAFT
+}
+
+enum AutomationStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  DISABLED
+}
+
+/// IF (trigger + conditions) THEN (action) — never THEN (send). See
+/// AUTOMATION-RULES.md.
+model AutomationRule {
+  id           String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String
+  trigger      AutomationTrigger
+  /// e.g. { "inactiveDays": 90 } — interpreted by automation.service.ts,
+  /// never evaluated as arbitrary code.
+  conditions   Json
+  action       AutomationAction
+  actionConfig Json?
+  status       AutomationStatus  @default(DRAFT)
+  createdById  String            @db.Uuid
+  approvedById String?           @db.Uuid
+  lastRunAt    DateTime?
+  nextRunAt    DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  createdBy  User  @relation("AutomationCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  approvedBy User? @relation("AutomationApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@map("automation_rules")
+}
+
+enum ContentPlatform {
+  INSTAGRAM
+  FACEBOOK
+  TIKTOK
+  WHATSAPP
+}
+
+enum ContentType {
+  NEW_ARRIVAL
+  PRODUCT_SPOTLIGHT
+  EDUCATIONAL
+  GOLD_KNOWLEDGE
+  JEWELRY_CARE
+  FESTIVAL
+  BEHIND_THE_SCENES
+  CUSTOMER_APPRECIATION
+}
+
+/// Every AI-generated caption/post starts DRAFT and is never auto-published
+/// — see AI-MARKETING.md "Content approval".
+enum ContentStatus {
+  DRAFT
+  APPROVED
+  PUBLISHED
+  REJECTED
+}
+
+model ContentDraft {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  inventoryItemId String?         @db.Uuid
+  platform        ContentPlatform
+  contentType     ContentType
+  title           String?
+  body            String
+  hashtags        String[]        @default([])
+  callToAction    String?
+  status          ContentStatus   @default(DRAFT)
+  createdById     String          @db.Uuid
+  approvedById    String?         @db.Uuid
+  approvedAt      DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+  createdBy     User           @relation("ContentCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  approvedBy    User?          @relation("ContentApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([platform])
+  @@map("content_drafts")
+}
+
+/// AI provider usage/cost tracking — see AI-ARCHITECTURE.md "Cost control".
+/// One row per AIProvider call.
+model AiUsageLog {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  provider      String
+  model         String
+  /// e.g. "generateText", "generateStructuredOutput", "classify", "summarize".
+  operation     String
+  inputTokens   Int?
+  outputTokens  Int?
+  estimatedCost Decimal  @default(0) @db.Decimal(10, 4)
+  userId        String?  @db.Uuid
+  createdAt     DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([userId])
+  @@map("ai_usage_logs")
 }

@@ -183,6 +183,56 @@ const PERMISSION_CATALOG: { key: string; module: string; description: string }[]
     module: "ACCOUNTING",
     description: "Export financial reports to CSV.",
   },
+  {
+    key: PERMISSIONS.MARKETING_VIEW,
+    module: "MARKETING",
+    description: "View the AI Marketing dashboard, segments, insights, and analytics.",
+  },
+  {
+    key: PERMISSIONS.MARKETING_CAMPAIGNS_CREATE,
+    module: "MARKETING",
+    description: "Create/edit a draft campaign.",
+  },
+  {
+    key: PERMISSIONS.MARKETING_CAMPAIGNS_APPROVE,
+    module: "MARKETING",
+    description: "Approve a campaign pending review before it can be scheduled.",
+  },
+  {
+    key: PERMISSIONS.MARKETING_CAMPAIGNS_LAUNCH,
+    module: "MARKETING",
+    description: "Launch, pause, or cancel an approved/scheduled campaign.",
+  },
+  {
+    key: PERMISSIONS.MARKETING_CAMPAIGNS_MANAGE,
+    module: "MARKETING",
+    description: "Manage the audience builder, exclusions, and campaign settings.",
+  },
+  {
+    key: PERMISSIONS.MARKETING_CONTENT_CREATE,
+    module: "MARKETING",
+    description: "Generate AI product marketing/social content drafts.",
+  },
+  {
+    key: PERMISSIONS.MARKETING_CONTENT_APPROVE,
+    module: "MARKETING",
+    description: "Approve or reject a content draft.",
+  },
+  {
+    key: PERMISSIONS.MARKETING_AUTOMATION_MANAGE,
+    module: "MARKETING",
+    description: "Create and enable/disable automation rules.",
+  },
+  {
+    key: PERMISSIONS.MARKETING_AI_ASSISTANT_USE,
+    module: "MARKETING",
+    description: "Use the internal AI assistant.",
+  },
+  {
+    key: PERMISSIONS.MARKETING_SETTINGS_MANAGE,
+    module: "MARKETING",
+    description: "Configure marketing frequency limits, attribution window, and scoring weights.",
+  },
 ];
 
 const DEFAULT_EXPENSE_CATEGORIES = [
@@ -439,6 +489,62 @@ async function main() {
       where: { name },
       update: {},
       create: { name, isSystem: true, createdById: ownerUser.id },
+    });
+  }
+
+  console.log("Seeding AI marketing settings...");
+  const MARKETING_SETTINGS: { key: string; value: string; description: string }[] = [
+    {
+      key: SETTINGS_KEYS.MARKETING_MAX_MESSAGES_PER_CUSTOMER_PER_DAY,
+      value: "1",
+      description: "Maximum marketing messages one customer may receive in a calendar day, across all campaigns.",
+    },
+    {
+      key: SETTINGS_KEYS.MARKETING_MAX_MESSAGES_PER_CUSTOMER_PER_WEEK,
+      value: "2",
+      description: "Maximum marketing messages one customer may receive in a rolling 7-day window.",
+    },
+    {
+      key: SETTINGS_KEYS.MARKETING_MIN_CAMPAIGN_GAP_HOURS,
+      value: "48",
+      description: "Minimum hours between two campaigns targeting the same customer.",
+    },
+    {
+      key: SETTINGS_KEYS.MARKETING_RATE_LIMIT_PER_MINUTE,
+      value: "20",
+      description: "Maximum messages the marketing provider may be asked to send per minute.",
+    },
+    {
+      key: SETTINGS_KEYS.MARKETING_RATE_LIMIT_PER_HOUR,
+      value: "200",
+      description: "Maximum messages the marketing provider may be asked to send per hour.",
+    },
+    {
+      key: SETTINGS_KEYS.MARKETING_MAX_RETRIES,
+      value: "3",
+      description: "Maximum automatic retry attempts for a temporarily-failed message.",
+    },
+    {
+      key: SETTINGS_KEYS.MARKETING_ATTRIBUTION_WINDOW_DAYS,
+      value: "7",
+      description: "Days after a campaign message is sent within which a purchase may be attributed to it.",
+    },
+    {
+      key: SETTINGS_KEYS.MARKETING_RFM_PERIOD_DAYS,
+      value: "365",
+      description: "Lookback window (days) RFM Frequency/Monetary figures are computed over.",
+    },
+    {
+      key: SETTINGS_KEYS.MARKETING_ENGAGEMENT_SCORE_WEIGHTS,
+      value: JSON.stringify({ recency: 25, frequency: 25, monetary: 25, engagement: 25 }),
+      description: "Business Engagement Score component weights (must sum to 100): recency, frequency, monetary, engagement.",
+    },
+  ];
+  for (const setting of MARKETING_SETTINGS) {
+    await prisma.systemSetting.upsert({
+      where: { key: setting.key },
+      update: {},
+      create: setting,
     });
   }
 

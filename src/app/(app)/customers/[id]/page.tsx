@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Pencil, Printer, Download } from "lucide-react";
+import { Pencil, Printer, Download, Sparkles } from "lucide-react";
 import { requirePermission, userHasPermission } from "@/lib/auth/dal";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { getCustomerProfile } from "@/services/customer.service";
@@ -10,6 +10,7 @@ import { listLedgerEntriesForCustomer } from "@/services/customer-ledger.service
 import { listCustomerPayments } from "@/services/customer-payment.service";
 import { listCustomerNotes } from "@/services/customer-notes.service";
 import { getCustomerActivity } from "@/services/customer-activity.service";
+import { getAiCustomerSummary } from "@/services/ai-customer-insight.service";
 import { formatCustomerCode } from "@/lib/customer-code";
 import { formatInvoiceNumber } from "@/lib/invoice-number";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
@@ -26,6 +27,7 @@ import { AddNoteForm } from "@/components/customers/add-note-form";
 import { PreferencesForm } from "@/components/customers/preferences-form";
 import { RecordPaymentButton } from "@/components/customers/record-payment-button";
 import { ArchiveCustomerButton } from "@/components/customers/archive-customer-button";
+import { MarketingConsentControl } from "@/components/customers/marketing-consent-control";
 
 export const metadata = { title: "Customer Profile | Zarghoon Jewellers" };
 
@@ -36,7 +38,7 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
   const profile = await getCustomerProfile(id);
   if (!profile) notFound();
 
-  const [canManage, canAddNotes, canViewLedger, canRecordPayment, ltv, segments, sales, ledger, payments, notes, activity] =
+  const [canManage, canAddNotes, canViewLedger, canRecordPayment, ltv, segments, sales, ledger, payments, notes, activity, aiSummary] =
     await Promise.all([
       userHasPermission(user, PERMISSIONS.CUSTOMERS_MANAGE),
       userHasPermission(user, PERMISSIONS.CUSTOMERS_NOTES),
@@ -49,6 +51,7 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
       listCustomerPayments(id, { pageSize: 50 }),
       listCustomerNotes(id),
       getCustomerActivity(id),
+      getAiCustomerSummary(id, user.id),
     ]);
 
   return (
@@ -69,6 +72,9 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
                 {SEGMENT_LABELS[segment]}
               </Badge>
             ))}
+          </div>
+          <div className="mt-2">
+            <MarketingConsentControl customerId={profile.id} status={profile.marketingConsent} />
           </div>
         </div>
         {canManage && (
@@ -100,6 +106,16 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
       <CustomerProfileTabs
         overview={
           <div className="grid gap-6 lg:grid-cols-2">
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="size-4 text-gold" /> AI Customer Summary
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-foreground">{aiSummary.text}</p>
+              </CardContent>
+            </Card>
             <Card>
               <CardHeader>
                 <CardTitle>Contact</CardTitle>

@@ -45,6 +45,16 @@ export const PERMISSIONS = {
   ACCOUNTING_DAILY_CLOSING_REOPEN: "accounting:daily_closing_reopen",
   ACCOUNTING_RECONCILE: "accounting:reconcile",
   ACCOUNTING_EXPORT: "accounting:export",
+  MARKETING_VIEW: "marketing:view",
+  MARKETING_CAMPAIGNS_CREATE: "marketing:campaigns_create",
+  MARKETING_CAMPAIGNS_APPROVE: "marketing:campaigns_approve",
+  MARKETING_CAMPAIGNS_LAUNCH: "marketing:campaigns_launch",
+  MARKETING_CAMPAIGNS_MANAGE: "marketing:campaigns_manage",
+  MARKETING_CONTENT_CREATE: "marketing:content_create",
+  MARKETING_CONTENT_APPROVE: "marketing:content_approve",
+  MARKETING_AUTOMATION_MANAGE: "marketing:automation_manage",
+  MARKETING_AI_ASSISTANT_USE: "marketing:ai_assistant_use",
+  MARKETING_SETTINGS_MANAGE: "marketing:settings_manage",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

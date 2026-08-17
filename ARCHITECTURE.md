@@ -200,6 +200,80 @@ Each service owns one concern:
 - `financial-dashboard.service.ts` *(Phase 6)* — `getFinancialDashboardSummary()`,
   `getDailyTrend()`, `getSalesByCategoryThisMonth()`: the real-data-only
   aggregates behind the Financial Dashboard's cards and charts.
+- `ai/ai-provider.ts` / `ai/mock-ai-provider.ts` / `ai/ai-call.ts` *(Phase 7)*
+  — the `AiProvider` abstraction (`generateText`/`generateStructuredOutput`/
+  `classify`/`summarize`) and its only implementation, a deterministic
+  template-based mock that can only ever read from a caller-supplied
+  `facts` object — never a free-text generation path. `ai-call.ts` wraps
+  every call with `AiUsageLog` tracking. See "The provider abstraction
+  pattern" and "The facts-only AI design" below, and `AI-ARCHITECTURE.md`.
+- `marketing/marketing-provider.ts` / `marketing/mock-marketing-provider.ts`
+  *(Phase 7)* — the parallel provider abstraction for the WhatsApp/marketing
+  channel (`sendMessage`/`sendTemplate`/`getMessageStatus`/`handleWebhook`),
+  and its mock implementation (phone-validation-gated fake sends,
+  HMAC-signed webhook verification). See `WHATSAPP-INTEGRATION.md`.
+- `customer-scoring.service.ts` *(Phase 7)* — RFM analysis and the
+  transparent, configurable-weight Business Engagement Score. See
+  `CUSTOMER-SCORING.md`.
+- `ai-segmentation.service.ts` *(Phase 7)* — the 11-segment AI
+  segmentation, composing Phase 4's `computeCustomerSegments()` rather than
+  duplicating it, plus `getCustomerMarketingProfiles()`, the shared
+  raw-SQL aggregate query the Audience Builder and follow-up ranking also
+  read from. See `CUSTOMER-SCORING.md` "AI segmentation."
+- `recommendation.service.ts` *(Phase 7)* — `getRecommendationsForCustomer()`:
+  product recommendations from real purchase history matched against
+  currently in-stock inventory only, each with a factual reason string.
+- `audience-builder.service.ts` *(Phase 7)* — `resolveAudience()`, the
+  Campaign Builder's filter-match → consent → blocked → invalid-number →
+  manual-exclusion → frequency-limit pipeline. See "The audience-builder
+  pipeline" below and `CAMPAIGN-SYSTEM.md`.
+- `campaign.service.ts` *(Phase 7)* — the `Campaign` lifecycle
+  (DRAFT → PENDING_APPROVAL → SCHEDULED → RUNNING → COMPLETED, with
+  PAUSED/CANCELLED branches), each transition its own explicit,
+  status-checked function. See `CAMPAIGN-SYSTEM.md`.
+- `message-queue.service.ts` *(Phase 7)* — `queueCampaignMessages()`
+  (per-recipient placeholder substitution from real data) and
+  `processMessageQueue()` (rate-limited sending with exponential-backoff
+  retry). See `CAMPAIGN-SYSTEM.md` "Message queue."
+- `message-generator.service.ts` *(Phase 7)* — the AI Message Generator;
+  always returns a template with placeholders unresolved, validated
+  against `message-safety.service.ts` before being returned. See "The
+  template vs. personalized message distinction" below.
+- `message-safety.service.ts` *(Phase 7)* — pure, synchronous rule
+  matching against fake scarcity, guaranteed returns, pressure tactics,
+  and unauthorized-discount patterns.
+- `campaign-analytics.service.ts` *(Phase 7)* — per-campaign delivery/read/
+  reply rates, plus `getCampaignAttribution()` (the DIRECT/ASSISTED model —
+  see "The DIRECT vs. ASSISTED attribution model" below).
+- `follow-up.service.ts` *(Phase 7)* — `getCustomersToContact()` (ranked,
+  factual-reason follow-up candidates) and `FollowUpTask` CRUD.
+- `automation.service.ts` *(Phase 7)* — the Automation Rule engine. Action
+  set deliberately restricted to `CREATE_FOLLOW_UP_TASK`/
+  `CREATE_CAMPAIGN_DRAFT` — see "The void-never-send automation action
+  set" below and `AUTOMATION-RULES.md`.
+- `content-generator.service.ts` *(Phase 7)* — AI product captions/social
+  content, built only from `InventoryItem`/`Product`'s own recorded
+  fields, and the `ContentDraft` DRAFT → APPROVED/REJECTED → PUBLISHED
+  approval workflow.
+- `gold-rate-marketing.service.ts` *(Phase 7)* — builds gold-rate notices
+  by reading directly from Phase 1's `getEffectiveRatesForDate()` — never
+  a number the AI provider generates.
+- `ai-customer-insight.service.ts` *(Phase 7)* — the customer profile's AI
+  Customer Summary, built only from real recorded fields.
+- `ai-marketing-dashboard.service.ts` *(Phase 7)* — the AI Dashboard's
+  cards and AI Insights sentences, every figure a live aggregate.
+- `ai-assistant.service.ts` *(Phase 7)* — `askAiAssistant()`: deterministic
+  keyword intent routing to a fixed, permission-gated tool registry —
+  never a free-form query against the whole database. See
+  `AI-ASSISTANT.md`.
+- `ai-usage.service.ts` *(Phase 7)* — `AiUsageLog` tracking and the
+  monthly AI cost summary.
+- `marketing-consent.service.ts` *(Phase 7)* — `setMarketingConsent()` and
+  `handleStopKeyword()`, the opt-in/opt-out state machine.
+- `marketing-settings.service.ts` *(Phase 7)* — every Phase 7 configurable
+  number (frequency caps, rate limits, retry count, attribution window,
+  RFM period, engagement score weights), same "settings as data, read
+  fresh every call" pattern as every prior phase.
 
 ### `src/lib/auth/`
 
@@ -427,6 +501,18 @@ Role-Based Access Control, stored in the database (`Role`, `Permission`,
   authorized manager — a strictly narrower audience than who can *submit*
   a closing. Same pattern as every prior phase: only `OWNER`/`ADMIN` are
   seeded with grants today.
+- Phase 7 adds 9 `marketing:*` permissions — `marketing:view`,
+  `marketing:campaigns_create`, `marketing:campaigns_approve`,
+  `marketing:campaigns_launch`, `marketing:content_manage`,
+  `marketing:automation_manage`, `marketing:follow_ups_manage`,
+  `marketing:consent_manage`, `marketing:settings_manage` — matching the
+  spec's requirement that a cashier must never reach owner-level marketing
+  data or actions. The AI Assistant's tool registry (`ai-assistant.service.ts`)
+  reuses these exact same keys (plus existing `accounting:*`/`customers:*`/
+  `inventory:view`/`gold_rate:read`/`gold_ledger:view` keys for its
+  non-marketing tools) rather than inventing a parallel "AI access" system
+  — see `AI-ASSISTANT.md` "Security model." Same pattern as every prior
+  phase: only `OWNER`/`ADMIN` are seeded with grants today.
 
 ## Settings as data — discount limits & tax *(Phase 3)*
 
@@ -481,6 +567,18 @@ resolution never assume the browser's or server's local calendar day, they
 resolve "today" in the configured business timezone instead (see
 `resolveBusinessDateInTimezone()` in `src/lib/business-date.ts`, additive to
 Phase 1's unchanged `toBusinessDate()`/`getTodayBusinessDate()`).
+
+## Settings as data — marketing frequency, rate limits, scoring *(Phase 7)*
+
+Nine more `SystemSetting` keys, same pattern, all read fresh on every call
+by `marketing-settings.service.ts`: max messages per customer per day
+(default 1) / per week (default 2), minimum gap between campaigns
+touching the same customer (default 48h), provider send rate limit per
+minute (default 20) / per hour (default 200), max retry attempts (default
+3), the attribution window in days (default 7), the RFM lookback period
+in days (default 365), and the Business Engagement Score's four weights
+(JSON, default equal 25/25/25/25). None of these is hardcoded anywhere a
+service reads them — see `MARKETING-ANALYTICS.md` "Frequency control."
 
 ## The void/reversal correction pattern *(Phase 6)*
 
@@ -766,3 +864,88 @@ another **Server** Component (e.g. `GoldRateSummary`, `StockHistoryTimeline`,
 the print sheets) is fine — the restriction only applies at the
 Server → Client boundary. When adding a new client component that takes a
 Prisma row as a prop, check this first.
+
+## Pitfall: importing from a `server-only`-tagged module breaks a Client Component, regardless of what's imported *(Phase 7)*
+
+A new instance of the same pitfall class as the `Decimal` boundary above,
+but with a different trigger: `ai-segmentation.service.ts` carries
+`import "server-only"` at its top (correctly — it queries Prisma
+directly). Its `AI_SEGMENTS`/`AI_SEGMENT_LABELS` constants were originally
+defined in that same file. The moment `standalone-message-generator.tsx`
+(a `"use client"` component) tried to import just those two plain arrays
+from it, the build failed — **not** because the constants themselves are
+unsafe to ship to the browser, but because `server-only` poisons the
+*entire module* for any Client Component import path, independent of
+which named exports are actually used.
+
+The fix: `AI_SEGMENTS` and `AI_SEGMENT_LABELS` were moved to
+`src/types/marketing.ts`, a plain module with no `server-only` import.
+`ai-segmentation.service.ts` now re-exports both from there, so every
+existing server-side import site is unaffected. When a constant or type
+needs to be shared between a server-only service and a Client Component,
+put it in a plain module from the start — don't wait for the build to
+fail before splitting it out.
+
+## The provider abstraction pattern *(Phase 7)*
+
+Two parallel abstractions ship in Phase 7 — `AiProvider`
+(`src/services/ai/ai-provider.ts`) and `MarketingProvider`
+(`src/services/marketing/marketing-provider.ts`) — and both follow the
+identical shape: an interface with no vendor-specific types in its
+signature, exactly one implementation (`MockAiProvider` /
+`MockMarketingProvider`) that touches no real network, and a singleton
+`get*Provider()` resolver that every calling service goes through instead
+of importing an implementation directly. Swapping in a real vendor later
+means writing a new class that implements the interface and changing what
+the resolver returns — no call site anywhere else in the codebase
+changes. See `AI-ARCHITECTURE.md` and `WHATSAPP-INTEGRATION.md`.
+
+## The facts-only AI design *(Phase 7)*
+
+Every `AiProvider.generateText`/`summarize`/`classify` call is preceded by
+the calling service assembling a plain `facts` object from real database
+rows. `MockAiProvider`'s template functions only ever read from `facts` —
+there is no code path where it can fabricate a field that wasn't supplied.
+This makes "never invent a customer preference/purchase/price" a
+structural property of the mock provider's implementation, not merely a
+prompt instruction — see `AI-ARCHITECTURE.md` "The facts-only AI design."
+
+## The template vs. personalized message distinction *(Phase 7)*
+
+`message-generator.service.ts` always produces a **template** with
+literal `{{placeholder}}` tokens — even when generating for a specific
+product or offer, the placeholder tokens themselves are never resolved.
+Actual substitution with a specific customer's name, the shop's
+configured name, and today's real gold rate happens exactly once, later,
+in `message-queue.service.ts`'s `queueCampaignMessages()`. This is also
+what makes the gold-rate guarantee possible: the generator never receives
+a numeric rate as a fact, so no generated template can ever contain one —
+see `AI-ARCHITECTURE.md` "The gold-rate guarantee."
+
+## The audience-builder pipeline *(Phase 7)*
+
+`audience-builder.service.ts`'s `resolveAudience()` computes each
+exclusion reason (not opted in, blocked, invalid number, manually
+excluded, frequency-limited) as a **separate bucket**, so a campaign
+preview can show "Audience: 127, Eligible: 115, Opted out: 12, ..." rather
+than one opaque number — no customer is ever double-counted across
+buckets. See `CAMPAIGN-SYSTEM.md` "Audience Builder."
+
+## The DIRECT vs. ASSISTED attribution model *(Phase 7)*
+
+`campaign-analytics.service.ts`'s `getCampaignAttribution()` classifies
+each attributed sale as DIRECT (no other campaign touched that customer
+between the message and the sale) or ASSISTED (another campaign did),
+computed live from `CampaignMessage`/`Sale` rows on every call, never
+stored or cached. The two figures are always reported separately — never
+summed into one "campaign revenue" number that would overstate what a
+single campaign caused. See `CAMPAIGN-SYSTEM.md` "Attribution."
+
+## The void-never-send automation action set *(Phase 7)*
+
+`AutomationAction` has exactly two members — `CREATE_FOLLOW_UP_TASK` and
+`CREATE_CAMPAIGN_DRAFT` — deliberately excluding any send action. Even an
+`ACTIVE` automation rule can never queue or send a message by itself; a
+`CREATE_CAMPAIGN_DRAFT` action still produces an ordinary `DRAFT` campaign
+requiring the full human approve → schedule → launch pipeline like any
+other. See `AUTOMATION-RULES.md` "Why the action set is this narrow."

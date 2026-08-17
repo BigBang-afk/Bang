@@ -295,3 +295,76 @@ describe("Authorization — accounting permissions (Test 23)", () => {
     }
   });
 });
+
+describe("Authorization — AI marketing permissions (Test 19/23 combined)", () => {
+  const PHASE7_PERMISSIONS = [
+    PERMISSIONS.MARKETING_VIEW,
+    PERMISSIONS.MARKETING_CAMPAIGNS_CREATE,
+    PERMISSIONS.MARKETING_CAMPAIGNS_APPROVE,
+    PERMISSIONS.MARKETING_CAMPAIGNS_LAUNCH,
+    PERMISSIONS.MARKETING_CAMPAIGNS_MANAGE,
+    PERMISSIONS.MARKETING_CONTENT_CREATE,
+    PERMISSIONS.MARKETING_CONTENT_APPROVE,
+    PERMISSIONS.MARKETING_AUTOMATION_MANAGE,
+    PERMISSIONS.MARKETING_AI_ASSISTANT_USE,
+    PERMISSIONS.MARKETING_SETTINGS_MANAGE,
+  ] as const;
+
+  it("a role with no grants has none of the Phase 7 permissions", async () => {
+    const role = await getOrCreateRoleWithNoPermissions();
+    const user = { role };
+
+    for (const key of PHASE7_PERMISSIONS) {
+      await expect(userHasPermission(user, key)).resolves.toBe(false);
+    }
+    await expect(assertPermission(user, PERMISSIONS.MARKETING_AI_ASSISTANT_USE)).rejects.toThrow(AuthorizationError);
+    await expect(assertPermission(user, PERMISSIONS.MARKETING_CAMPAIGNS_APPROVE)).rejects.toThrow(AuthorizationError);
+  });
+
+  it("a role granted only marketing:campaigns_create cannot approve or launch", async () => {
+    const role = await getOrCreateRoleWithNoPermissions();
+    const permission = await prisma.permission.findUniqueOrThrow({ where: { key: PERMISSIONS.MARKETING_CAMPAIGNS_CREATE } });
+    await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: permission.id } });
+
+    const user = { role };
+    await expect(userHasPermission(user, PERMISSIONS.MARKETING_CAMPAIGNS_CREATE)).resolves.toBe(true);
+    await expect(userHasPermission(user, PERMISSIONS.MARKETING_CAMPAIGNS_APPROVE)).resolves.toBe(false);
+    await expect(userHasPermission(user, PERMISSIONS.MARKETING_CAMPAIGNS_LAUNCH)).resolves.toBe(false);
+  });
+
+  it("a role granted only marketing:content_create cannot approve content", async () => {
+    const role = await getOrCreateRoleWithNoPermissions();
+    const permission = await prisma.permission.findUniqueOrThrow({ where: { key: PERMISSIONS.MARKETING_CONTENT_CREATE } });
+    await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: permission.id } });
+
+    const user = { role };
+    await expect(userHasPermission(user, PERMISSIONS.MARKETING_CONTENT_CREATE)).resolves.toBe(true);
+    await expect(userHasPermission(user, PERMISSIONS.MARKETING_CONTENT_APPROVE)).resolves.toBe(false);
+  });
+
+  it("a role granted only marketing:view cannot use the AI assistant or manage automation", async () => {
+    const role = await getOrCreateRoleWithNoPermissions();
+    const permission = await prisma.permission.findUniqueOrThrow({ where: { key: PERMISSIONS.MARKETING_VIEW } });
+    await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: permission.id } });
+
+    const user = { role };
+    await expect(userHasPermission(user, PERMISSIONS.MARKETING_VIEW)).resolves.toBe(true);
+    await expect(userHasPermission(user, PERMISSIONS.MARKETING_AI_ASSISTANT_USE)).resolves.toBe(false);
+    await expect(userHasPermission(user, PERMISSIONS.MARKETING_AUTOMATION_MANAGE)).resolves.toBe(false);
+  });
+
+  it("OWNER always has every Phase 7 permission regardless of grants", async () => {
+    const owner = { role: { id: "irrelevant-for-owner", name: "OWNER" } };
+    for (const key of PHASE7_PERMISSIONS) {
+      await expect(userHasPermission(owner, key)).resolves.toBe(true);
+    }
+  });
+
+  it("ADMIN (seeded with every current permission) has every Phase 7 permission", async () => {
+    const adminRole = await prisma.role.findUniqueOrThrow({ where: { name: "ADMIN" } });
+    const user = { role: adminRole };
+    for (const key of PHASE7_PERMISSIONS) {
+      await expect(userHasPermission(user, key)).resolves.toBe(true);
+    }
+  });
+});
