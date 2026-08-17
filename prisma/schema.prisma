@@ -1,0 +1,2033 @@
+// Zarghoon Jewellers AI Business OS — Phase 1 database schema.
+// See DATABASE.md for entity documentation and design rationale.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Authorization: Role / Permission / RolePermission
+// ---------------------------------------------------------------------------
+
+model Role {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String   @unique
+  description String?
+  /// System roles (OWNER) are seeded and cannot be deleted or renamed.
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       User[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// Stable machine key, e.g. "gold_rate:create". Read via requirePermission().
+  key         String   @unique
+  module      String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  roles RolePermission[]
+
+  @@index([module])
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  roleId       String   @db.Uuid
+  permissionId String   @db.Uuid
+  createdAt    DateTime @default(now())
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+// ---------------------------------------------------------------------------
+// Users
+// ---------------------------------------------------------------------------
+
+model User {
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name             String
+  email            String           @unique
+  passwordHash     String
+  roleId           String           @db.Uuid
+  isActive         Boolean          @default(true)
+  lastLoginAt      DateTime?
+  /// ALL_BRANCHES (the default, preserving today's single-branch behavior
+  /// for every existing user) or SPECIFIC_BRANCHES, in which case the
+  /// `branches` join rows below are the authorized set. Never trust a
+  /// frontend-supplied branchId — always resolve through
+  /// branch-access.service.ts. See BRANCH-ARCHITECTURE.md.
+  branchAccessMode BranchAccessMode @default(ALL_BRANCHES)
+  /// This user's default/home branch for display purposes only — never
+  /// itself an authorization boundary (branchAccessMode + `branches` is).
+  primaryBranchId  String?          @db.Uuid
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  role                     Role                        @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  primaryBranch            Branch?                     @relation("UserPrimaryBranch", fields: [primaryBranchId], references: [id], onDelete: SetNull)
+  branches                 UserBranch[]
+  branchesCreated          Branch[]
+  alertsResolved           Alert[]
+  goldRatesCreated         GoldRate[]
+  settingsUpdated          SystemSetting[]
+  auditLogs                AuditLog[]
+  productsCreated          Product[]
+  inventoryItemsCreated    InventoryItem[]
+  stockMovements           StockMovement[]
+  customersCreated         Customer[]
+  salesCreated             Sale[]
+  paymentsCreated          Payment[]
+  returnsRequested         Return[]                    @relation("ReturnRequestedBy")
+  returnsProcessed         Return[]                    @relation("ReturnProcessedBy")
+  customerNotesCreated     CustomerNote[]
+  customerPaymentsTaken    CustomerPayment[]
+  ledgerEntriesCreated     CustomerLedgerEntry[]
+  karigarsCreated          Karigar[]
+  suppliersCreated         Supplier[]
+  goldLedgerEntries        GoldLedgerEntry[]
+  partyCashLedgerEntries   PartyCashLedgerEntry[]
+  cashTransactions         CashTransaction[]
+  purchasesCreated         Purchase[]
+  purchasePaymentsTaken    PurchasePayment[]
+  karigarGoldJobs          KarigarGoldJob[]
+  goldReconciliations      GoldReconciliation[]
+  cashReconciliations      CashReconciliation[]
+  expenseCategoriesCreated ExpenseCategory[]
+  expensesCreated          Expense[]                   @relation("ExpenseCreatedBy")
+  expensesVoided           Expense[]                   @relation("ExpenseVoidedBy")
+  incomesCreated           Income[]                    @relation("IncomeCreatedBy")
+  incomesVoided            Income[]                    @relation("IncomeVoidedBy")
+  dailyClosingsSubmitted   DailyClosing[]              @relation("DailyClosingSubmittedBy")
+  dailyClosingsClosed      DailyClosing[]              @relation("DailyClosingClosedBy")
+  dailyClosingsReopened    DailyClosing[]              @relation("DailyClosingReopenedBy")
+  campaignsCreated         Campaign[]                  @relation("CampaignCreatedBy")
+  campaignsApproved        Campaign[]                  @relation("CampaignApprovedBy")
+  campaignExclusionsMade   CampaignAudienceExclusion[]
+  followUpTasksAssigned    FollowUpTask[]              @relation("FollowUpAssignedTo")
+  followUpTasksCreated     FollowUpTask[]              @relation("FollowUpCreatedBy")
+  automationRulesCreated   AutomationRule[]            @relation("AutomationCreatedBy")
+  automationRulesApproved  AutomationRule[]            @relation("AutomationApprovedBy")
+  contentDraftsCreated     ContentDraft[]              @relation("ContentCreatedBy")
+  contentDraftsApproved    ContentDraft[]              @relation("ContentApprovedBy")
+  aiUsageLogs              AiUsageLog[]
+
+  @@index([roleId])
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Daily Gold Rate System
+// ---------------------------------------------------------------------------
+
+enum GoldPurity {
+  K24
+  K22
+  K21
+  K18
+  SILVER
+}
+
+/// One immutable row per rate entry. Historical rows are never updated or
+/// deleted — see GOLD-RATE-ENGINE.md for the append-only rationale. The
+/// "effective" rate for a (businessDate, purity) pair is the row with the
+/// latest createdAt, which lets an owner correct a same-day mistake without
+/// ever mutating history.
+model GoldRate {
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  businessDate DateTime   @db.Date
+  purity       GoldPurity
+  ratePerGram  Decimal    @db.Decimal(14, 2)
+  createdById  String     @db.Uuid
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  createdBy              User            @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  inventoryItemSnapshots InventoryItem[]
+
+  @@index([businessDate])
+  @@index([businessDate, purity, createdAt])
+  @@map("gold_rates")
+}
+
+// ---------------------------------------------------------------------------
+// System settings (key/value business configuration)
+// ---------------------------------------------------------------------------
+
+model SystemSetting {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key         String   @unique
+  value       String
+  description String?
+  updatedById String?  @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  updatedBy User? @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@map("system_settings")
+}
+
+// ---------------------------------------------------------------------------
+// Audit log
+// ---------------------------------------------------------------------------
+
+enum AuditAction {
+  LOGIN
+  LOGIN_FAILED
+  LOGOUT
+  GOLD_RATE_CREATED
+  GOLD_RATE_CORRECTED
+  SETTINGS_CHANGED
+  USER_CREATED
+  ROLE_CHANGED
+  CATEGORY_CREATED
+  STOCK_CREATED
+  STOCK_UPDATED
+  STOCK_STATUS_CHANGED
+  STOCK_ARCHIVED
+  FINANCIAL_FIELDS_CHANGED
+  BARCODE_GENERATED
+  BARCODE_PRINTED
+  SALE_COMPLETED
+  DISCOUNT_APPLIED
+  PAYMENT_CREATED
+  INVOICE_GENERATED
+  INVOICE_PRINTED
+  INVOICE_DOWNLOADED
+  RETURN_REQUESTED
+  RETURN_APPROVED
+  CUSTOMER_CREATED
+  CUSTOMER_UPDATED
+  CUSTOMER_ARCHIVED
+  CUSTOMER_STATUS_CHANGED
+  CUSTOMER_TYPE_CHANGED
+  CUSTOMER_PAYMENT_RECEIVED
+  CUSTOMER_NOTE_CREATED
+  CUSTOMER_NOTE_UPDATED
+  CUSTOMER_LEDGER_ADJUSTED
+  CUSTOMER_EXPORTED
+  VIP_SETTING_CHANGED
+  KARIGAR_CREATED
+  KARIGAR_UPDATED
+  KARIGAR_STATUS_CHANGED
+  SUPPLIER_CREATED
+  SUPPLIER_UPDATED
+  SUPPLIER_STATUS_CHANGED
+  GOLD_GIVEN
+  GOLD_RECEIVED
+  GOLD_ADJUSTED
+  GOLD_JOB_COMPLETED
+  KARIGAR_CASH_PAID
+  KARIGAR_CASH_RECEIVED
+  PURCHASE_CREATED
+  PURCHASE_MODIFIED
+  SUPPLIER_PAYMENT_RECORDED
+  CASH_TRANSACTION_RECORDED
+  CASH_ADJUSTED
+  GOLD_RECONCILIATION_COMPLETED
+  CASH_RECONCILIATION_COMPLETED
+  EXPENSE_CATEGORY_CREATED
+  EXPENSE_CREATED
+  EXPENSE_VOIDED
+  INCOME_CREATED
+  INCOME_VOIDED
+  DAILY_CLOSING_SUBMITTED
+  DAY_CLOSED
+  DAY_REOPENED
+  REPORT_EXPORTED
+  FINANCIAL_RECONCILIATION_PERFORMED
+  AI_RECOMMENDATION_GENERATED
+  AI_CONTENT_GENERATED
+  CAMPAIGN_CREATED
+  CAMPAIGN_APPROVED
+  CAMPAIGN_LAUNCHED
+  CAMPAIGN_PAUSED
+  CAMPAIGN_CANCELLED
+  MESSAGE_QUEUED
+  MESSAGE_SENT
+  CUSTOMER_OPTED_IN
+  CUSTOMER_OPTED_OUT
+  AUTOMATION_ENABLED
+  AUTOMATION_DISABLED
+  AI_ASSISTANT_QUERY
+  FOLLOW_UP_TASK_CREATED
+  FOLLOW_UP_TASK_COMPLETED
+  DASHBOARD_EXPORTED
+  FORECAST_GENERATED
+  FORECAST_VIEWED
+  ALERT_ACKNOWLEDGED
+  ALERT_RESOLVED
+  ALERT_DISMISSED
+  BRANCH_CREATED
+  BRANCH_SETTINGS_CHANGED
+  REPORT_GENERATED
+  AI_INSIGHT_GENERATED
+}
+
+model AuditLog {
+  id        String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String?     @db.Uuid
+  action    AuditAction
+  entity    String
+  entityId  String?
+  /// Non-sensitive context only. Never store passwords, tokens, or secrets here.
+  metadata  Json?
+  createdAt DateTime    @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2 — Inventory, Stock & ZJ Barcode System
+// ---------------------------------------------------------------------------
+
+/// Mirrors the WastageType union in src/types/gold.ts — kept in sync by hand
+/// since the calculation engine's TS types are provider-agnostic on purpose.
+enum WastageType {
+  PERCENTAGE
+  FIXED_GRAMS
+}
+
+enum StockStatus {
+  IN_STOCK
+  RESERVED
+  SOLD
+  RETURNED
+  DAMAGED
+  LOST
+}
+
+enum StockMovementType {
+  STOCK_CREATED
+  STOCK_UPDATED
+  STOCK_RESERVED
+  STOCK_SOLD
+  STOCK_RETURNED
+  STOCK_ADJUSTED
+  STOCK_DAMAGED
+  STOCK_LOST
+  STOCK_ARCHIVED
+}
+
+model ProductCategory {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String   @unique
+  description String?
+  /// Seeded default categories — not protected from renaming, but the seed
+  /// never re-creates one that was deliberately removed.
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  products      Product[]
+  purchaseItems PurchaseItem[]
+
+  @@map("product_categories")
+}
+
+/// A jewelry "design" — the reusable descriptive catalog entry. Physical,
+/// individually-weighed pieces of this design are InventoryItem rows; most
+/// designs have exactly one, but the model doesn't assume that (a design
+/// can have several physical units in stock at once, each with its own
+/// weight, barcode, cost, and status, since no two jewelry pieces weigh
+/// exactly the same).
+model Product {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String
+  categoryId   String   @db.Uuid
+  subcategory  String?
+  designNumber String?
+  supplier     String?
+  karigar      String?
+  imageUrl     String?
+  notes        String?
+  createdById  String   @db.Uuid
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  category  ProductCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  createdBy User            @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  items     InventoryItem[]
+
+  @@index([categoryId])
+  @@index([designNumber])
+  @@index([supplier])
+  @@index([karigar])
+  @@map("products")
+}
+
+/// One physical, barcoded jewelry piece. This is the "stock" record the
+/// spec refers to — weight, purity, wastage, a snapshot of the gold rate
+/// used to cost it, charges, computed cost/pricing, and status all live
+/// here. Never hard-deleted; see `archivedAt`.
+model InventoryItem {
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productId String @db.Uuid
+
+  purity         GoldPurity
+  netWeight      Decimal     @db.Decimal(10, 3)
+  wastageType    WastageType
+  wastagePercent Decimal?    @db.Decimal(6, 3)
+  wastageWeight  Decimal     @db.Decimal(10, 3)
+  grossWeight    Decimal     @db.Decimal(10, 3)
+
+  /// Snapshot of the gold rate actually used to cost this item — preserved
+  /// forever, independent of how the daily rate moves afterward. See
+  /// GOLD-RATE-ENGINE.md and INVENTORY.md "Gold rate snapshot".
+  goldRatePerGram  Decimal @db.Decimal(14, 2)
+  /// Optional provenance link to the GoldRate row this snapshot was read
+  /// from, when the submitted rate matched today's effective rate exactly.
+  /// Never the source of truth for the price — goldRatePerGram is.
+  goldRateSourceId String? @db.Uuid
+  goldValue        Decimal @db.Decimal(14, 2)
+
+  makingCharge  Decimal @default(0) @db.Decimal(14, 2)
+  stoneCharge   Decimal @default(0) @db.Decimal(14, 2)
+  diamondCharge Decimal @default(0) @db.Decimal(14, 2)
+  otherCharge   Decimal @default(0) @db.Decimal(14, 2)
+  totalCost     Decimal @db.Decimal(14, 2)
+
+  sellingPrice        Decimal @db.Decimal(14, 2)
+  expectedProfit      Decimal @db.Decimal(14, 2)
+  profitMarginPercent Decimal @db.Decimal(7, 2)
+
+  status     StockStatus @default(IN_STOCK)
+  /// Soft-delete/archive marker. Null = active. Archived items keep their
+  /// barcode, history, and audit records forever — the barcode is never
+  /// reused.
+  archivedAt DateTime?
+
+  /// Where this physical piece came from — MANUFACTURED (Phase 2's Add
+  /// Stock flow, the default) or PURCHASED (Phase 5, bought finished from a
+  /// Supplier). See PURCHASE-SYSTEM.md "Purchased vs. manufactured stock".
+  source         InventorySource @default(MANUFACTURED)
+  /// Set only when source = PURCHASED. Additive to Product.supplier (a
+  /// free-text field Phase 2 already has) — this is the real FK.
+  supplierId     String?         @db.Uuid
+  /// Set only when source = PURCHASED — the exact purchase line this piece
+  /// came from. Purchase cost/rate/charges live on that row and are never
+  /// duplicated or overwritten here.
+  purchaseItemId String?         @unique @db.Uuid
+  /// Which branch's floor this physical piece currently sits on — nullable
+  /// foundation column, see BRANCH-ARCHITECTURE.md. Existing/new stock
+  /// created through Phase 2's Add Stock flow is left unassigned (null)
+  /// until a future phase wires a branch picker into that form.
+  branchId       String?         @db.Uuid
+
+  createdById String   @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  product        Product         @relation(fields: [productId], references: [id], onDelete: Restrict)
+  createdBy      User            @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  goldRateSource GoldRate?       @relation(fields: [goldRateSourceId], references: [id], onDelete: SetNull)
+  supplier       Supplier?       @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  purchaseItem   PurchaseItem?   @relation(fields: [purchaseItemId], references: [id], onDelete: SetNull)
+  branch         Branch?         @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  barcode        Barcode?
+  movements      StockMovement[]
+  saleItems      SaleItem[]
+  campaigns      Campaign[]
+  contentDrafts  ContentDraft[]
+
+  @@index([productId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([archivedAt])
+  @@index([source])
+  @@index([supplierId])
+  @@index([branchId])
+  @@map("inventory_items")
+}
+
+enum InventorySource {
+  MANUFACTURED
+  PURCHASED
+}
+
+/// The ZJ identifier. `sequence` is a database-generated autoincrement —
+/// Postgres guarantees it is unique and monotonically increasing even under
+/// concurrent inserts, and a value is never reused (Postgres sequences
+/// don't roll back on a failed/aborted transaction). The human-readable
+/// "ZJ-000001" code and the CODE128 scan payload are both derived from this
+/// same integer at render time (src/lib/barcode-code.ts) — there is
+/// deliberately only one identifier, shown two ways.
+model Barcode {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sequence        Int       @unique @default(autoincrement())
+  inventoryItemId String    @unique @db.Uuid
+  printCount      Int       @default(0)
+  lastPrintedAt   DateTime?
+  createdAt       DateTime  @default(now())
+
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
+
+  @@map("barcodes")
+}
+
+/// Append-only movement ledger for a single InventoryItem — the audit trail
+/// that will later connect to POS/Sales (reservations, sales, returns).
+model StockMovement {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  inventoryItemId String            @db.Uuid
+  movementType    StockMovementType
+  previousStatus  StockStatus?
+  newStatus       StockStatus?
+  weight          Decimal?          @db.Decimal(10, 3)
+  notes           String?
+  /// Structured context — e.g. { changes: { sellingPrice: { before, after } } }
+  /// for an edit, never secrets.
+  metadata        Json?
+  userId          String?           @db.Uuid
+  /// Set for STOCK_SOLD / STOCK_RETURNED movements originating from Phase 3
+  /// POS/returns — added on top of the Phase 2 table (nullable, additive).
+  saleId          String?           @db.Uuid
+  createdAt       DateTime          @default(now())
+
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
+  user          User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  sale          Sale?         @relation(fields: [saleId], references: [id], onDelete: SetNull)
+
+  @@index([inventoryItemId])
+  @@index([createdAt])
+  @@index([saleId])
+  @@map("stock_movements")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 3 — POS, Sales, Invoices & Barcode Checkout
+// ---------------------------------------------------------------------------
+
+enum PaymentMethod {
+  CASH
+  CARD
+  BANK_TRANSFER
+  OTHER
+  /// Not "actually paid" — the deferred portion of a sale, extended to the
+  /// customer as credit. Always exactly equal to Sale.balanceAmount when
+  /// present. See SALES.md "Payments always sum to the grand total".
+  CREDIT
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+enum SaleStatus {
+  COMPLETED
+  PARTIALLY_RETURNED
+  RETURNED
+}
+
+enum ReturnStatus {
+  RETURN_REQUESTED
+  RETURNED
+}
+
+/// Customer record. `name` (the Phase 3 field) stays the canonical display
+/// name — every Phase 3 read path (POS, invoices, sale history) already
+/// depends on it — while `firstName`/`lastName` are Phase 4 additions for
+/// structured data entry on the Add/Edit Customer form; the Add Customer
+/// action combines them into `name` at save time rather than replacing it,
+/// so nothing built in Phase 3 had to change. See CUSTOMER-CRM.md.
+model Customer {
+  id                 String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// The real identity — a Postgres-native autoincrement column, exactly
+  /// the Barcode/Invoice pattern. "ZJC-000001" is derived from it at read
+  /// time (src/lib/customer-code.ts), never stored redundantly.
+  customerCode       Int                    @unique @default(autoincrement())
+  name               String
+  firstName          String?
+  lastName           String?
+  phone              String                 @unique
+  secondaryPhone     String?
+  email              String?
+  address            String?
+  city               String?
+  dateOfBirth        DateTime?              @db.Date
+  anniversaryDate    DateTime?              @db.Date
+  /// Optional, freeform, never used in any business rule — see
+  /// CUSTOMER-CRM.md "Privacy".
+  gender             String?
+  preferredLanguage  String?
+  customerType       CustomerType           @default(REGULAR)
+  status             CustomerStatus         @default(ACTIVE)
+  /// Running total of unpaid balances — a cache of what
+  /// CustomerLedgerEntry.balanceAfter would sum to, always updated in the
+  /// same transaction as the ledger entry that changes it. The ledger is
+  /// the source of truth; see CUSTOMER-LEDGER.md "Reconciliation".
+  outstandingBalance Decimal                @default(0) @db.Decimal(14, 2)
+  notes              String?
+  /// Marketing consent status — see AI-MARKETING.md "Consent". Only
+  /// OPTED_IN customers are eligible for a marketing campaign message;
+  /// UNKNOWN (the default) is NOT treated as consent.
+  marketingConsent   MarketingConsentStatus @default(UNKNOWN)
+  consentDate        DateTime?
+  /// Where consent was captured, e.g. "In-store form", "WhatsApp reply" — freeform, never inferred.
+  consentSource      String?
+  optOutDate         DateTime?
+  createdById        String                 @db.Uuid
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+
+  createdBy          User                        @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  sales              Sale[]
+  customerNotes      CustomerNote[]
+  preference         CustomerPreference?
+  ledgerEntries      CustomerLedgerEntry[]
+  payments           CustomerPayment[]
+  campaignMessages   CampaignMessage[]
+  campaignExclusions CampaignAudienceExclusion[]
+  followUpTasks      FollowUpTask[]
+
+  @@index([phone])
+  @@index([name])
+  @@index([city])
+  @@index([customerType])
+  @@index([status])
+  @@index([createdAt])
+  @@index([marketingConsent])
+  @@map("customers")
+}
+
+/// One completed POS transaction. `customerId` null means "walk-in" — Phase
+/// 3 never creates a placeholder Customer row for a walk-in sale. Every
+/// money field here is the authoritative, server-recalculated total; see
+/// SALES.md "Sale transaction" for the full checkout flow.
+model Sale {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customerId String?  @db.Uuid
+  saleDate   DateTime @default(now())
+
+  /// Sum of every SaleItem.originalSellingPrice — before discounts.
+  subtotal   Decimal @db.Decimal(14, 2)
+  /// Sum of every SaleItem.discountAmount.
+  discount   Decimal @default(0) @db.Decimal(14, 2)
+  tax        Decimal @default(0) @db.Decimal(14, 2)
+  /// subtotal - discount + tax.
+  grandTotal Decimal @db.Decimal(14, 2)
+
+  /// Sum of Payment.amount where method != CREDIT.
+  paidAmount    Decimal @db.Decimal(14, 2)
+  /// Sum of Payment.amount where method == CREDIT — the deferred balance.
+  balanceAmount Decimal @default(0) @db.Decimal(14, 2)
+
+  status SaleStatus @default(COMPLETED)
+
+  /// The branch this sale was rung up at — nullable foundation column, see
+  /// BRANCH-ARCHITECTURE.md. POS checkout leaves it unassigned (null) until
+  /// a future phase adds a branch/register selector to the New Sale screen.
+  branchId String? @db.Uuid
+
+  createdById String   @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  customer  Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  createdBy User            @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  branch    Branch?         @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  items     SaleItem[]
+  payments  Payment[]
+  invoice   Invoice?
+  movements StockMovement[]
+
+  @@index([customerId])
+  @@index([createdAt])
+  @@index([status])
+  @@index([branchId])
+  @@map("sales")
+}
+
+/// A complete historical snapshot of one sold InventoryItem at the moment
+/// of sale — every field is copied, never a live reference. Editing the
+/// InventoryItem or Product later (or the daily gold rate) must never
+/// change what a past invoice shows. See SALES.md.
+model SaleItem {
+  id              String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  saleId          String @db.Uuid
+  inventoryItemId String @db.Uuid
+
+  productName     String
+  barcodeCode     String
+  purity          GoldPurity
+  netWeight       Decimal     @db.Decimal(10, 3)
+  wastageType     WastageType
+  wastagePercent  Decimal?    @db.Decimal(6, 3)
+  wastageWeight   Decimal     @db.Decimal(10, 3)
+  grossWeight     Decimal     @db.Decimal(10, 3)
+  goldRatePerGram Decimal     @db.Decimal(14, 2)
+  goldValue       Decimal     @db.Decimal(14, 2)
+  makingCharge    Decimal     @db.Decimal(14, 2)
+  stoneCharge     Decimal     @db.Decimal(14, 2)
+  diamondCharge   Decimal     @db.Decimal(14, 2)
+  otherCharge     Decimal     @db.Decimal(14, 2)
+
+  originalSellingPrice Decimal       @db.Decimal(14, 2)
+  discountType         DiscountType?
+  /// The raw entered value — a percent (0-100) or a fixed amount, matching
+  /// discountType. Null when discountAmount is 0.
+  discountValue        Decimal?      @db.Decimal(14, 2)
+  /// The actual currency discount applied — always server-recalculated
+  /// from discountType + discountValue, never trusted from the client.
+  discountAmount       Decimal       @default(0) @db.Decimal(14, 2)
+  finalPrice           Decimal       @db.Decimal(14, 2)
+
+  createdAt DateTime @default(now())
+
+  sale          Sale          @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
+  return        Return?
+
+  @@index([saleId])
+  @@index([inventoryItemId])
+  @@map("sale_items")
+}
+
+/// One payment line on a Sale. A sale can have several (split payment); the
+/// sum of every line, CREDIT included, always equals Sale.grandTotal
+/// exactly. See SALES.md "Payments always sum to the grand total".
+model Payment {
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  saleId      String        @db.Uuid
+  method      PaymentMethod
+  amount      Decimal       @db.Decimal(14, 2)
+  reference   String?
+  notes       String?
+  createdById String        @db.Uuid
+  createdAt   DateTime      @default(now())
+
+  sale      Sale @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  createdBy User @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([saleId])
+  @@index([method])
+  @@map("payments")
+}
+
+/// Tracks the printable invoice DOCUMENT lifecycle for a Sale — the same
+/// pattern as Barcode for InventoryItem (Phase 2). `sequence` is the single
+/// source of truth for the invoice number; "ZJ-INV-000001" is derived from
+/// it at render time (src/lib/invoice-number.ts), never stored redundantly.
+model Invoice {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sequence         Int       @unique @default(autoincrement())
+  saleId           String    @unique @db.Uuid
+  generatedAt      DateTime  @default(now())
+  printCount       Int       @default(0)
+  lastPrintedAt    DateTime?
+  downloadCount    Int       @default(0)
+  lastDownloadedAt DateTime?
+
+  sale Sale @relation(fields: [saleId], references: [id], onDelete: Restrict)
+
+  @@map("invoices")
+}
+
+/// Phase 3 returns foundation — deliberately two states only, no exchange
+/// workflow. Requesting a return never touches inventory; only approving one
+/// does (SOLD -> RETURNED via the existing Phase 2 status-transition
+/// service). See SALES.md "Returns foundation".
+model Return {
+  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  saleItemId    String       @unique @db.Uuid
+  status        ReturnStatus @default(RETURN_REQUESTED)
+  reason        String?
+  requestedById String       @db.Uuid
+  requestedAt   DateTime     @default(now())
+  processedById String?      @db.Uuid
+  processedAt   DateTime?
+
+  saleItem    SaleItem @relation(fields: [saleItemId], references: [id], onDelete: Restrict)
+  requestedBy User     @relation("ReturnRequestedBy", fields: [requestedById], references: [id], onDelete: Restrict)
+  processedBy User?    @relation("ReturnProcessedBy", fields: [processedById], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@map("returns")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 4 — Customer CRM, Customer Ledger & Customer Intelligence
+// ---------------------------------------------------------------------------
+
+enum CustomerType {
+  REGULAR
+  VIP
+  WHOLESALE
+  CORPORATE
+}
+
+/// An ACCOUNT status, set deliberately by staff — distinct from the
+/// "Inactive Customers" MARKETING SEGMENT (no completed purchase in N
+/// days), which is computed, never stored, and never touches this field.
+/// See CUSTOMER-SEGMENTS.md.
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
+
+enum LedgerTransactionType {
+  SALE
+  PAYMENT
+  REFUND
+  CREDIT_ADJUSTMENT
+  DEBIT_ADJUSTMENT
+}
+
+/// Structured, multi-entry note history — separate from Customer.notes
+/// (a single freeform field carried over from Phase 3) specifically so an
+/// edit never silently overwrites what a previous staff member wrote.
+model CustomerNote {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customerId  String   @db.Uuid
+  note        String
+  createdById String   @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  customer  Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  createdBy User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([customerId])
+  @@map("customer_notes")
+}
+
+/// Business preferences, not sensitive profiling — "prefers 21K gold",
+/// "usually buys bridal sets". 1:1 with Customer, optional.
+model CustomerPreference {
+  id                     String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customerId             String      @unique @db.Uuid
+  preferredCategories    String[]    @default([])
+  preferredPurity        GoldPurity?
+  preferredMetal         String?
+  preferredPriceRangeMin Decimal?    @db.Decimal(14, 2)
+  preferredPriceRangeMax Decimal?    @db.Decimal(14, 2)
+  preferredContactMethod String?
+  notes                  String?
+  updatedAt              DateTime    @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@map("customer_preferences")
+}
+
+/// The customer financial ledger — append-only, the source of truth for
+/// Customer.outstandingBalance. Every row is written by
+/// appendCustomerLedgerEntry() (src/services/customer-ledger.service.ts)
+/// inside the same transaction as the event that caused it, so the ledger
+/// and the cached balance can never drift. `referenceType`/`referenceId`
+/// point at whatever caused the entry ("Sale", "CustomerPayment", ...) —
+/// a plain string pair, the same polymorphic-reference pattern AuditLog
+/// already uses, not a hard foreign key, since it can point at different
+/// tables. See CUSTOMER-LEDGER.md.
+model CustomerLedgerEntry {
+  id              String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customerId      String                @db.Uuid
+  transactionType LedgerTransactionType
+  referenceType   String
+  referenceId     String
+  debit           Decimal               @default(0) @db.Decimal(14, 2)
+  credit          Decimal               @default(0) @db.Decimal(14, 2)
+  /// The customer's running outstanding balance immediately after this
+  /// entry — computed atomically alongside it, never backfilled.
+  balanceAfter    Decimal               @db.Decimal(14, 2)
+  description     String?
+  createdById     String                @db.Uuid
+  createdAt       DateTime              @default(now())
+
+  customer  Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  createdBy User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([customerId, createdAt])
+  @@map("customer_ledger_entries")
+}
+
+/// A standalone payment against a customer's outstanding balance — "Receive
+/// Customer Payment" — distinct from Payment (a line item on one specific
+/// Sale at checkout). A customer payment pays down accumulated credit that
+/// may span several sales, so it isn't tied to a single saleId.
+model CustomerPayment {
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customerId  String        @db.Uuid
+  amount      Decimal       @db.Decimal(14, 2)
+  /// CREDIT is not a valid method here — you cannot "receive a credit
+  /// payment" — enforced in customer-payment.service.ts, not the schema,
+  /// to avoid a near-duplicate enum.
+  method      PaymentMethod
+  reference   String?
+  notes       String?
+  createdById String        @db.Uuid
+  createdAt   DateTime      @default(now())
+
+  customer  Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  createdBy User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([customerId])
+  @@map("customer_payments")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 5 — Karigar, Supplier, Gold Ledger, Cash Management & Purchases
+// ---------------------------------------------------------------------------
+
+enum KarigarSpecialization {
+  GOLDSMITH
+  POLISHER
+  STONE_SETTER
+  DESIGNER
+  REPAIR
+  OTHER
+}
+
+enum KarigarStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
+
+/// Never hard-deleted — a Karigar with historical gold/cash transactions
+/// must keep them attributable forever. "Archiving" is a status change
+/// (-> INACTIVE), not a delete. See KARIGAR-SYSTEM.md.
+model Karigar {
+  id             String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// The real identity — a Postgres-native autoincrement column, exactly
+  /// the Barcode/Invoice/Customer pattern. "ZJK-000001" is derived from it
+  /// at read time (src/lib/karigar-code.ts), never stored redundantly.
+  karigarCode    Int                   @unique @default(autoincrement())
+  name           String
+  phone          String                @unique
+  secondaryPhone String?
+  address        String?
+  city           String?
+  specialization KarigarSpecialization @default(OTHER)
+  status         KarigarStatus         @default(ACTIVE)
+  notes          String?
+  /// The branch this karigar primarily works with — nullable foundation
+  /// column, see BRANCH-ARCHITECTURE.md.
+  branchId       String?               @db.Uuid
+  createdById    String                @db.Uuid
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  createdBy User             @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  branch    Branch?          @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  goldJobs  KarigarGoldJob[]
+
+  @@index([phone])
+  @@index([name])
+  @@index([status])
+  @@index([specialization])
+  @@index([branchId])
+  @@map("karigars")
+}
+
+enum SupplierStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
+
+model Supplier {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// "ZJS-000001" — derived from this at read time (src/lib/supplier-code.ts).
+  supplierCode   Int            @unique @default(autoincrement())
+  name           String
+  companyName    String?
+  phone          String         @unique
+  secondaryPhone String?
+  email          String?
+  address        String?
+  city           String?
+  status         SupplierStatus @default(ACTIVE)
+  notes          String?
+  /// The branch this supplier primarily deals with — nullable foundation
+  /// column, see BRANCH-ARCHITECTURE.md.
+  branchId       String?        @db.Uuid
+  createdById    String         @db.Uuid
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  createdBy      User            @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  branch         Branch?         @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  purchases      Purchase[]
+  inventoryItems InventoryItem[]
+
+  @@index([phone])
+  @@index([name])
+  @@index([status])
+  @@index([branchId])
+  @@map("suppliers")
+}
+
+/// Karigar and Supplier ledgers (gold and cash) are polymorphic across both
+/// party types rather than four near-duplicate tables — see GOLD-LEDGER.md
+/// and CASH-MANAGEMENT.md.
+enum PartyType {
+  KARIGAR
+  SUPPLIER
+}
+
+enum GoldLedgerTransactionType {
+  GOLD_GIVEN
+  GOLD_RECEIVED
+  GOLD_ADJUSTMENT
+  GOLD_RETURNED
+  GOLD_TRANSFER
+}
+
+/// Append-only. The single source of truth for PartyGoldBalance, exactly
+/// the CustomerLedgerEntry pattern generalized across two party types and
+/// split per gold purity (21K and 22K gold are never combined — see
+/// GOLD-LEDGER.md "Purity separation"). `debit` moves gold toward the party
+/// (GOLD_GIVEN, GOLD_RETURNED — the party now holds more); `credit` moves
+/// it back toward the business (GOLD_RECEIVED). See GOLD-LEDGER.md for the
+/// full convention and worked examples.
+model GoldLedgerEntry {
+  id              String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  partyType       PartyType
+  partyId         String                    @db.Uuid
+  transactionType GoldLedgerTransactionType
+  purity          GoldPurity
+  debit           Decimal                   @default(0) @db.Decimal(10, 3)
+  credit          Decimal                   @default(0) @db.Decimal(10, 3)
+  /// The running (partyType, partyId, purity) balance immediately after
+  /// this entry — computed atomically alongside it, never backfilled.
+  balanceAfter    Decimal                   @db.Decimal(10, 3)
+  /// Snapshot of the rate/value used to record this transaction — never
+  /// recomputed from today's rate. Nullable: a pure weight adjustment may
+  /// carry no rate.
+  goldRate        Decimal?                  @db.Decimal(14, 2)
+  goldValue       Decimal?                  @db.Decimal(14, 2)
+  referenceType   String
+  referenceId     String
+  description     String?
+  createdById     String                    @db.Uuid
+  createdAt       DateTime                  @default(now())
+
+  createdBy User @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([partyType, partyId, purity, createdAt])
+  @@index([referenceType, referenceId])
+  @@map("gold_ledger_entries")
+}
+
+/// Cached running gold balance per (party, purity) — the value
+/// appendGoldLedgerEntry() maintains atomically via one UPDATE/INSERT ...
+/// RETURNING statement alongside each ledger row. Never written any other
+/// way. See GOLD-LEDGER.md "The gold ledger primitive".
+model PartyGoldBalance {
+  id        String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  partyType PartyType
+  partyId   String     @db.Uuid
+  purity    GoldPurity
+  balance   Decimal    @default(0) @db.Decimal(10, 3)
+  updatedAt DateTime   @updatedAt
+
+  @@unique([partyType, partyId, purity])
+  @@map("party_gold_balances")
+}
+
+enum PartyCashTransactionType {
+  PURCHASE
+  PAYMENT
+  CASH_PAID
+  CASH_RECEIVED
+  CASH_ADJUSTMENT
+}
+
+/// Append-only. Tracks what the BUSINESS owes the party (payable) vs. what
+/// the party owes the business (receivable) — the inverse relationship of
+/// CustomerLedgerEntry. `debit` increases what the business owes (PURCHASE,
+/// a karigar charge recorded via CASH_ADJUSTMENT, or CASH_RECEIVED paying
+/// down a receivable); `credit` decreases it (CASH_PAID / PAYMENT). See
+/// CASH-MANAGEMENT.md for the full convention — the UI never shows this
+/// raw signed number, only the derived Payable/Receivable pair.
+model PartyCashLedgerEntry {
+  id              String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  partyType       PartyType
+  partyId         String                   @db.Uuid
+  transactionType PartyCashTransactionType
+  debit           Decimal                  @default(0) @db.Decimal(14, 2)
+  credit          Decimal                  @default(0) @db.Decimal(14, 2)
+  balanceAfter    Decimal                  @db.Decimal(14, 2)
+  referenceType   String
+  referenceId     String
+  description     String?
+  createdById     String                   @db.Uuid
+  createdAt       DateTime                 @default(now())
+
+  createdBy User @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([partyType, partyId, createdAt])
+  @@index([referenceType, referenceId])
+  @@map("party_cash_ledger_entries")
+}
+
+model PartyCashBalance {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  partyType PartyType
+  partyId   String    @db.Uuid
+  balance   Decimal   @default(0) @db.Decimal(14, 2)
+  updatedAt DateTime  @updatedAt
+
+  @@unique([partyType, partyId])
+  @@map("party_cash_balances")
+}
+
+enum CashDirection {
+  IN
+  OUT
+}
+
+enum CashTransactionType {
+  SALE_PAYMENT
+  CUSTOMER_PAYMENT
+  PURCHASE_PAYMENT
+  SUPPLIER_PAYMENT
+  KARIGAR_PAYMENT
+  KARIGAR_RECEIPT
+  EXPENSE
+  CASH_ADJUSTMENT
+  /// Standalone other/service/misc income (Phase 6) — never a duplicate of
+  /// a POS sale, which already posts SALE_PAYMENT. See ACCOUNTING.md
+  /// "Sources of truth".
+  INCOME_RECEIVED
+}
+
+/// The company-wide physical cash book — append-only, never edited or
+/// deleted; corrections are a new CASH_ADJUSTMENT row. Distinct from
+/// PartyCashLedgerEntry: this tracks how much cash the business physically
+/// holds; the party ledger tracks what is owed to/from one specific
+/// karigar or supplier. See CASH-MANAGEMENT.md.
+model CashTransaction {
+  id              String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  transactionType CashTransactionType
+  direction       CashDirection
+  amount          Decimal             @db.Decimal(14, 2)
+  paymentMethod   PaymentMethod
+  referenceType   String?
+  referenceId     String?
+  description     String?
+  /// Which branch's till this transaction belongs to — nullable foundation
+  /// column, see BRANCH-ARCHITECTURE.md. The company cash book stays a
+  /// single figure until this is populated by a future phase.
+  branchId        String?             @db.Uuid
+  createdById     String              @db.Uuid
+  createdAt       DateTime            @default(now())
+
+  createdBy User    @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  branch    Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+
+  @@index([transactionType])
+  @@index([paymentMethod])
+  @@index([createdAt])
+  @@index([branchId])
+  @@map("cash_transactions")
+}
+
+enum PurchaseStatus {
+  COMPLETED
+}
+
+/// One completed supplier purchase — the same "server-recalculated totals,
+/// never trusted from the client" discipline as Sale. See
+/// PURCHASE-SYSTEM.md.
+model Purchase {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// "ZJ-PUR-000001" — derived from this at read time
+  /// (src/lib/purchase-number.ts), the same Barcode/Invoice pattern.
+  sequence        Int            @unique @default(autoincrement())
+  supplierId      String         @db.Uuid
+  purchaseDate    DateTime       @default(now())
+  referenceNumber String?
+  /// Sum of every PurchaseItem.goldValue.
+  subtotal        Decimal        @db.Decimal(14, 2)
+  /// Sum of every PurchaseItem's making+stone+diamond+other charges.
+  totalCharges    Decimal        @default(0) @db.Decimal(14, 2)
+  /// Sum of every PurchaseItem.totalCost — subtotal + totalCharges.
+  grandTotal      Decimal        @db.Decimal(14, 2)
+  paidAmount      Decimal        @default(0) @db.Decimal(14, 2)
+  balanceAmount   Decimal        @default(0) @db.Decimal(14, 2)
+  status          PurchaseStatus @default(COMPLETED)
+  notes           String?
+  /// The receiving branch — nullable foundation column, see
+  /// BRANCH-ARCHITECTURE.md.
+  branchId        String?        @db.Uuid
+  createdById     String         @db.Uuid
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  supplier  Supplier          @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  createdBy User              @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  branch    Branch?           @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  items     PurchaseItem[]
+  payments  PurchasePayment[]
+
+  @@index([supplierId])
+  @@index([createdAt])
+  @@index([status])
+  @@index([branchId])
+  @@map("purchases")
+}
+
+/// One line item on a Purchase. Preserves the full costing snapshot
+/// (weight, purity, rate, charges) independent of whether it's later
+/// pushed into inventory — see PURCHASE-SYSTEM.md "Purchase workflow".
+model PurchaseItem {
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  purchaseId      String      @db.Uuid
+  productName     String
+  categoryId      String?     @db.Uuid
+  purity          GoldPurity
+  netWeight       Decimal     @db.Decimal(10, 3)
+  wastageType     WastageType
+  wastagePercent  Decimal?    @db.Decimal(6, 3)
+  wastageWeight   Decimal     @db.Decimal(10, 3)
+  grossWeight     Decimal     @db.Decimal(10, 3)
+  goldRatePerGram Decimal     @db.Decimal(14, 2)
+  goldValue       Decimal     @db.Decimal(14, 2)
+  makingCharge    Decimal     @default(0) @db.Decimal(14, 2)
+  stoneCharge     Decimal     @default(0) @db.Decimal(14, 2)
+  diamondCharge   Decimal     @default(0) @db.Decimal(14, 2)
+  otherCharge     Decimal     @default(0) @db.Decimal(14, 2)
+  totalCost       Decimal     @db.Decimal(14, 2)
+  notes           String?
+  createdAt       DateTime    @default(now())
+
+  purchase      Purchase         @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  category      ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  inventoryItem InventoryItem?
+
+  @@index([purchaseId])
+  @@map("purchase_items")
+}
+
+/// One payment line on a Purchase — the same split-payment shape as
+/// Phase 3's Payment, scoped to purchases instead of sales.
+model PurchasePayment {
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  purchaseId  String        @db.Uuid
+  amount      Decimal       @db.Decimal(14, 2)
+  method      PaymentMethod
+  reference   String?
+  notes       String?
+  createdById String        @db.Uuid
+  createdAt   DateTime      @default(now())
+
+  purchase  Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  createdBy User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([purchaseId])
+  @@map("purchase_payments")
+}
+
+enum JobReconciliationStatus {
+  WITHIN_ALLOWANCE
+  EXCESS_DIFFERENCE
+  SHORTAGE
+}
+
+/// One "give raw gold -> receive finished goods back" job-work cycle with a
+/// Karigar. Created when gold is given; completed when gold comes back.
+/// Expected/received/difference are always stored explicitly — the
+/// difference is never silently folded into "wastage" without an explicit
+/// classification. See KARIGAR-SYSTEM.md "Wastage reconciliation".
+model KarigarGoldJob {
+  id                    String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  karigarId             String                   @db.Uuid
+  purity                GoldPurity
+  purpose               String?
+  jobReference          String?
+  givenWeight           Decimal                  @db.Decimal(10, 3)
+  givenGoldRate         Decimal                  @db.Decimal(14, 2)
+  /// Nullable only for the brief window inside the creating transaction
+  /// before the ledger entry (which references this job's id) exists — set
+  /// immediately after. Never null once the transaction commits.
+  givenLedgerEntryId    String?                  @db.Uuid
+  /// The weight the karigar was expected to return (given weight minus any
+  /// agreed wastage) — set at give-time if known, editable at receive-time.
+  expectedWeight        Decimal?                 @db.Decimal(10, 3)
+  receivedWeight        Decimal?                 @db.Decimal(10, 3)
+  receivedLedgerEntryId String?                  @db.Uuid
+  /// expectedWeight - receivedWeight. Always computed and stored, never
+  /// hidden — see the spec's critical wastage test.
+  differenceWeight      Decimal?                 @db.Decimal(10, 3)
+  /// The tolerance in effect when this job was reconciled — a snapshot of
+  /// the configurable SystemSetting at that moment, never retroactively
+  /// changed by a later setting update.
+  toleranceGrams        Decimal?                 @db.Decimal(10, 3)
+  reconciliationStatus  JobReconciliationStatus?
+  /// Set only once a human explicitly classifies the difference (e.g.
+  /// "approved wastage", "shortage — investigate") — never auto-classified.
+  classification        String?
+  notes                 String?
+  /// Which branch handed off/received the gold for this job — nullable
+  /// foundation column, see BRANCH-ARCHITECTURE.md.
+  branchId              String?                  @db.Uuid
+  createdById           String                   @db.Uuid
+  createdAt             DateTime                 @default(now())
+  receivedAt            DateTime?
+  updatedAt             DateTime                 @updatedAt
+
+  karigar   Karigar @relation(fields: [karigarId], references: [id], onDelete: Restrict)
+  createdBy User    @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  branch    Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+
+  @@index([karigarId])
+  @@index([reconciliationStatus])
+  @@index([branchId])
+  @@map("karigar_gold_jobs")
+}
+
+enum ReconciliationStatus {
+  MATCHED
+  RECONCILIATION_REQUIRED
+}
+
+/// A point-in-time comparison of the system's computed gold balance for one
+/// purity against a physical stock-take count. Never auto-corrects a
+/// mismatch — see RECONCILIATION.md. A correction is a separate, explicit
+/// GoldLedgerEntry (transactionType GOLD_ADJUSTMENT) a user creates
+/// afterward, referencing this row.
+model GoldReconciliation {
+  id               String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  purity           GoldPurity
+  systemWeight     Decimal              @db.Decimal(10, 3)
+  physicalWeight   Decimal              @db.Decimal(10, 3)
+  differenceWeight Decimal              @db.Decimal(10, 3)
+  status           ReconciliationStatus
+  notes            String?
+  createdById      String               @db.Uuid
+  createdAt        DateTime             @default(now())
+
+  createdBy User @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([purity])
+  @@index([createdAt])
+  @@map("gold_reconciliations")
+}
+
+/// The cash equivalent of GoldReconciliation — compares the computed
+/// physical-cash total against a manual count. Same "flag, never
+/// auto-correct" policy.
+model CashReconciliation {
+  id             String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  systemAmount   Decimal              @db.Decimal(14, 2)
+  physicalAmount Decimal              @db.Decimal(14, 2)
+  difference     Decimal              @db.Decimal(14, 2)
+  status         ReconciliationStatus
+  notes          String?
+  createdById    String               @db.Uuid
+  createdAt      DateTime             @default(now())
+
+  createdBy User @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([createdAt])
+  @@map("cash_reconciliations")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 6 — Accounting, Expenses, Daily Closing & Financial Reports
+// ---------------------------------------------------------------------------
+//
+// This phase adds NO new source-of-truth ledger for money already tracked
+// elsewhere. Sales figures come from Sale/SaleItem/Payment (Phase 3);
+// receivables from CustomerLedgerEntry (Phase 4); payables/gold from
+// PartyCashLedgerEntry/GoldLedgerEntry (Phase 5); cash movement from
+// CashTransaction (Phase 5). The only genuinely NEW money this phase
+// introduces is Expense and Income — everything else is read and aggregated
+// from existing tables at report time. See ACCOUNTING.md.
+
+/// Shared by Expense and Income — a financial entry is never deleted or
+/// silently edited. A mistake is corrected by voiding the original (with a
+/// reason, actor, and timestamp) and creating a new entry that references it
+/// via reversalOfId. See EXPENSE-SYSTEM.md "Edit policy".
+enum FinancialEntryStatus {
+  ACTIVE
+  VOIDED
+}
+
+enum IncomeType {
+  OTHER_INCOME
+  SERVICE_INCOME
+  MISC_INCOME
+}
+
+/// Configurable — OWNER/ADMIN can add categories beyond the seeded starter
+/// set. Never hardcode a category name into business logic; category rules
+/// (if any are ever needed) key off the id, not the name string.
+model ExpenseCategory {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String   @unique
+  description String?
+  /// Seeded starter categories (Rent, Electricity, ...) — informational only,
+  /// does not restrict editing or deactivating them.
+  isSystem    Boolean  @default(false)
+  /// Soft toggle — a category with existing expenses is never deleted, only
+  /// hidden from the "add expense" picker.
+  isActive    Boolean  @default(true)
+  createdById String?  @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy User?     @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  expenses  Expense[]
+
+  @@map("expense_categories")
+}
+
+/// A business expense. Always paired with a CashTransaction (transactionType
+/// EXPENSE, direction OUT) written in the same transaction — see
+/// EXPENSE-SYSTEM.md "Expense payment". Never hard-deleted or edited after
+/// creation; see FinancialEntryStatus.
+model Expense {
+  id            String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// "ZJ-EXP-000001" is derived from this at read time
+  /// (src/lib/expense-number.ts), the same Barcode/Invoice/Purchase pattern.
+  sequence      Int                  @unique @default(autoincrement())
+  categoryId    String               @db.Uuid
+  description   String
+  amount        Decimal              @db.Decimal(14, 2)
+  paymentMethod PaymentMethod
+  /// The business date the expense applies to — may be backdated, distinct
+  /// from createdAt (when the record was entered).
+  expenseDate   DateTime             @db.Date
+  reference     String?
+  vendorName    String?
+  notes         String?
+  status        FinancialEntryStatus @default(ACTIVE)
+  voidReason    String?
+  voidedById    String?              @db.Uuid
+  voidedAt      DateTime?
+  /// Set when this expense is the CORRECTING entry for a previously voided
+  /// one — never when this expense is itself the one being voided.
+  reversalOfId  String?              @unique @db.Uuid
+  /// The branch this expense was incurred at — nullable foundation column,
+  /// see BRANCH-ARCHITECTURE.md.
+  branchId      String?              @db.Uuid
+  createdById   String               @db.Uuid
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  category   ExpenseCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  createdBy  User            @relation("ExpenseCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  voidedBy   User?           @relation("ExpenseVoidedBy", fields: [voidedById], references: [id], onDelete: SetNull)
+  reversalOf Expense?        @relation("ExpenseReversal", fields: [reversalOfId], references: [id], onDelete: SetNull)
+  reversedBy Expense?        @relation("ExpenseReversal")
+  branch     Branch?         @relation(fields: [branchId], references: [id], onDelete: SetNull)
+
+  @@index([categoryId])
+  @@index([status])
+  @@index([expenseDate])
+  @@index([createdAt])
+  @@index([branchId])
+  @@map("expenses")
+}
+
+/// Standalone, non-sales income (service charges, misc receipts). POS sales
+/// are never duplicated here — see ACCOUNTING.md "Sources of truth". Same
+/// void/reversal correction policy as Expense.
+model Income {
+  id            String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// "ZJ-INC-000001", derived at read time (src/lib/income-number.ts).
+  sequence      Int                  @unique @default(autoincrement())
+  incomeType    IncomeType
+  description   String
+  amount        Decimal              @db.Decimal(14, 2)
+  paymentMethod PaymentMethod
+  incomeDate    DateTime             @db.Date
+  reference     String?
+  notes         String?
+  status        FinancialEntryStatus @default(ACTIVE)
+  voidReason    String?
+  voidedById    String?              @db.Uuid
+  voidedAt      DateTime?
+  reversalOfId  String?              @unique @db.Uuid
+  createdById   String               @db.Uuid
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  createdBy  User    @relation("IncomeCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  voidedBy   User?   @relation("IncomeVoidedBy", fields: [voidedById], references: [id], onDelete: SetNull)
+  reversalOf Income? @relation("IncomeReversal", fields: [reversalOfId], references: [id], onDelete: SetNull)
+  reversedBy Income? @relation("IncomeReversal")
+
+  @@index([incomeType])
+  @@index([status])
+  @@index([incomeDate])
+  @@index([createdAt])
+  @@map("incomes")
+}
+
+enum DailyClosingStatus {
+  OPEN
+  PENDING_REVIEW
+  CLOSED
+  REOPENED
+}
+
+/// One row per business date, created only when a user actually acts on that
+/// day (submits or closes it) — a day with no row is implicitly OPEN. Never
+/// duplicates the transactions it summarizes; only the physical cash count
+/// and the closing decision itself are genuinely new data. See
+/// DAILY-CLOSING.md.
+model DailyClosing {
+  id           String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// The calendar day this closing covers, in the configured business
+  /// timezone — see src/lib/business-date.ts. One closing per business date.
+  businessDate DateTime           @unique @db.Date
+  status       DailyClosingStatus @default(OPEN)
+
+  /// Cash balance (getCashBalance()) at the instant this row was
+  /// submitted — the start-of-day figure, frozen at submit time.
+  openingCash         Decimal  @db.Decimal(14, 2)
+  cashReceived        Decimal  @db.Decimal(14, 2)
+  cashPaid            Decimal  @db.Decimal(14, 2)
+  cashAdjustments     Decimal  @default(0) @db.Decimal(14, 2)
+  /// openingCash + cashReceived - cashPaid + cashAdjustments.
+  expectedClosingCash Decimal  @db.Decimal(14, 2)
+  /// User-entered physical till count — null until submitted.
+  physicalCashAmount  Decimal? @db.Decimal(14, 2)
+  /// physicalCashAmount - expectedClosingCash. Negative = shortage, positive
+  /// = excess. Never auto-adjusted — see DAILY-CLOSING.md "Cash difference".
+  cashDifference      Decimal? @db.Decimal(14, 2)
+  /// Snapshot of the unresolved-issues checklist shown to the user at
+  /// submit time (see DAILY-CLOSING.md "Unresolved issues") — kept for audit
+  /// even though the underlying conditions may change afterward.
+  unresolvedIssues    Json?
+  notes               String?
+
+  submittedById String?   @db.Uuid
+  submittedAt   DateTime?
+  closedById    String?   @db.Uuid
+  closedAt      DateTime?
+  reopenedById  String?   @db.Uuid
+  reopenedAt    DateTime?
+  reopenReason  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  submittedBy User? @relation("DailyClosingSubmittedBy", fields: [submittedById], references: [id], onDelete: SetNull)
+  closedBy    User? @relation("DailyClosingClosedBy", fields: [closedById], references: [id], onDelete: SetNull)
+  reopenedBy  User? @relation("DailyClosingReopenedBy", fields: [reopenedById], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@map("daily_closings")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 7 — AI Marketing, Customer Re-Engagement & Smart Campaigns
+// ---------------------------------------------------------------------------
+//
+// AI assists staff; it never sends anything on its own. Every AI-generated
+// recommendation/message/content draft is written to a table for a human to
+// review, and a campaign requires an explicit human approval + launch step
+// (PENDING_APPROVAL -> SCHEDULED/RUNNING) unless a user-enabled Automation
+// Rule explicitly allows it. This phase introduces no new source of truth
+// for sales/inventory/gold-rate facts — recommendations, scoring, and
+// generated content all read Phase 1-6 tables, never invent them. See
+// AI-ARCHITECTURE.md and AI-MARKETING.md.
+
+/// UNKNOWN (the default) is deliberately NOT treated as consent — only
+/// OPTED_IN customers are eligible to receive a marketing message. See
+/// AI-MARKETING.md "Consent".
+enum MarketingConsentStatus {
+  OPTED_IN
+  OPTED_OUT
+  UNKNOWN
+}
+
+enum CampaignObjective {
+  AWARENESS
+  ENGAGEMENT
+  SALES
+  RETENTION
+  REACTIVATION
+  /// Gold-rate updates and similar factual notices — never paired with an
+  /// investment/return claim. See AI-MARKETING.md "Gold-rate marketing".
+  INFORMATIONAL
+}
+
+/// Only WHATSAPP is wired up (via the provider abstraction, mock-only in
+/// this phase); the enum stays open for SMS/email later without a
+/// migration to Campaign/CampaignMessage's shape. See WHATSAPP-INTEGRATION.md.
+enum MarketingChannel {
+  WHATSAPP
+}
+
+enum MessageLanguage {
+  ENGLISH
+  URDU
+  ROMAN_URDU
+}
+
+enum CampaignStatus {
+  DRAFT
+  PENDING_APPROVAL
+  SCHEDULED
+  RUNNING
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum CampaignType {
+  NEW_ARRIVAL
+  VIP
+  INACTIVE_CUSTOMER
+  BIRTHDAY
+  ANNIVERSARY
+  FESTIVAL
+  SPECIAL_OFFER
+  NEW_COLLECTION
+  /// Must stay informational — see CampaignObjective.INFORMATIONAL and
+  /// AI-MARKETING.md "Gold-rate marketing".
+  GOLD_RATE_UPDATE
+  FOLLOW_UP
+}
+
+/// A marketing campaign — never a duplicate ledger of Sale/CustomerLedgerEntry
+/// data. `audienceFilters` is a snapshot of the Audience Builder criteria
+/// used to build the send list, kept for audit even if the underlying
+/// customer data later changes. See CAMPAIGN-SYSTEM.md.
+model Campaign {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name            String
+  description     String?
+  objective       CampaignObjective
+  campaignType    CampaignType
+  /// Snapshot of the Audience Builder filters (customer type, VIP, last
+  /// purchase, spending, category, purity, city, consent, engagement score)
+  /// used to build this campaign's audience.
+  audienceFilters Json?
+  channel         MarketingChannel  @default(WHATSAPP)
+  language        MessageLanguage   @default(ENGLISH)
+  /// Optional product focus for a NEW_ARRIVAL/SPECIAL_OFFER/NEW_COLLECTION campaign.
+  productId       String?           @db.Uuid
+  offer           String?
+  /// Backs the {{expiry_date}} message placeholder — never inferred, only ever this explicit field.
+  expiryDate      DateTime?         @db.Date
+  messageTemplate String
+  status          CampaignStatus    @default(DRAFT)
+  scheduledAt     DateTime?
+  approvedById    String?           @db.Uuid
+  approvedAt      DateTime?
+  launchedAt      DateTime?
+  pausedAt        DateTime?
+  cancelledAt     DateTime?
+  completedAt     DateTime?
+  createdById     String            @db.Uuid
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  createdBy  User                        @relation("CampaignCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  approvedBy User?                       @relation("CampaignApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  product    InventoryItem?              @relation(fields: [productId], references: [id], onDelete: SetNull)
+  messages   CampaignMessage[]
+  exclusions CampaignAudienceExclusion[]
+
+  @@index([status])
+  @@index([campaignType])
+  @@index([createdAt])
+  @@map("campaigns")
+}
+
+/// The send queue for one campaign's messages — one row per recipient. See
+/// CAMPAIGN-SYSTEM.md "Message queue". `message` is the fully personalized
+/// text (placeholders already substituted); retained only as long as
+/// operationally needed — see AI-MARKETING.md "Privacy" for the documented
+/// retention consideration.
+enum MessageStatus {
+  QUEUED
+  PROCESSING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+  OPTED_OUT
+  CANCELLED
+}
+
+model CampaignMessage {
+  id                String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campaignId        String           @db.Uuid
+  customerId        String           @db.Uuid
+  channel           MarketingChannel
+  message           String
+  /// The ID the marketing provider assigned this message — null until sent.
+  providerMessageId String?
+  status            MessageStatus    @default(QUEUED)
+  error             String?
+  /// Retry attempts so far — see CAMPAIGN-SYSTEM.md "Retry logic".
+  attempts          Int              @default(0)
+  /// Set on a retryable failure — the queue processor skips this row until
+  /// this instant (exponential backoff). Null means "due now".
+  nextRetryAt       DateTime?
+  createdAt         DateTime         @default(now())
+  sentAt            DateTime?
+  deliveredAt       DateTime?
+  readAt            DateTime?
+  /// Set when the provider reports an inbound reply to this message — the
+  /// reply text itself is never persisted (see AI-MARKETING.md "Privacy"),
+  /// only that a reply happened and when, for the campaign's Reply Rate.
+  repliedAt         DateTime?
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+
+  @@index([campaignId, status])
+  @@index([customerId, createdAt])
+  @@index([status])
+  @@map("campaign_messages")
+}
+
+/// A manual, per-campaign audience exclusion (on top of the automatic
+/// consent/opt-out/frequency exclusions computed at send time). See
+/// CAMPAIGN-SYSTEM.md "Audience builder" / "Campaign exclusions".
+model CampaignAudienceExclusion {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campaignId   String   @db.Uuid
+  customerId   String   @db.Uuid
+  reason       String?
+  excludedById String   @db.Uuid
+  createdAt    DateTime @default(now())
+
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  excludedBy User     @relation(fields: [excludedById], references: [id], onDelete: Restrict)
+
+  @@unique([campaignId, customerId])
+  @@map("campaign_audience_exclusions")
+}
+
+enum FollowUpPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum FollowUpStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+/// A human task — "Customers to Contact" — never an automatic send. Every
+/// AI-generated task's `reason` must be a factual sentence built from real
+/// data (see follow-up.service.ts) — the schema does not distinguish
+/// AI-generated from manually-created rows beyond the `source` field, since
+/// both are equally just tasks for a human to act on.
+model FollowUpTask {
+  id           String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customerId   String           @db.Uuid
+  assignedToId String?          @db.Uuid
+  reason       String
+  priority     FollowUpPriority @default(MEDIUM)
+  dueDate      DateTime?        @db.Date
+  status       FollowUpStatus   @default(OPEN)
+  notes        String?
+  /// "MANUAL" | "AI_RECOMMENDATION" | "AUTOMATION" — informational only.
+  source       String           @default("MANUAL")
+  createdById  String           @db.Uuid
+  createdAt    DateTime         @default(now())
+  completedAt  DateTime?
+  updatedAt    DateTime         @updatedAt
+
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  assignedTo User?    @relation("FollowUpAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  createdBy  User     @relation("FollowUpCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([status])
+  @@index([customerId])
+  @@index([dueDate])
+  @@map("follow_up_tasks")
+}
+
+enum AutomationTrigger {
+  CUSTOMER_INACTIVE
+  BIRTHDAY_UPCOMING
+  ANNIVERSARY_UPCOMING
+}
+
+/// Deliberately limited to non-messaging actions — an automation rule can
+/// never queue or send a message by itself. See AUTOMATION-RULES.md
+/// "Safety" for why CREATE_CAMPAIGN_DRAFT still requires a human to
+/// approve and launch the resulting DRAFT campaign like any other.
+enum AutomationAction {
+  CREATE_FOLLOW_UP_TASK
+  CREATE_CAMPAIGN_DRAFT
+}
+
+enum AutomationStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  DISABLED
+}
+
+/// IF (trigger + conditions) THEN (action) — never THEN (send). See
+/// AUTOMATION-RULES.md.
+model AutomationRule {
+  id           String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String
+  trigger      AutomationTrigger
+  /// e.g. { "inactiveDays": 90 } — interpreted by automation.service.ts,
+  /// never evaluated as arbitrary code.
+  conditions   Json
+  action       AutomationAction
+  actionConfig Json?
+  status       AutomationStatus  @default(DRAFT)
+  createdById  String            @db.Uuid
+  approvedById String?           @db.Uuid
+  lastRunAt    DateTime?
+  nextRunAt    DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  createdBy  User  @relation("AutomationCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  approvedBy User? @relation("AutomationApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@map("automation_rules")
+}
+
+enum ContentPlatform {
+  INSTAGRAM
+  FACEBOOK
+  TIKTOK
+  WHATSAPP
+}
+
+enum ContentType {
+  NEW_ARRIVAL
+  PRODUCT_SPOTLIGHT
+  EDUCATIONAL
+  GOLD_KNOWLEDGE
+  JEWELRY_CARE
+  FESTIVAL
+  BEHIND_THE_SCENES
+  CUSTOMER_APPRECIATION
+}
+
+/// Every AI-generated caption/post starts DRAFT and is never auto-published
+/// — see AI-MARKETING.md "Content approval".
+enum ContentStatus {
+  DRAFT
+  APPROVED
+  PUBLISHED
+  REJECTED
+}
+
+model ContentDraft {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  inventoryItemId String?         @db.Uuid
+  platform        ContentPlatform
+  contentType     ContentType
+  title           String?
+  body            String
+  hashtags        String[]        @default([])
+  callToAction    String?
+  status          ContentStatus   @default(DRAFT)
+  createdById     String          @db.Uuid
+  approvedById    String?         @db.Uuid
+  approvedAt      DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+  createdBy     User           @relation("ContentCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  approvedBy    User?          @relation("ContentApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([platform])
+  @@map("content_drafts")
+}
+
+/// AI provider usage/cost tracking — see AI-ARCHITECTURE.md "Cost control".
+/// One row per AIProvider call.
+model AiUsageLog {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  provider      String
+  model         String
+  /// e.g. "generateText", "generateStructuredOutput", "classify", "summarize".
+  operation     String
+  inputTokens   Int?
+  outputTokens  Int?
+  estimatedCost Decimal  @default(0) @db.Decimal(10, 4)
+  userId        String?  @db.Uuid
+  createdAt     DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([userId])
+  @@map("ai_usage_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 8 — Business Intelligence, Forecasting, Alerts & Multi-Branch Foundation
+// ---------------------------------------------------------------------------
+//
+// This phase introduces no new source of truth for money/gold/customer data
+// — every analytics figure is a live composition of Phase 1-7's own service
+// functions (getProfitAndLoss, listGoldWithKarigars, getSalesReport, etc.).
+// Forecasts and AI insights are computed on demand from those same real
+// aggregates and are never persisted as their own "fact" table — see
+// BUSINESS-INTELLIGENCE.md and FORECASTING.md. The only genuinely new
+// state this phase adds is: the Alert model (rule-generated, human-actioned
+// business notices) and the Branch/UserBranch multi-branch foundation
+// (nullable, additive `branchId` columns on the transactional tables above,
+// plus branch-authorization primitives) — see BRANCH-ARCHITECTURE.md for
+// the GLOBAL-vs-BRANCH data-ownership decisions.
+
+enum BranchAccessMode {
+  ALL_BRANCHES
+  SPECIFIC_BRANCHES
+}
+
+enum BranchStatus {
+  ACTIVE
+  INACTIVE
+}
+
+/// A physical shop location — see BRANCH-ARCHITECTURE.md. Phase 8 ships
+/// the model, branch CRUD, and branch-scoped authorization/analytics;
+/// wiring a branch picker into each existing creation flow (POS, Add
+/// Stock, purchases, expenses, ...) is explicitly left to a future phase
+/// — see BRANCH-ARCHITECTURE.md "What Phase 8 does not wire up".
+model Branch {
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// The real identity — Postgres-native autoincrement, exactly the
+  /// Barcode/Customer/Karigar pattern. "ZJB-001" is derived from this at
+  /// read time (src/lib/branch-code.ts), never stored redundantly.
+  branchCode  Int          @unique @default(autoincrement())
+  name        String
+  address     String?
+  city        String?
+  phone       String?
+  status      BranchStatus @default(ACTIVE)
+  createdById String       @db.Uuid
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  createdBy        User              @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  usersPrimary     User[]            @relation("UserPrimaryBranch")
+  userGrants       UserBranch[]
+  inventoryItems   InventoryItem[]
+  sales            Sale[]
+  purchases        Purchase[]
+  expenses         Expense[]
+  cashTransactions CashTransaction[]
+  karigarGoldJobs  KarigarGoldJob[]
+  karigars         Karigar[]
+  suppliers        Supplier[]
+  alerts           Alert[]
+
+  @@index([status])
+  @@map("branches")
+}
+
+/// A specific-branch grant — only consulted when the owning User's
+/// branchAccessMode is SPECIFIC_BRANCHES. See BRANCH-ARCHITECTURE.md
+/// "Branch access".
+model UserBranch {
+  userId   String @db.Uuid
+  branchId String @db.Uuid
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@id([userId, branchId])
+  @@index([branchId])
+  @@map("user_branches")
+}
+
+enum AlertType {
+  LOW_STOCK
+  AGING_STOCK
+  CASH_SHORTAGE
+  GOLD_RECONCILIATION
+  SUPPLIER_PAYABLE_HIGH
+  CUSTOMER_RECEIVABLE_HIGH
+  EXPENSE_SPIKE
+  SALES_DROP
+  PROFIT_DROP
+  UNUSUAL_TRANSACTION
+  FAILED_PAYMENT
+  FAILED_MARKETING
+  AI_RECOMMENDATION
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  HIGH
+  CRITICAL
+}
+
+enum AlertStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+  DISMISSED
+}
+
+/// A rule-generated business notice — see ALERT-SYSTEM.md. Alerts are
+/// always generated by a deterministic rule reading real data; nothing
+/// here ever modifies the underlying transaction it flags (a cash
+/// shortage alert never adjusts cash, a low-stock alert never reorders
+/// stock). `resolvedById`/`resolvedAt` record whoever last moved the
+/// alert away from OPEN, whichever of ACKNOWLEDGED/RESOLVED/DISMISSED
+/// that was — the same "one field pair, reused across outcomes" pattern
+/// as ContentDraft.approvedById.
+model Alert {
+  id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  type         AlertType
+  severity     AlertSeverity
+  title        String
+  description  String
+  entityType   String?
+  entityId     String?
+  /// Which branch this alert concerns — null for a company-wide alert.
+  branchId     String?       @db.Uuid
+  status       AlertStatus   @default(OPEN)
+  createdAt    DateTime      @default(now())
+  resolvedById String?       @db.Uuid
+  resolvedAt   DateTime?
+
+  branch     Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  resolvedBy User?   @relation(fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([type])
+  @@index([severity])
+  @@index([createdAt])
+  @@index([branchId])
+  @@map("alerts")
+}
