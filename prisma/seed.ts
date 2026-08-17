@@ -233,6 +233,63 @@ const PERMISSION_CATALOG: { key: string; module: string; description: string }[]
     module: "MARKETING",
     description: "Configure marketing frequency limits, attribution window, and scoring weights.",
   },
+  {
+    key: PERMISSIONS.BI_DASHBOARD_VIEW,
+    module: "BUSINESS_INTELLIGENCE",
+    description: "View the Executive Dashboard.",
+  },
+  { key: PERMISSIONS.BI_SALES_VIEW, module: "BUSINESS_INTELLIGENCE", description: "View sales analytics and trends." },
+  {
+    key: PERMISSIONS.BI_PROFIT_VIEW,
+    module: "BUSINESS_INTELLIGENCE",
+    description: "View profit analytics, margins, and profit-by-category.",
+  },
+  {
+    key: PERMISSIONS.BI_INVENTORY_VIEW,
+    module: "BUSINESS_INTELLIGENCE",
+    description: "View inventory analytics, aging, and slow-moving stock.",
+  },
+  { key: PERMISSIONS.BI_GOLD_VIEW, module: "BUSINESS_INTELLIGENCE", description: "View gold analytics and exposure." },
+  {
+    key: PERMISSIONS.BI_CUSTOMER_VIEW,
+    module: "BUSINESS_INTELLIGENCE",
+    description: "View customer analytics, retention, and cohorts.",
+  },
+  { key: PERMISSIONS.BI_KARIGAR_VIEW, module: "BUSINESS_INTELLIGENCE", description: "View karigar analytics." },
+  { key: PERMISSIONS.BI_SUPPLIER_VIEW, module: "BUSINESS_INTELLIGENCE", description: "View supplier analytics." },
+  { key: PERMISSIONS.BI_CASH_VIEW, module: "BUSINESS_INTELLIGENCE", description: "View cash analytics." },
+  {
+    key: PERMISSIONS.BI_MARKETING_VIEW,
+    module: "BUSINESS_INTELLIGENCE",
+    description: "View the marketing analytics rollup.",
+  },
+  {
+    key: PERMISSIONS.BI_FORECASTING_VIEW,
+    module: "BUSINESS_INTELLIGENCE",
+    description: "View sales/expense/cash/inventory forecasts.",
+  },
+  { key: PERMISSIONS.BI_ALERTS_VIEW, module: "BUSINESS_INTELLIGENCE", description: "View the Alerts Center." },
+  {
+    key: PERMISSIONS.BI_ALERTS_MANAGE,
+    module: "BUSINESS_INTELLIGENCE",
+    description: "Acknowledge, resolve, or dismiss alerts.",
+  },
+  {
+    key: PERMISSIONS.BI_REPORTS_VIEW,
+    module: "BUSINESS_INTELLIGENCE",
+    description: "View daily/weekly/monthly owner reports.",
+  },
+  { key: PERMISSIONS.BI_REPORTS_EXPORT, module: "BUSINESS_INTELLIGENCE", description: "Export BI reports to CSV." },
+  {
+    key: PERMISSIONS.BI_BRANCH_MANAGE,
+    module: "BUSINESS_INTELLIGENCE",
+    description: "Create/edit branches and assign user branch access.",
+  },
+  {
+    key: PERMISSIONS.BI_SETTINGS_MANAGE,
+    module: "BUSINESS_INTELLIGENCE",
+    description: "Configure BI alert thresholds and forecast confidence windows.",
+  },
 ];
 
 const DEFAULT_EXPENSE_CATEGORIES = [
@@ -541,6 +598,62 @@ async function main() {
     },
   ];
   for (const setting of MARKETING_SETTINGS) {
+    await prisma.systemSetting.upsert({
+      where: { key: setting.key },
+      update: {},
+      create: setting,
+    });
+  }
+
+  console.log("Seeding business intelligence settings...");
+  const BI_SETTINGS: { key: string; value: string; description: string }[] = [
+    {
+      key: SETTINGS_KEYS.BI_LOW_STOCK_CATEGORY_THRESHOLD,
+      value: "5",
+      description: "Below this many in-stock pieces in a category, the category is flagged LOW_STOCK.",
+    },
+    {
+      key: SETTINGS_KEYS.BI_AGING_STOCK_DAYS,
+      value: "90",
+      description: "Days an inventory item may sit with no recorded sale before it's flagged AGING_STOCK.",
+    },
+    {
+      key: SETTINGS_KEYS.BI_CASH_SHORTAGE_THRESHOLD,
+      value: "1000",
+      description: "A Daily Closing shortfall of at least this many rupees triggers a CASH_SHORTAGE alert.",
+    },
+    {
+      key: SETTINGS_KEYS.BI_HIGH_BALANCE_THRESHOLD,
+      value: "500000",
+      description: "Outstanding balance above which a single customer/supplier triggers a high-balance alert.",
+    },
+    {
+      key: SETTINGS_KEYS.BI_SALES_DROP_PERCENT,
+      value: "20",
+      description: "Percentage decline vs. the previous comparable period that triggers a SALES_DROP alert.",
+    },
+    {
+      key: SETTINGS_KEYS.BI_EXPENSE_SPIKE_PERCENT,
+      value: "50",
+      description: "Percentage above the historical average that triggers an EXPENSE_SPIKE alert.",
+    },
+    {
+      key: SETTINGS_KEYS.BI_UNUSUAL_TRANSACTION_AMOUNT,
+      value: "200000",
+      description: "A single discount/expense/refund/adjustment at or above this amount is flagged for review.",
+    },
+    {
+      key: SETTINGS_KEYS.BI_FORECAST_MIN_DAYS_INSUFFICIENT,
+      value: "30",
+      description: "Below this many days of sales history, a forecast reports INSUFFICIENT_DATA.",
+    },
+    {
+      key: SETTINGS_KEYS.BI_FORECAST_MIN_DAYS_STANDARD,
+      value: "90",
+      description: "At or above this many days of history, a forecast reports STANDARD_CONFIDENCE (else LOW_CONFIDENCE).",
+    },
+  ];
+  for (const setting of BI_SETTINGS) {
     await prisma.systemSetting.upsert({
       where: { key: setting.key },
       update: {},

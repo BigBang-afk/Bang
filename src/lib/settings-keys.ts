@@ -45,6 +45,24 @@ export const SETTINGS_KEYS = {
   MARKETING_RFM_PERIOD_DAYS: "marketing.rfm_period_days",
   /** JSON object of the four Business Engagement Score component weights, e.g. {"recency":25,"frequency":25,"monetary":25,"engagement":25} — must sum to 100. See CUSTOMER-SCORING.md. */
   MARKETING_ENGAGEMENT_SCORE_WEIGHTS: "marketing.engagement_score_weights",
+  /** Below this many in-stock pieces in a category, the category is flagged LOW_STOCK — see ALERT-SYSTEM.md "Low stock rule". Unique jewelry has no per-SKU reorder point, so this is a category-count threshold, not a per-product one. */
+  BI_LOW_STOCK_CATEGORY_THRESHOLD: "bi.low_stock_category_threshold",
+  /** Days an inventory item may sit with no recorded sale before it's flagged AGING_STOCK / surfaced as slow-moving. See ANALYTICS.md "Inventory age". */
+  BI_AGING_STOCK_DAYS: "bi.aging_stock_days",
+  /** A cash-shortage alert fires when Daily Closing's (physical − expected) difference is a shortfall of at least this many rupees. See ALERT-SYSTEM.md. */
+  BI_CASH_SHORTAGE_THRESHOLD: "bi.cash_shortage_threshold",
+  /** Outstanding balance above which a single customer/supplier triggers a HIGH-receivable/payable alert. */
+  BI_HIGH_BALANCE_THRESHOLD: "bi.high_balance_threshold",
+  /** Percentage decline (current vs. previous comparable period) that triggers a SALES_DROP alert — see ALERT-SYSTEM.md "Sales drop alert". */
+  BI_SALES_DROP_PERCENT: "bi.sales_drop_percent",
+  /** Percentage above the historical average that triggers an EXPENSE_SPIKE alert — see ALERT-SYSTEM.md "Expense spike". */
+  BI_EXPENSE_SPIKE_PERCENT: "bi.expense_spike_percent",
+  /** A single discount/expense/refund/cash-adjustment at or above this rupee amount is flagged UNUSUAL_TRANSACTION for neutral human review — never an accusation. See ALERT-SYSTEM.md. */
+  BI_UNUSUAL_TRANSACTION_AMOUNT: "bi.unusual_transaction_amount",
+  /** Below this many days of completed-sales history, a sales/inventory forecast reports INSUFFICIENT_DATA instead of a number — see FORECASTING.md "Data sufficiency". */
+  BI_FORECAST_MIN_DAYS_INSUFFICIENT: "bi.forecast_min_days_insufficient",
+  /** Below this many days of history a forecast is LOW_CONFIDENCE; at or above it, STANDARD_CONFIDENCE. */
+  BI_FORECAST_MIN_DAYS_STANDARD: "bi.forecast_min_days_standard",
 } as const;
 
 /** Per-role maximum discount percentage: "discount.max_percent.<ROLE_NAME>". */

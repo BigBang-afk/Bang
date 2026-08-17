@@ -10,7 +10,7 @@ import {
   ScrollText,
   Wallet,
   BookUser,
-  BarChart3,
+  TrendingUp,
   Sparkles,
   Settings,
   Calculator,
@@ -96,11 +96,11 @@ export const NAV_ITEMS: NavItem[] = [
     description: "Financial dashboard, expenses, daily closing, P&L, and financial reports.",
   },
   {
-    label: "Reports",
-    href: "/reports",
-    icon: BarChart3,
-    status: "soon",
-    description: "Additional operational reporting beyond Accounting.",
+    label: "Business Intelligence",
+    href: "/business-intelligence",
+    icon: TrendingUp,
+    status: "active",
+    description: "Executive dashboard, analytics, forecasting, alerts, and multi-branch foundation.",
   },
   {
     label: "AI Marketing",
@@ -186,6 +186,25 @@ export const ACCOUNTING_SUB_NAV: SubNavItem[] = [
   { label: "Purchase Report", href: "/accounting/purchase-report" },
   { label: "Inventory Valuation", href: "/accounting/inventory-valuation" },
   { label: "Financial Reconciliation", href: "/accounting/reconciliation" },
+];
+
+export const BUSINESS_INTELLIGENCE_SUB_NAV: SubNavItem[] = [
+  { label: "Executive Dashboard", href: "/business-intelligence" },
+  { label: "Sales Analytics", href: "/business-intelligence/sales" },
+  { label: "Profit Analytics", href: "/business-intelligence/profit" },
+  { label: "Inventory Analytics", href: "/business-intelligence/inventory" },
+  { label: "Gold Analytics", href: "/business-intelligence/gold" },
+  { label: "Customer Analytics", href: "/business-intelligence/customers" },
+  { label: "Karigar Analytics", href: "/business-intelligence/karigars" },
+  { label: "Supplier Analytics", href: "/business-intelligence/suppliers" },
+  { label: "Cash Analytics", href: "/business-intelligence/cash" },
+  { label: "Marketing Analytics", href: "/business-intelligence/marketing" },
+  { label: "Forecasting", href: "/business-intelligence/forecasting" },
+  { label: "Alerts", href: "/business-intelligence/alerts" },
+  { label: "Daily Report", href: "/business-intelligence/reports/daily" },
+  { label: "Weekly Report", href: "/business-intelligence/reports/weekly" },
+  { label: "Monthly Report", href: "/business-intelligence/reports/monthly" },
+  { label: "Branch Management", href: "/business-intelligence/branches" },
 ];
 
 export const AI_MARKETING_SUB_NAV: SubNavItem[] = [

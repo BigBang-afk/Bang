@@ -274,6 +274,87 @@ Each service owns one concern:
   number (frequency caps, rate limits, retry count, attribution window,
   RFM period, engagement score weights), same "settings as data, read
   fresh every call" pattern as every prior phase.
+- `branch-access.service.ts` *(Phase 8)* — `resolveAuthorizedBranchIds()`
+  and `branchWhereClause()`, the two primitives every branch-sensitive BI
+  query composes to enforce isolation server-side. See "The
+  branch-authorization pattern" below and `BRANCH-ARCHITECTURE.md`.
+- `branch.service.ts` *(Phase 8)* — `createBranch()`, `setUserBranchAccess()`,
+  and the Branch/UserBranch CRUD behind the Branch Management screen. See
+  `BRANCH-ARCHITECTURE.md`.
+- `bi-dashboard.service.ts` *(Phase 8)* — `getExecutiveKpis()` (the 12 top
+  KPI cards) and `computeGrowth()`, the one shared growth-percent formula
+  every BI period-comparison reuses, returning `NO_COMPARISON` rather than
+  a fabricated percentage against a zero previous period. See
+  `EXECUTIVE-DASHBOARD.md`.
+- `bi-sales-analytics.service.ts` *(Phase 8)* — `getSalesTrend()` (a single
+  server-side `date_trunc` grouped query per chart, never raw transactions
+  shipped to the browser) and `getSalesPeriodComparison()`. See
+  `ANALYTICS.md` "Sales analytics."
+- `bi-profit-analytics.service.ts` *(Phase 8)* — `getProfitTrend()`,
+  `getProfitByCategory()` (grouped by the real, configurable
+  `ProductCategory` table, never a hardcoded list), and `getTopProducts()`
+  (best-selling/highest-revenue/highest-profit, completed sales only,
+  returns excluded). See `ANALYTICS.md` "Profit analytics."
+- `bi-inventory-analytics.service.ts` *(Phase 8)* — `getInventoryStatusBreakdown()`,
+  the spec's exact 5-bucket `getInventoryAgeBuckets()` (0-30/31-60/61-90/
+  91-180/180+ days), and `getSlowMovingInventory()` — every recommendation
+  is text a human reads, never an automatic price/discount/display change.
+  See `ANALYTICS.md` "Inventory analytics."
+- `bi-gold-analytics.service.ts` *(Phase 8)* — `getGoldByPurity()` (a direct
+  pass-through of Phase 6's `getGoldReport()`), `getGoldRateAnalytics()`
+  (current/previous/history read only from the `GoldRate` table, never
+  AI-generated), and `getGoldExposure()` (physical/karigar/supplier gold,
+  always purity-separated, Pure Gold Equivalent deliberately not
+  computed). See `ANALYTICS.md` "Gold analytics."
+- `bi-customer-analytics.service.ts` *(Phase 8)* — `getCustomerAnalyticsSummary()`
+  (adds `repeatPurchaseRatePercent` on top of Phase 4's dashboard summary),
+  `getTopCustomers()`, `getAverageCustomerLifetimeValue()`, and
+  `getCustomerCohorts()` (first-purchase-month retention, reported as fact,
+  never a causal claim). See `ANALYTICS.md` "Customer analytics."
+- `bi-karigar-analytics.service.ts` *(Phase 8)* — `getKarigarAnalyticsSummary()`
+  and `getKarigarPerformance()`, deliberately restricted to operational
+  facts (job counts, completion time, reconciliation outcomes) — never a
+  quality ranking. See `ANALYTICS.md` "Karigar analytics."
+- `bi-supplier-analytics.service.ts` *(Phase 8)* — `getSupplierAnalyticsSummary()`
+  and `getTopSuppliers()`, composing Phase 5's `getPurchaseSummary()`
+  rather than re-deriving it.
+- `bi-cash-analytics.service.ts` *(Phase 8)* — `getCashAnalytics()` (the
+  spec's 6-bucket breakdown on top of Phase 6's `getCashReport()`) and
+  `getBranchCashTotals()`, the concrete function the CRITICAL
+  branch-isolation test exercises. See "The branch-authorization pattern"
+  below.
+- `bi-marketing-analytics.service.ts` *(Phase 8)* — a pure rollup of Phase
+  7's own `campaign-analytics.service.ts`, keeping DIRECT and ASSISTED
+  revenue as two permanently separate figures.
+- `alert.service.ts` *(Phase 8)* — 10 threshold-driven alert generators,
+  `createAlertIfNotDuplicate()` (dedup by `(type, entityType, entityId)`,
+  never by run — see "The alert-dedup-by-entity pattern" below), and the
+  OPEN → ACKNOWLEDGED/RESOLVED/DISMISSED lifecycle. See `ALERT-SYSTEM.md`.
+- `bi-insight.service.ts` *(Phase 8)* — `getBusinessInsights()`. Never
+  calls an `AiProvider` — every sentence is built by string-interpolating
+  a number an already-tested backend service function computed. See "The
+  facts-only, no-AI-invoked insight design" below and
+  `BUSINESS-INTELLIGENCE.md` "AI insights."
+- `forecast.service.ts` *(Phase 8)* — `classifyDataSufficiency()` and
+  `projectSeries()` (the one bounded trend+seasonality projection every
+  forecast type reuses), plus the five forecast functions
+  (Sales/Expense/Cash/Inventory demand/Customer purchases). See
+  `FORECASTING.md`.
+- `bi-report.service.ts` *(Phase 8)* — `getDailyReport()`/`getWeeklyReport()`/
+  `getMonthlyReport()`, each a composition of already-tested BI/Phase 1-6
+  functions, plus real CSV export (`dailyReportToCsv()`, the same
+  `toCsv()` builder Phase 6's reports use). See `AUTOMATED-REPORTS.md`.
+- `notification/notification-provider.ts` /
+  `notification/mock-notification-provider.ts` *(Phase 8)* — the owner
+  notification abstraction (`sendNotification`), the same
+  interface-plus-mock-plus-singleton-resolver shape as Phase 7's
+  `AiProvider`/`MarketingProvider`. See `AUTOMATED-REPORTS.md` "Owner
+  notifications."
+- `bi-settings.service.ts` *(Phase 8)* — every Phase 8 configurable number
+  (low-stock threshold, aging-stock days, cash-shortage threshold,
+  sales-drop/expense-spike thresholds, forecast confidence day-counts),
+  same "settings as data, read fresh every call" pattern as every prior
+  phase.
 
 ### `src/lib/auth/`
 
@@ -413,6 +494,17 @@ because the client-side form already validated it.
   server-side, and renders an `<ExportCsvButton>` — no report ever loads
   every underlying transaction into the browser. See `ACCOUNTING.md`,
   `DAILY-CLOSING.md`, `PROFIT-LOSS.md`, and `FINANCIAL-REPORTS.md`.
+- `(app)/business-intelligence/` *(Phase 8)* — its own nested `layout.tsx`
+  requires `bi:dashboard_view` once and renders the spec's 16-item
+  sub-nav: Executive Dashboard (`page.tsx`), Sales/Profit/Inventory/Gold/
+  Customer/Karigar/Supplier/Cash/Marketing Analytics, Forecasting, Alerts,
+  Daily/Weekly/Monthly Report, and Branch Management. Every analytics page
+  is a Server Component reading `searchParams` for the date-range preset,
+  calling the matching `bi-*.service.ts` function server-side — same
+  "never ship raw transactions to the browser" discipline as
+  `(app)/accounting/`. Superseded the old `(app)/reports/` placeholder,
+  which is deleted. See `BUSINESS-INTELLIGENCE.md` and
+  `EXECUTIVE-DASHBOARD.md`.
 
 ## Authentication design
 
@@ -513,6 +605,27 @@ Role-Based Access Control, stored in the database (`Role`, `Permission`,
   non-marketing tools) rather than inventing a parallel "AI access" system
   — see `AI-ASSISTANT.md` "Security model." Same pattern as every prior
   phase: only `OWNER`/`ADMIN` are seeded with grants today.
+- Phase 8 adds 17 `bi:*` permissions — `bi:dashboard_view`,
+  `bi:sales_view`, `bi:profit_view`, `bi:inventory_view`, `bi:gold_view`,
+  `bi:customer_view`, `bi:karigar_view`, `bi:supplier_view`, `bi:cash_view`,
+  `bi:marketing_view`, `bi:forecasting_view`, `bi:alerts_view`,
+  `bi:alerts_manage`, `bi:reports_view`, `bi:reports_export`,
+  `bi:branch_manage`, and `bi:settings_manage` — matching the spec's role
+  matrix (ACCOUNTANT gets financial analytics; INVENTORY_MANAGER gets
+  inventory/gold analytics; MARKETING_MANAGER gets marketing/customer
+  analytics; MANAGER gets branch-level analytics; CASHIER gets a limited
+  operational dashboard only). `bi:branch_manage` is deliberately its own
+  key, separate from every view permission, since creating a branch or
+  changing branch access is a materially bigger blast radius than viewing
+  one branch's numbers. `bi:settings_manage` was added as a follow-up fix
+  after an initial draft incorrectly gated the general BI thresholds
+  screen behind `bi:branch_manage` — see `PHASE-8-STATUS.md` "Known
+  issues" for how that was caught. Branch-scoped data access itself is
+  enforced by a second, independent mechanism — see "The
+  branch-authorization pattern" below — not by a permission key, since
+  "can you see BI at all" and "which branch's rows can you see" are
+  different questions. Same pattern as every prior phase: only
+  `OWNER`/`ADMIN` are seeded with grants today.
 
 ## Settings as data — discount limits & tax *(Phase 3)*
 
@@ -579,6 +692,117 @@ minute (default 20) / per hour (default 200), max retry attempts (default
 in days (default 365), and the Business Engagement Score's four weights
 (JSON, default equal 25/25/25/25). None of these is hardcoded anywhere a
 service reads them — see `MARKETING-ANALYTICS.md` "Frequency control."
+
+## Settings as data — BI thresholds & forecast confidence *(Phase 8)*
+
+Nine more `SystemSetting` keys, same pattern, all read fresh on every call:
+the low-stock category-count threshold (`BI_LOW_STOCK_CATEGORY_THRESHOLD`,
+default 5), the aging/slow-moving-stock day count (`BI_AGING_STOCK_DAYS`,
+default 90), the cash shortage alert threshold in rupees
+(`BI_CASH_SHORTAGE_THRESHOLD`, default 1,000), the customer/supplier
+high-balance alert threshold (`BI_HIGH_BALANCE_THRESHOLD`), the sales-drop
+alert threshold percent (`BI_SALES_DROP_PERCENT`, default 20), the
+expense-spike alert threshold percent (`BI_EXPENSE_SPIKE_PERCENT`, default
+30), the unusual-transaction flag amount (`BI_UNUSUAL_TRANSACTION_AMOUNT`),
+and the two forecast confidence day-count thresholds
+(`BI_FORECAST_MIN_DAYS_INSUFFICIENT` default 30,
+`BI_FORECAST_MIN_DAYS_STANDARD` default 90 — see `FORECASTING.md` "Data
+sufficiency"). None of these is a hardcoded "standard retail" assumption —
+every one exists because the spec explicitly calls out that unique jewelry
+inventory and a single-shop cash book need owner-tunable numbers, not a
+generic e-commerce default.
+
+## The branch-authorization pattern *(Phase 8)*
+
+`branch-access.service.ts` exports exactly two primitives, and every
+branch-sensitive BI query goes through both:
+`resolveAuthorizedBranchIds(user)` returns either the literal string
+`"ALL"` (always for `OWNER`; for anyone else, when their
+`branchAccessMode` is `ALL_BRANCHES`) or the concrete array of branch ids
+a `SPECIFIC_BRANCHES` user is granted via the `UserBranch` join table —
+never inferred from anything the client sent. `branchWhereClause(authorized,
+branchIdFilter?)` turns that into a Prisma `where` fragment: unrestricted
+`{}` for `"ALL"` with no filter, `{branchId: {in: [...]}}` for a
+restricted set, a single `{branchId: X}` when a specific branch was
+requested and is authorized, or it **throws** `BranchAccessDeniedError`
+the moment a caller asks for a branch id outside their authorized set. No
+BI query ever accepts a frontend-supplied `branchId` and trusts it
+directly — it always passes through `branchWhereClause` first, which is
+what makes "a user authorized for Branch A can never see Branch B's
+financial data" a property of the query layer itself, not of any one
+page's own carefulness. See `BRANCH-ARCHITECTURE.md` and the CRITICAL test
+in `tests/branch-access.service.integration.test.ts`.
+
+## The nullable-branchId foundation, not full wiring *(Phase 8)*
+
+Eight existing transactional models — `InventoryItem`, `Sale`, `Karigar`,
+`Supplier`, `CashTransaction`, `Purchase`, `KarigarGoldJob`, `Expense` —
+each gained an additive, nullable `branchId` column in Phase 8. No
+existing creation-flow service function (`createInventoryItem()`,
+`completeSale()`, `createExpense()`, etc.) was modified to populate it —
+that wiring is deliberately deferred to a future phase. This is a
+conscious reading of the spec's own instructions: "prepare the database
+for multiple branches" (required) is satisfied by the column existing and
+by every BI query already being able to group/filter on it; "do not
+rebuild the app" and "do not implement complex stock transfer workflows"
+(forbidden) rule out touching eight already-tested creation flows in this
+phase. `Customer` deliberately did **not** get a `branchId` — the spec's
+own GLOBAL-vs-BRANCH data categorization places customer identity in
+GLOBAL, since one customer can transact at multiple branches. See
+`BRANCH-ARCHITECTURE.md` "Global vs. branch data."
+
+## The bounded forecast projection model *(Phase 8)*
+
+`forecast.service.ts`'s `projectSeries()` is the one projection function
+every forecast type (Sales/Expense/Cash/Inventory demand/Customer
+purchases) shares. It splits the historical series into oldest/recent
+thirds and computes a **daily** growth rate as
+`(recentAvg / oldAvg)^(1/spanDays) - 1` — via `Decimal.exp(Decimal.ln(ratio).div(spanDays)).sub(1)`,
+since `decimal.js` has no native fractional `.pow()` — then **clamps it to
+±5% per day** before compounding it forward. An optional day-of-week
+seasonality factor is applied only when every weekday has at least 3
+historical occurrences to derive it from. Both choices are deliberately
+conservative: a short or noisy history window can produce a large implied
+growth rate, and clamping it is what stops that from compounding into an
+absurd number over a 90-day horizon. This is the mechanism behind
+`FORECASTING.md`'s "never promise accuracy" requirement — see "Data
+sufficiency" there for the companion guard (`classifyDataSufficiency()`)
+that refuses to forecast at all below a configurable history-length floor.
+
+## The facts-only, no-AI-invoked insight design *(Phase 8)*
+
+`bi-insight.service.ts`'s `getBusinessInsights()` does not import or call
+`AiProvider`, `callGenerateText`, `callSummarize`, or any AI-provider
+function at all — every insight sentence is built by direct string
+interpolation of numbers an already-tested backend service function
+(`getSalesPerformance()`, `getInventoryAgeBuckets()`,
+`getMarketingAnalyticsSummary()`, `getHistoricalTotalReceivable()`)
+returned. This is a stronger guarantee than Phase 7's "facts-only AI
+design" (`AiProvider`'s mock only reads from a caller-supplied `facts`
+object) — here there is structurally no AI call in the number-computation
+path to audit in the first place. `tests/bi-insight.service.test.ts`
+enforces this two ways: a source-grep asserting no AI-provider identifier
+appears in the file, and a live check that `getBusinessInsights()`'s
+explanation string embeds the exact percentage `getSalesPerformance()`
+itself computed — see the CRITICAL AI INSIGHT TEST there, using the
+spec's own example figures (Sales 1,000,000 vs. Previous 800,000 →
+25% growth).
+
+## The alert-dedup-by-entity pattern *(Phase 8)*
+
+`alert.service.ts`'s `createAlertIfNotDuplicate()` only skips creating a
+new `Alert` row when an `OPEN` alert already exists for the exact same
+`(type, entityType, entityId)` triple — not "was this generator already
+run today." That means re-running any generator (or the "Run Alert Scan"
+button, repeatedly, by hand) is always safe and idempotent: it can never
+spam duplicate alerts for the same underlying condition, and it will
+immediately raise a *new* alert the moment a previously-resolved entity's
+condition recurs (since a `RESOLVED`/`DISMISSED` alert no longer blocks a
+fresh `OPEN` one). `Alert.resolvedById`/`resolvedAt` reuses the same
+one-field-pair-for-multiple-outcomes shape Phase 7's
+`ContentDraft.approvedById` established for APPROVED-or-REJECTED — here
+for whichever of ACKNOWLEDGED/RESOLVED/DISMISSED an alert last moved
+through. See `ALERT-SYSTEM.md`.
 
 ## The void/reversal correction pattern *(Phase 6)*
 

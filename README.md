@@ -64,14 +64,37 @@ phase by phase.
   task/draft-creation (never auto-send), and an internal AI Assistant
   whose every answer is routed through the exact same RBAC permission
   checks the rest of the app already uses.
+- **Phase 8: Advanced Business Intelligence + Owner Dashboard +
+  Forecasting + Alerts + Multi-Branch Foundation** — an executive layer
+  built entirely on top of Phases 1-7's own data, introducing no new
+  source of truth for money/gold/customers: a 12-KPI Executive Dashboard
+  with a shared zero-safe growth-percent formula, 10 analytics rollups
+  (Sales/Profit/Inventory/Gold/Customer/Karigar/Supplier/Cash/Marketing)
+  each composing an already-tested Phase 1-7 service function, a
+  10-generator Alert engine that dedupes by entity (never by run) and
+  never modifies the transaction it flags, an AI Business Insights
+  service that structurally never calls an AI provider (every sentence is
+  built from numbers TypeScript itself already computed), a bounded/
+  clamped Forecasting engine (Sales/Expense/Cash/Inventory demand/
+  Customer purchases) that returns `null` rather than a fabricated number
+  below a configurable history threshold and never claims a forecast is
+  guaranteed, real Daily/Weekly/Monthly owner reports with genuine CSV
+  export, a provider-agnostic `NotificationProvider` abstraction prepared
+  for a future email/WhatsApp Business API/push integration (mock-only —
+  no real or unofficial automation), and a multi-branch foundation
+  (`Branch`/`UserBranch`, server-side branch-authorization primitives that
+  never trust a frontend-supplied branch id, and additive nullable
+  `branchId` columns on eight transactional tables) deliberately left
+  unwired from the existing creation flows for a future phase.
 
 See [`PHASE-1-STATUS.md`](./PHASE-1-STATUS.md),
 [`PHASE-2-STATUS.md`](./PHASE-2-STATUS.md),
 [`PHASE-3-STATUS.md`](./PHASE-3-STATUS.md),
 [`PHASE-4-STATUS.md`](./PHASE-4-STATUS.md),
 [`PHASE-5-STATUS.md`](./PHASE-5-STATUS.md),
-[`PHASE-6-STATUS.md`](./PHASE-6-STATUS.md), and
-[`PHASE-7-STATUS.md`](./PHASE-7-STATUS.md) for exactly what is and isn't
+[`PHASE-6-STATUS.md`](./PHASE-6-STATUS.md),
+[`PHASE-7-STATUS.md`](./PHASE-7-STATUS.md), and
+[`PHASE-8-STATUS.md`](./PHASE-8-STATUS.md) for exactly what is and isn't
 built, [`ARCHITECTURE.md`](./ARCHITECTURE.md) for how the codebase is
 organized, [`DATABASE.md`](./DATABASE.md) for the schema,
 [`GOLD-RATE-ENGINE.md`](./GOLD-RATE-ENGINE.md) for the gold pricing/weight
@@ -112,10 +135,21 @@ audience builder, message queue, and attribution model,
 [`CUSTOMER-SCORING.md`](./CUSTOMER-SCORING.md) for RFM analysis, the
 Business Engagement Score, and AI segmentation,
 [`AUTOMATION-RULES.md`](./AUTOMATION-RULES.md) for the automation rule
-engine's trigger/condition/action model, and
+engine's trigger/condition/action model,
 [`MARKETING-ANALYTICS.md`](./MARKETING-ANALYTICS.md) for marketing
 revenue reporting, message safety rules, and frequency/rate-limit
-settings.
+settings, [`BUSINESS-INTELLIGENCE.md`](./BUSINESS-INTELLIGENCE.md) for
+the Phase 8 module overview and design principles,
+[`EXECUTIVE-DASHBOARD.md`](./EXECUTIVE-DASHBOARD.md) for the 12-KPI owner
+dashboard, [`ANALYTICS.md`](./ANALYTICS.md) for the 10 analytics rollup
+pages, [`FORECASTING.md`](./FORECASTING.md) for the bounded forecast
+projection model and data-sufficiency gate,
+[`ALERT-SYSTEM.md`](./ALERT-SYSTEM.md) for the 10 alert generators and
+dedup-by-entity lifecycle,
+[`BRANCH-ARCHITECTURE.md`](./BRANCH-ARCHITECTURE.md) for the multi-branch
+foundation and branch-authorization primitives, and
+[`AUTOMATED-REPORTS.md`](./AUTOMATED-REPORTS.md) for the daily/weekly/
+monthly owner reports and the notification provider abstraction.
 
 ## Technology stack
 
@@ -215,6 +249,10 @@ src/
                              Marketing, Customer Insights, Follow-Ups,
                              Marketing Analytics, Automation Rules,
                              AI Assistant, Settings
+      business-intelligence/  Executive Dashboard, Sales/Profit/Inventory/
+                             Gold/Customer/Karigar/Supplier/Cash/Marketing
+                             Analytics, Forecasting, Alerts, Daily/Weekly/
+                             Monthly Report, Branch Management
     api/invoices/[id]/pdf/  Route Handler — real PDF invoice download
   components/             UI: primitives, layout, feature components
   services/               Business logic — no React, no HTTP, no Next.js APIs
@@ -323,7 +361,36 @@ e2e/                      Playwright end-to-end tests
   trading advice, automatic discounts/refunds/financial adjustments,
   customer sensitive profiling, tax filing, payroll, and full ERP
   accounting.
+- Phase 8's Business Intelligence layer introduces no new source of truth
+  — every KPI/chart/report composes an already-tested Phase 1-7 service
+  function. `bi-insight.service.ts` never calls an AI provider; every
+  forecast is clamped and labeled `ESTIMATE`, returning `null` rather
+  than a fabricated number below a configurable history threshold. See
+  `BUSINESS-INTELLIGENCE.md`, `FORECASTING.md`.
+- No `FAILED_PAYMENT` alert generator exists yet — the schema has no
+  concept of a failed POS payment (a `Payment` row is only ever written
+  for a successful sale). See `ALERT-SYSTEM.md` "Known limitation."
+- Eight transactional tables (`InventoryItem`, `Sale`, `Karigar`,
+  `Supplier`, `CashTransaction`, `Purchase`, `KarigarGoldJob`, `Expense`)
+  carry an additive, nullable `branchId` column, but no existing
+  creation-flow function was modified to populate it — a deliberate,
+  documented scope boundary, not an oversight. See
+  `BRANCH-ARCHITECTURE.md` "What Phase 8 does not wire up."
+- Pure Gold Equivalent is not computed in the Gold Exposure view — the
+  spec never specifies an explicit purity-conversion rule. See
+  `ANALYTICS.md` "Gold analytics."
+- Phase 8 ships only a mock `NotificationProvider` — no real email/
+  WhatsApp Business API/push integration, and no background job
+  scheduler to send a report or run the alert scan automatically. See
+  `AUTOMATED-REPORTS.md`.
+- Everything explicitly deferred by the Phase 8 spec's "DO NOT BUILD YET"
+  list remains out of scope: full general-ledger accounting, tax filing,
+  payroll, automatic price changes, automatic product discounts,
+  guaranteed AI forecasts, unapproved customer profiling, unofficial
+  WhatsApp automation, automatic social-media posting, AI financial/
+  trading advice, automatic stock purchasing, and complex stock-transfer
+  workflows.
 
 ## Next phase
 
-See the end of `PHASE-7-STATUS.md` for the recommended Phase 8 scope.
+See the end of `PHASE-8-STATUS.md` for the recommended Phase 9 scope.

@@ -55,6 +55,23 @@ export const PERMISSIONS = {
   MARKETING_AUTOMATION_MANAGE: "marketing:automation_manage",
   MARKETING_AI_ASSISTANT_USE: "marketing:ai_assistant_use",
   MARKETING_SETTINGS_MANAGE: "marketing:settings_manage",
+  BI_DASHBOARD_VIEW: "bi:dashboard_view",
+  BI_SALES_VIEW: "bi:sales_view",
+  BI_PROFIT_VIEW: "bi:profit_view",
+  BI_INVENTORY_VIEW: "bi:inventory_view",
+  BI_GOLD_VIEW: "bi:gold_view",
+  BI_CUSTOMER_VIEW: "bi:customer_view",
+  BI_KARIGAR_VIEW: "bi:karigar_view",
+  BI_SUPPLIER_VIEW: "bi:supplier_view",
+  BI_CASH_VIEW: "bi:cash_view",
+  BI_MARKETING_VIEW: "bi:marketing_view",
+  BI_FORECASTING_VIEW: "bi:forecasting_view",
+  BI_ALERTS_VIEW: "bi:alerts_view",
+  BI_ALERTS_MANAGE: "bi:alerts_manage",
+  BI_REPORTS_VIEW: "bi:reports_view",
+  BI_REPORTS_EXPORT: "bi:reports_export",
+  BI_BRANCH_MANAGE: "bi:branch_manage",
+  BI_SETTINGS_MANAGE: "bi:settings_manage",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

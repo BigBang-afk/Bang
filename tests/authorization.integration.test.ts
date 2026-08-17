@@ -368,3 +368,72 @@ describe("Authorization — AI marketing permissions (Test 19/23 combined)", () 
     }
   });
 });
+
+describe("Authorization — Phase 8 business intelligence permissions (Test 25)", () => {
+  const PHASE8_PERMISSIONS = [
+    PERMISSIONS.BI_DASHBOARD_VIEW,
+    PERMISSIONS.BI_SALES_VIEW,
+    PERMISSIONS.BI_PROFIT_VIEW,
+    PERMISSIONS.BI_INVENTORY_VIEW,
+    PERMISSIONS.BI_GOLD_VIEW,
+    PERMISSIONS.BI_CUSTOMER_VIEW,
+    PERMISSIONS.BI_KARIGAR_VIEW,
+    PERMISSIONS.BI_SUPPLIER_VIEW,
+    PERMISSIONS.BI_CASH_VIEW,
+    PERMISSIONS.BI_MARKETING_VIEW,
+    PERMISSIONS.BI_FORECASTING_VIEW,
+    PERMISSIONS.BI_ALERTS_VIEW,
+    PERMISSIONS.BI_ALERTS_MANAGE,
+    PERMISSIONS.BI_REPORTS_VIEW,
+    PERMISSIONS.BI_REPORTS_EXPORT,
+    PERMISSIONS.BI_BRANCH_MANAGE,
+    PERMISSIONS.BI_SETTINGS_MANAGE,
+  ] as const;
+
+  it("a role with no grants has none of the Phase 8 permissions", async () => {
+    const role = await getOrCreateRoleWithNoPermissions();
+    const user = { role };
+
+    for (const key of PHASE8_PERMISSIONS) {
+      await expect(userHasPermission(user, key)).resolves.toBe(false);
+    }
+    await expect(assertPermission(user, PERMISSIONS.BI_DASHBOARD_VIEW)).rejects.toThrow(AuthorizationError);
+    await expect(assertPermission(user, PERMISSIONS.BI_ALERTS_MANAGE)).rejects.toThrow(AuthorizationError);
+  });
+
+  it("a role granted only bi:dashboard_view cannot manage alerts or branches", async () => {
+    const role = await getOrCreateRoleWithNoPermissions();
+    const permission = await prisma.permission.findUniqueOrThrow({ where: { key: PERMISSIONS.BI_DASHBOARD_VIEW } });
+    await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: permission.id } });
+
+    const user = { role };
+    await expect(userHasPermission(user, PERMISSIONS.BI_DASHBOARD_VIEW)).resolves.toBe(true);
+    await expect(userHasPermission(user, PERMISSIONS.BI_ALERTS_MANAGE)).resolves.toBe(false);
+    await expect(userHasPermission(user, PERMISSIONS.BI_BRANCH_MANAGE)).resolves.toBe(false);
+  });
+
+  it("a role granted only bi:alerts_view cannot acknowledge/resolve/dismiss (bi:alerts_manage)", async () => {
+    const role = await getOrCreateRoleWithNoPermissions();
+    const permission = await prisma.permission.findUniqueOrThrow({ where: { key: PERMISSIONS.BI_ALERTS_VIEW } });
+    await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: permission.id } });
+
+    const user = { role };
+    await expect(userHasPermission(user, PERMISSIONS.BI_ALERTS_VIEW)).resolves.toBe(true);
+    await expect(userHasPermission(user, PERMISSIONS.BI_ALERTS_MANAGE)).resolves.toBe(false);
+  });
+
+  it("OWNER always has every Phase 8 permission regardless of grants", async () => {
+    const owner = { role: { id: "irrelevant-for-owner", name: "OWNER" } };
+    for (const key of PHASE8_PERMISSIONS) {
+      await expect(userHasPermission(owner, key)).resolves.toBe(true);
+    }
+  });
+
+  it("ADMIN (seeded with every current permission) has every Phase 8 permission", async () => {
+    const adminRole = await prisma.role.findUniqueOrThrow({ where: { name: "ADMIN" } });
+    const user = { role: adminRole };
+    for (const key of PHASE8_PERMISSIONS) {
+      await expect(userHasPermission(user, key)).resolves.toBe(true);
+    }
+  });
+});
