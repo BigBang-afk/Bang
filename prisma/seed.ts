@@ -89,6 +89,55 @@ const PERMISSION_CATALOG: { key: string; module: string; description: string }[]
     module: "CUSTOMERS",
     description: "View VIP/inactive/segment analytics.",
   },
+  { key: PERMISSIONS.KARIGARS_VIEW, module: "KARIGARS", description: "Search and view karigars." },
+  {
+    key: PERMISSIONS.KARIGARS_MANAGE,
+    module: "KARIGARS",
+    description: "Create and edit karigar profiles.",
+  },
+  {
+    key: PERMISSIONS.KARIGARS_GOLD,
+    module: "KARIGARS",
+    description: "Give/receive gold and record karigar gold-job reconciliation.",
+  },
+  {
+    key: PERMISSIONS.KARIGARS_CASH,
+    module: "KARIGARS",
+    description: "Record karigar cash paid/received entries.",
+  },
+  { key: PERMISSIONS.SUPPLIERS_VIEW, module: "SUPPLIERS", description: "Search and view suppliers." },
+  {
+    key: PERMISSIONS.SUPPLIERS_MANAGE,
+    module: "SUPPLIERS",
+    description: "Create and edit supplier profiles.",
+  },
+  { key: PERMISSIONS.PURCHASES_VIEW, module: "PURCHASES", description: "View purchase history." },
+  {
+    key: PERMISSIONS.PURCHASES_CREATE,
+    module: "PURCHASES",
+    description: "Record a new supplier purchase.",
+  },
+  {
+    key: PERMISSIONS.GOLD_LEDGER_VIEW,
+    module: "GOLD_LEDGER",
+    description: "View the gold ledger across karigars and suppliers.",
+  },
+  {
+    key: PERMISSIONS.GOLD_LEDGER_RECONCILE,
+    module: "GOLD_LEDGER",
+    description: "Run and record gold reconciliation.",
+  },
+  { key: PERMISSIONS.CASH_VIEW, module: "CASH", description: "View cash transactions and balances." },
+  {
+    key: PERMISSIONS.CASH_MANAGE,
+    module: "CASH",
+    description: "Record cash transactions, expenses, and party payments.",
+  },
+  {
+    key: PERMISSIONS.CASH_RECONCILE,
+    module: "CASH",
+    description: "Run and record cash reconciliation.",
+  },
 ];
 
 const DEFAULT_CATEGORIES = [
@@ -236,6 +285,26 @@ async function main() {
       key: SETTINGS_KEYS.CUSTOMER_OVERPAYMENT_ALLOWED,
       value: "false",
       description: "Whether a customer payment may exceed their current outstanding balance.",
+    },
+  });
+
+  console.log("Seeding karigar/cash settings...");
+  await prisma.systemSetting.upsert({
+    where: { key: SETTINGS_KEYS.KARIGAR_WASTAGE_TOLERANCE_GRAMS },
+    update: {},
+    create: {
+      key: SETTINGS_KEYS.KARIGAR_WASTAGE_TOLERANCE_GRAMS,
+      value: "0.100",
+      description: "Acceptable difference (grams) between expected and received gold on a karigar job before it's flagged as excess/shortage.",
+    },
+  });
+  await prisma.systemSetting.upsert({
+    where: { key: SETTINGS_KEYS.CASH_OPENING_BALANCE },
+    update: {},
+    create: {
+      key: SETTINGS_KEYS.CASH_OPENING_BALANCE,
+      value: "0",
+      description: "Cash-in-hand at the moment cash tracking began — the base the running cash total is added to.",
     },
   });
 

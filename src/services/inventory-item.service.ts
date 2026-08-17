@@ -92,10 +92,19 @@ function computeItemFinancials(input: {
 
 export type CreatedInventoryItem = { id: string; barcodeCode: string; productId: string };
 
-export async function createInventoryItem(
-  input: CreateInventoryItemInput,
-  userId: string,
-): Promise<CreatedInventoryItem> {
+type PrismaTx = Prisma.TransactionClient;
+type CreateInventoryItemTxResult = Awaited<ReturnType<typeof createInventoryItemInTx>>;
+
+/**
+ * The transactional body of createInventoryItem() — extracted so
+ * purchase.service.ts can compose it inside its OWN transaction (Purchase
+ * + PurchaseItems + this InventoryItem + ledger entries all rolling back
+ * together) instead of nesting a second top-level `prisma.$transaction`,
+ * which Prisma doesn't support. Callers write their own audit log entries
+ * after their transaction commits — see createInventoryItem() below for
+ * the standalone Add Stock case.
+ */
+async function createInventoryItemInTx(tx: PrismaTx, input: CreateInventoryItemInput, userId: string) {
   const { goldCalc, pricing } = computeItemFinancials(input);
   const goldRateSourceId = await resolveGoldRateSourceId(input.purity, goldCalc.goldRate);
 
@@ -110,69 +119,76 @@ export async function createInventoryItem(
     throw new LowerPriceConfirmationRequiredError();
   }
 
-  const result = await prisma.$transaction(async (tx) => {
-    const product = await tx.product.create({
-      data: {
-        name: input.productName,
-        categoryId: input.categoryId,
-        subcategory: input.subcategory || null,
-        designNumber: input.designNumber || null,
-        supplier: input.supplier || null,
-        karigar: input.karigar || null,
-        imageUrl: input.imageUrl || null,
-        notes: input.notes || null,
-        createdById: userId,
-      },
-    });
-
-    const item = await tx.inventoryItem.create({
-      data: {
-        productId: product.id,
-        purity: input.purity,
-        netWeight: netWeight.toString(),
-        wastageType: input.wastageType,
-        wastagePercent: wastagePercent ? wastagePercent.toString() : null,
-        wastageWeight: wastageWeight.toString(),
-        grossWeight: grossWeight.toString(),
-        goldRatePerGram: goldCalc.goldRate.toString(),
-        goldRateSourceId,
-        goldValue: roundDp(goldCalc.goldValue, MONEY_DP).toString(),
-        makingCharge: roundDp(pricing.makingCharge, MONEY_DP).toString(),
-        stoneCharge: roundDp(pricing.stoneCharge, MONEY_DP).toString(),
-        diamondCharge: roundDp(pricing.diamondCharge, MONEY_DP).toString(),
-        otherCharge: roundDp(pricing.otherCharge, MONEY_DP).toString(),
-        totalCost: totalCost.toString(),
-        sellingPrice: sellingPrice.toString(),
-        expectedProfit: roundDp(pricing.expectedProfit, MONEY_DP).toString(),
-        profitMarginPercent: roundDp(pricing.profitMarginPercent, PERCENT_DP).toString(),
-        status: "IN_STOCK",
-        createdById: userId,
-      },
-    });
-
-    const barcode = await tx.barcode.create({ data: { inventoryItemId: item.id } });
-
-    await recordStockMovement(tx, {
-      inventoryItemId: item.id,
-      movementType: "STOCK_CREATED",
-      previousStatus: null,
-      newStatus: "IN_STOCK",
-      weight: grossWeight.toString(),
-      userId,
-      metadata: { barcode: formatBarcodeCode(barcode.sequence) },
-    });
-
-    return { product, item, barcode };
+  const product = await tx.product.create({
+    data: {
+      name: input.productName,
+      categoryId: input.categoryId,
+      subcategory: input.subcategory || null,
+      designNumber: input.designNumber || null,
+      supplier: input.supplier || null,
+      karigar: input.karigar || null,
+      imageUrl: input.imageUrl || null,
+      notes: input.notes || null,
+      createdById: userId,
+    },
   });
 
-  const barcodeCode = formatBarcodeCode(result.barcode.sequence);
+  const item = await tx.inventoryItem.create({
+    data: {
+      productId: product.id,
+      purity: input.purity,
+      netWeight: netWeight.toString(),
+      wastageType: input.wastageType,
+      wastagePercent: wastagePercent ? wastagePercent.toString() : null,
+      wastageWeight: wastageWeight.toString(),
+      grossWeight: grossWeight.toString(),
+      goldRatePerGram: goldCalc.goldRate.toString(),
+      goldRateSourceId,
+      goldValue: roundDp(goldCalc.goldValue, MONEY_DP).toString(),
+      makingCharge: roundDp(pricing.makingCharge, MONEY_DP).toString(),
+      stoneCharge: roundDp(pricing.stoneCharge, MONEY_DP).toString(),
+      diamondCharge: roundDp(pricing.diamondCharge, MONEY_DP).toString(),
+      otherCharge: roundDp(pricing.otherCharge, MONEY_DP).toString(),
+      totalCost: totalCost.toString(),
+      sellingPrice: sellingPrice.toString(),
+      expectedProfit: roundDp(pricing.expectedProfit, MONEY_DP).toString(),
+      profitMarginPercent: roundDp(pricing.profitMarginPercent, PERCENT_DP).toString(),
+      status: "IN_STOCK",
+      source: input.source ?? "MANUFACTURED",
+      supplierId: input.supplierId ?? null,
+      purchaseItemId: input.purchaseItemId ?? null,
+      createdById: userId,
+    },
+  });
 
+  const barcode = await tx.barcode.create({ data: { inventoryItemId: item.id } });
+
+  await recordStockMovement(tx, {
+    inventoryItemId: item.id,
+    movementType: "STOCK_CREATED",
+    previousStatus: null,
+    newStatus: "IN_STOCK",
+    weight: grossWeight.toString(),
+    userId,
+    metadata: { barcode: formatBarcodeCode(barcode.sequence) },
+  });
+
+  return { product, item, barcode };
+}
+
+/** Writes the STOCK_CREATED/BARCODE_GENERATED audit log pair — always called after the creating transaction commits, whether that's this file's own or purchase.service.ts's. */
+async function writeInventoryItemCreatedAuditLogs(
+  result: CreateInventoryItemTxResult,
+  productName: string,
+  userId: string,
+): Promise<void> {
+  const barcodeCode = formatBarcodeCode(result.barcode.sequence);
   await writeAuditLog({
     userId,
     action: "STOCK_CREATED",
     entity: "InventoryItem",
     entityId: result.item.id,
-    metadata: { barcode: barcodeCode, productName: input.productName },
+    metadata: { barcode: barcodeCode, productName },
   });
   await writeAuditLog({
     userId,
@@ -181,9 +197,24 @@ export async function createInventoryItem(
     entityId: result.barcode.id,
     metadata: { code: barcodeCode, inventoryItemId: result.item.id },
   });
-
-  return { id: result.item.id, barcodeCode, productId: result.product.id };
 }
+
+export async function createInventoryItem(
+  input: CreateInventoryItemInput,
+  userId: string,
+): Promise<CreatedInventoryItem> {
+  const result = await prisma.$transaction((tx) => createInventoryItemInTx(tx, input, userId));
+  await writeInventoryItemCreatedAuditLogs(result, input.productName, userId);
+  return {
+    id: result.item.id,
+    barcodeCode: formatBarcodeCode(result.barcode.sequence),
+    productId: result.product.id,
+  };
+}
+
+/** Exposed for purchase.service.ts — see createInventoryItemInTx's doc comment. */
+export { createInventoryItemInTx, writeInventoryItemCreatedAuditLogs };
+export type { CreateInventoryItemTxResult };
 
 export async function updateInventoryItem(
   input: UpdateInventoryItemInput,

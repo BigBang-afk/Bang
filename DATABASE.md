@@ -135,6 +135,14 @@ and `VIP_SETTING_CHANGED` — same table again. The customer activity timeline
 "CustomerEvent" table — see ARCHITECTURE.md "Reusing AuditLog for customer
 activity".
 
+Phase 5 adds `KARIGAR_CREATED`, `KARIGAR_UPDATED`, `KARIGAR_STATUS_CHANGED`,
+`SUPPLIER_CREATED`, `SUPPLIER_UPDATED`, `SUPPLIER_STATUS_CHANGED`,
+`GOLD_GIVEN`, `GOLD_RECEIVED`, `GOLD_JOB_COMPLETED`, `GOLD_ADJUSTED`,
+`KARIGAR_CASH_PAID`, `KARIGAR_CASH_RECEIVED`, `SUPPLIER_PAYMENT_RECORDED`,
+`CASH_ADJUSTED`, `CASH_TRANSACTION_RECORDED`, `PURCHASE_CREATED`,
+`GOLD_RECONCILIATION_COMPLETED`, and `CASH_RECONCILIATION_COMPLETED` — same
+table again, no new entity, same append-only pattern.
+
 ### `ProductCategory` *(Phase 2)*
 
 | Column        | Type        | Notes                                    |
@@ -182,10 +190,17 @@ the weight formulas this table's values come from.
 | `profitMarginPercent` | `Decimal(7,2)` | can be negative (a loss) |
 | `status`       | enum `StockStatus` (`IN_STOCK`, `RESERVED`, `SOLD`, `RETURNED`, `DAMAGED`, `LOST`) |  |
 | `archivedAt`   | timestamp, nullable | soft-delete marker — null means active; see "Deletion policy" in INVENTORY.md |
+| `source`       | enum `InventorySource` (`MANUFACTURED`, `PURCHASED`), default `MANUFACTURED` | *(Phase 5)* set to `PURCHASED` only by `createPurchase()`'s optional push-to-inventory step |
+| `supplierId`   | uuid, nullable (FK → Supplier, `onDelete: SetNull`) | *(Phase 5)* set only when `source = PURCHASED` |
+| `purchaseItemId` | uuid, nullable, unique (FK → PurchaseItem, `onDelete: SetNull`) | *(Phase 5)* 1:1 back-link to the purchase line that created this item |
 | `createdById`  | uuid (FK → User, `onDelete: Restrict`) |                    |
 | `createdAt` / `updatedAt` | timestamp |                              |
 
-Indexed on `productId`, `status`, `createdAt`, `archivedAt`.
+Indexed on `productId`, `status`, `createdAt`, `archivedAt`, `source`
+*(Phase 5)*, `supplierId` *(Phase 5)*. The Phase 5 additions are purely
+additive — every Phase 2 caller that omits `source`/`supplierId`/
+`purchaseItemId` gets identical behavior to before Phase 5 existed. See
+`PURCHASE-SYSTEM.md`.
 
 ### `Barcode` *(Phase 2)*
 
@@ -446,6 +461,248 @@ SetNull`) in Phase 3, so a `STOCK_SOLD` or `STOCK_RETURNED` movement links
 back to the sale that caused it — additive, does not change any Phase 1/2
 movement row.
 
+### `Karigar` *(Phase 5)*
+
+A job-work craftsman. Never hard-deleted — see `changeKarigarStatus()`.
+
+| Column           | Type        | Notes                                    |
+| ----------------- | ----------- | ----------------------------------------- |
+| `id`              | uuid (PK)   |                                            |
+| `codeSequence`    | `Int`, unique, `@default(autoincrement())` | "ZJK-000001" is *derived* at read time (`src/lib/karigar-code.ts`), same pattern as `Customer.codeSequence`/`Barcode.sequence` |
+| `name`            | text        |                                            |
+| `phone`           | text, unique |                                           |
+| `address`         | text, nullable |                                          |
+| `specialization`  | enum `KarigarSpecialization` (`CASTING`, `SETTING`, `POLISHING`, `ENGRAVING`, `GENERAL`, `OTHER`) |  |
+| `status`          | enum `KarigarStatus` (`ACTIVE`, `INACTIVE`, `BLOCKED`), default `ACTIVE` | `BLOCKED` prevents new gold jobs — see `KARIGAR-SYSTEM.md` |
+| `notes`           | text, nullable |                                          |
+| `createdById`     | uuid (FK → User, `onDelete: Restrict`) |                    |
+| `createdAt` / `updatedAt` | timestamp |                              |
+
+Indexed on `status`, `name`, `phone`.
+
+### `Supplier` *(Phase 5)*
+
+A raw-material / finished-goods vendor. Mirrors `Karigar` exactly, never
+hard-deleted.
+
+| Column           | Type        | Notes                                    |
+| ----------------- | ----------- | ----------------------------------------- |
+| `id`              | uuid (PK)   |                                            |
+| `codeSequence`    | `Int`, unique, `@default(autoincrement())` | "ZJS-000001", derived at read time (`src/lib/supplier-code.ts`) |
+| `name`            | text        |                                            |
+| `phone`           | text, unique |                                           |
+| `address`         | text, nullable |                                          |
+| `contactPerson`   | text, nullable |                                          |
+| `status`          | enum `SupplierStatus` (`ACTIVE`, `INACTIVE`, `BLOCKED`), default `ACTIVE` |  |
+| `notes`           | text, nullable |                                          |
+| `createdById`     | uuid (FK → User, `onDelete: Restrict`) |                    |
+| `createdAt` / `updatedAt` | timestamp |                              |
+
+Indexed on `status`, `name`, `phone`.
+
+### `GoldLedgerEntry` / `PartyGoldBalance` *(Phase 5)*
+
+**Append-only**, purity-separated gold ledger shared by both `Karigar` and
+`Supplier` via a polymorphic `(partyType, partyId)` pair — the same
+"one party type enum, one id column" shape `AuditLog.entity`/
+`referenceType` already uses elsewhere in this schema, not a new pattern.
+Every row is written by exactly one function, `appendGoldLedgerEntry()`.
+Weights are **never** combined across `GoldPurity` — see `GOLD-LEDGER.md`
+for the full debit/credit convention and worked examples.
+
+| Column            | Type        | Notes                                      |
+| ------------------ | ----------- | ------------------------------------------- |
+| `id`               | uuid (PK)   |                                              |
+| `partyType`        | enum `PartyType` (`KARIGAR`, `SUPPLIER`) |                |
+| `partyId`          | uuid        | `Karigar.id` or `Supplier.id`, not an FK (polymorphic) |
+| `transactionType`  | enum `GoldLedgerTransactionType` (`GOLD_GIVEN`, `GOLD_RECEIVED`, `GOLD_ADJUSTMENT`, `GOLD_RETURNED`, `GOLD_TRANSFER`) |  |
+| `purity`           | enum `GoldPurity` | never combined with another purity in any balance |
+| `debit` / `credit` | `Decimal(10,3)`, default 0 | exactly one is non-zero — grams, never money |
+| `balanceAfter`     | `Decimal(10,3)` | the party's running gold balance for this purity immediately after this entry |
+| `goldRatePerGram` / `goldValue` | `Decimal(14,2)`, nullable | **snapshot** at transaction time — never recalculated from today's rate |
+| `referenceType` / `referenceId` | text, nullable | polymorphic reference, e.g. `"KarigarGoldJob"`, `"GoldReconciliation"` |
+| `description`      | text, nullable |                                            |
+| `createdById`      | uuid (FK → User, `onDelete: Restrict`) |                    |
+| `createdAt`        | timestamp   |                                              |
+
+Indexed on `(partyType, partyId, purity, createdAt)` and
+`(referenceType, referenceId)`.
+
+`PartyGoldBalance` is the cached running-balance row `appendGoldLedgerEntry()`
+upserts atomically (`INSERT ... ON CONFLICT ... DO UPDATE ... RETURNING
+balance`) before writing the ledger row, so the ledger's `balanceAfter`
+always matches this table exactly:
+
+| Column       | Type        | Notes                                    |
+| ------------- | ----------- | ------------------------------------------ |
+| `id`          | uuid (PK)   |                                            |
+| `partyType`   | enum `PartyType` |                                        |
+| `partyId`     | uuid        |                                            |
+| `purity`      | enum `GoldPurity` |                                       |
+| `balance`     | `Decimal(10,3)` | signed — positive means the business is owed gold back (`HOLDS_GOLD`), negative means the business owes gold (`OWES_GOLD`); **never exposed raw to the UI**, always derived into a labeled position first |
+| `updatedAt`   | timestamp   |                                            |
+
+`@@unique([partyType, partyId, purity])`.
+
+### `PartyCashLedgerEntry` / `PartyCashBalance` *(Phase 5)*
+
+The karigar/supplier equivalent of `CustomerLedgerEntry` — append-only,
+tracks who-owes-whom in rupees, structurally separate from the gold ledger
+(grams and rupees are never combined into one number) and separate from
+the company `CashTransaction` book (see below). Every row is written by
+exactly one function, `appendPartyCashLedgerEntry()`.
+
+| Column            | Type        | Notes                                      |
+| ------------------ | ----------- | ------------------------------------------- |
+| `id`               | uuid (PK)   |                                              |
+| `partyType`        | enum `PartyType` |                                        |
+| `partyId`          | uuid        | polymorphic, same shape as `GoldLedgerEntry` |
+| `transactionType`  | enum `PartyCashTransactionType` (`PURCHASE`, `PAYMENT`, `CASH_PAID`, `CASH_RECEIVED`, `CASH_ADJUSTMENT`) |  |
+| `debit` / `credit` | `Decimal(14,2)`, default 0 | exactly one is non-zero |
+| `balanceAfter`     | `Decimal(14,2)` | signed running balance immediately after this entry |
+| `referenceType` / `referenceId` | text, nullable | e.g. `"Purchase"`, `"PurchasePayment"` |
+| `description`      | text, nullable |                                            |
+| `createdById`      | uuid (FK → User, `onDelete: Restrict`) |                    |
+| `createdAt`        | timestamp   |                                              |
+
+Indexed on `(partyType, partyId, createdAt)`.
+
+`PartyCashBalance` (`@@unique([partyType, partyId])`) caches the signed
+running balance the same way `PartyGoldBalance` does. `balance > 0` means
+payable (business owes the party), `balance < 0` means receivable (the
+party owes the business) — `getPartyCashPosition()` always derives this
+into an explicit `{ payable, receivable }` pair before it reaches the UI,
+never the raw signed number. See `CASH-MANAGEMENT.md`.
+
+### `CashTransaction` *(Phase 5)*
+
+The company's physical cash-in-hand book — a **separate** ledger from
+`PartyCashLedgerEntry` above. A single business event (a sale payment, a
+purchase payment) can write to both in the same transaction: the party
+ledger records the debt relationship, this table records the physical cash
+movement. Balance is computed live (`opening + SUM(IN) - SUM(OUT)`), not
+cached, since it is cheap to aggregate and must never drift from the row
+data.
+
+| Column            | Type        | Notes                                      |
+| ------------------ | ----------- | ------------------------------------------- |
+| `id`               | uuid (PK)   |                                              |
+| `transactionType`  | enum `CashTransactionType` (`SALE_PAYMENT`, `CUSTOMER_PAYMENT`, `PURCHASE_PAYMENT`, `SUPPLIER_PAYMENT`, `KARIGAR_PAYMENT`, `KARIGAR_RECEIPT`, `EXPENSE`, `CASH_ADJUSTMENT`) |  |
+| `direction`        | enum `CashDirection` (`IN`, `OUT`) |                       |
+| `amount`           | `Decimal(14,2)` |                                          |
+| `paymentMethod`    | enum `PaymentMethod`, nullable |                            |
+| `referenceType` / `referenceId` | text, nullable | e.g. `"Sale"`, `"Purchase"`, `"KarigarCashTransaction"` |
+| `description`      | text, nullable |                                            |
+| `createdById`      | uuid (FK → User, `onDelete: Restrict`) |                    |
+| `createdAt`        | timestamp   |                                              |
+
+Indexed on `transactionType`, `createdAt`, `(referenceType, referenceId)`.
+Opening balance is a `SystemSetting` (`cash.opening_balance`), never a
+row in this table. See `CASH-MANAGEMENT.md`.
+
+### `Purchase` / `PurchaseItem` / `PurchasePayment` *(Phase 5)*
+
+A supplier purchase — mirrors `Sale`/`SaleItem`/`Payment`'s shape closely
+on purpose. No `CREDIT` payment method and no overpayment are allowed; see
+`PURCHASE-SYSTEM.md` for the full transactional write path.
+
+| Column            | Type        | Notes                                      |
+| ------------------ | ----------- | ------------------------------------------- |
+| `id`               | uuid (PK)   |                                              |
+| `sequence`         | `Int`, unique, `@default(autoincrement())` | "ZJ-PUR-000001", derived at read time (`src/lib/purchase-number.ts`) |
+| `supplierId`       | uuid (FK → Supplier, `onDelete: Restrict`) |                |
+| `purchaseDate`     | timestamp, default now |                                 |
+| `subtotal`, `charges`, `grandTotal` | `Decimal(14,2)` |                    |
+| `paidAmount`       | `Decimal(14,2)` | sum of `PurchasePayment.amount`          |
+| `status`           | enum `PurchaseStatus` (`COMPLETED`) | no draft/void state yet    |
+| `createdById`      | uuid (FK → User, `onDelete: Restrict`) |                    |
+| `createdAt`        | timestamp   |                                              |
+
+`PurchaseItem`:
+
+| Column            | Type        | Notes                                      |
+| ------------------ | ----------- | ------------------------------------------- |
+| `id`               | uuid (PK)   |                                              |
+| `purchaseId`       | uuid (FK → Purchase, `onDelete: Cascade`) |                 |
+| `categoryId`       | uuid, nullable (FK → ProductCategory, `onDelete: SetNull`) | only meaningful when the item is pushed to inventory |
+| `description`      | text        |                                              |
+| `purity`           | enum `GoldPurity` |                                        |
+| `netWeight`, `wastageWeight`, `grossWeight` | `Decimal(10,3)` |          |
+| `goldRatePerGram`, `goldValue`, `sellingPrice` | `Decimal(14,2)`, `sellingPrice` nullable | reuses the same `calculateGoldValue()` engine as `InventoryItem`/`SaleItem` — never re-implemented |
+| `addToInventory`   | boolean     | when true, a linked `InventoryItem` (`source = PURCHASED`) is created in the same transaction |
+| `createdAt`        | timestamp   |                                              |
+
+1:1 optional to `InventoryItem` via `InventoryItem.purchaseItemId`.
+
+`PurchasePayment`:
+
+| Column            | Type        | Notes                                      |
+| ------------------ | ----------- | ------------------------------------------- |
+| `id`               | uuid (PK)   |                                              |
+| `purchaseId`       | uuid (FK → Purchase, `onDelete: Cascade`) |                 |
+| `method`           | enum `PaymentMethod` (`CASH`, `CARD`, `BANK_TRANSFER`, `OTHER`) | `CREDIT` rejected at the service layer |
+| `amount`           | `Decimal(14,2)` |                                          |
+| `reference`        | text, nullable |                                            |
+| `createdById`      | uuid (FK → User, `onDelete: Restrict`) |                    |
+| `createdAt`        | timestamp   |                                              |
+
+Every `Purchase` posts a `PURCHASE` debit (grand total) and a `PAYMENT`
+credit (amount actually paid) to the supplier's `PartyCashLedgerEntry` in
+the same transaction — even a fully-paid purchase posts both, netting to
+zero but leaving a full trail, exactly mirroring the `Sale`/`Customer`
+ledger pattern from Phase 3/4.
+
+### `KarigarGoldJob` *(Phase 5)*
+
+One "gold given → gold received back" job-work cycle. The difference
+between expected and received weight is **always stored explicitly**,
+never silently folded into wastage. See `KARIGAR-SYSTEM.md` "Wastage
+reconciliation" for the full worked example.
+
+| Column                 | Type        | Notes                                 |
+| ----------------------- | ----------- | ---------------------------------------- |
+| `id`                    | uuid (PK)   | pre-generated client-side so the linked ledger entries can reference it before it's committed |
+| `karigarId`             | uuid (FK → Karigar, `onDelete: Restrict`) |             |
+| `purity`                | enum `GoldPurity` |                                     |
+| `givenWeight`           | `Decimal(10,3)` |                                      |
+| `givenLedgerEntryId`    | uuid, nullable (FK → GoldLedgerEntry, `onDelete: SetNull`) | nullable only to break the job/ledger-entry creation cycle at insert time — never null once the creating transaction commits |
+| `expectedWeight`        | `Decimal(10,3)` | what should come back (e.g. after allowing for making wastage) |
+| `receivedWeight`        | `Decimal(10,3)`, nullable | null until received                 |
+| `receivedLedgerEntryId` | uuid, nullable (FK → GoldLedgerEntry, `onDelete: SetNull`) |             |
+| `differenceWeight`      | `Decimal(10,3)`, nullable | `expectedWeight - receivedWeight`, stored verbatim, never adjusted by classification |
+| `toleranceGramsSnapshot` | `Decimal(10,3)`, nullable | the wastage-tolerance setting **at receive time**, frozen — a later setting change never rewrites past jobs |
+| `reconciliationStatus`  | enum `JobReconciliationStatus` (`WITHIN_ALLOWANCE`, `EXCESS_DIFFERENCE`, `SHORTAGE`), nullable | auto-classified at receive time |
+| `classification`        | text, nullable | free-text human annotation (e.g. "Approved wastage") — never mutates the weights above |
+| `description`           | text, nullable |                                          |
+| `givenAt`               | timestamp   |                                            |
+| `receivedAt`            | timestamp, nullable |                                    |
+| `createdById`           | uuid (FK → User, `onDelete: Restrict`) |                    |
+
+Indexed on `karigarId`, `reconciliationStatus`. Settling any remaining
+owed gold after classification requires a separate, explicit
+`recordGoldAdjustment()` call — classifying a difference never itself
+touches `PartyGoldBalance`.
+
+### `GoldReconciliation` / `CashReconciliation` *(Phase 5)*
+
+System-vs-physical count comparisons. **Never auto-correct** — running a
+reconciliation only records the comparison; applying a fix is always a
+separate, later, explicit adjustment call. See `RECONCILIATION.md`.
+
+| Column           | Type        | Notes                                    |
+| ----------------- | ----------- | ----------------------------------------- |
+| `id`              | uuid (PK)   |                                            |
+| `purity`          | enum `GoldPurity` | *(`GoldReconciliation` only)*         |
+| `systemWeight` / `systemAmount` | `Decimal(10,3)` / `Decimal(14,2)` | computed live at run time from `PartyGoldBalance` / `CashTransaction` |
+| `physicalWeight` / `physicalAmount` | `Decimal(10,3)` / `Decimal(14,2)` | user-entered count |
+| `difference`      | `Decimal(10,3)` / `Decimal(14,2)` | `physical - system`, exact, no tolerance |
+| `status`          | enum `ReconciliationStatus` (`MATCHED`, `RECONCILIATION_REQUIRED`) | strict — any non-zero difference requires it, shared enum for both tables |
+| `notes`           | text, nullable |                                          |
+| `createdById`     | uuid (FK → User, `onDelete: Restrict`) |                    |
+| `createdAt`       | timestamp   |                                              |
+
+Indexed on `createdAt` (`GoldReconciliation` also on `purity`).
+
 ## Entity relationship summary
 
 ```
@@ -482,6 +739,21 @@ Customer 1---* CustomerPayment
 User 1---* CustomerNote (createdBy)
 User 1---* CustomerLedgerEntry (createdBy)
 User 1---* CustomerPayment (createdBy)
+
+Karigar 1---* KarigarGoldJob
+Karigar/Supplier 1---* GoldLedgerEntry (polymorphic partyType/partyId)
+Karigar/Supplier 1---1 PartyGoldBalance (per purity)
+Karigar/Supplier 1---* PartyCashLedgerEntry (polymorphic partyType/partyId)
+Karigar/Supplier 1---1 PartyCashBalance
+Supplier 1---* Purchase
+Purchase 1---* PurchaseItem
+Purchase 1---* PurchasePayment
+PurchaseItem 1---1 InventoryItem (optional, source = PURCHASED)
+KarigarGoldJob 1---1 GoldLedgerEntry (given) / 1---1 GoldLedgerEntry (received, optional)
+User 1---* Karigar / Supplier (createdBy)
+User 1---* GoldLedgerEntry / PartyCashLedgerEntry / CashTransaction (createdBy)
+User 1---* Purchase / PurchasePayment (createdBy)
+User 1---* GoldReconciliation / CashReconciliation (createdBy)
 ```
 
 ## Regenerating / migrating

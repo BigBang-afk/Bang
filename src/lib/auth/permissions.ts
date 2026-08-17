@@ -23,6 +23,19 @@ export const PERMISSIONS = {
   CUSTOMERS_PAYMENT: "customers:payment",
   CUSTOMERS_EXPORT: "customers:export",
   CUSTOMERS_SEGMENTS: "customers:segments",
+  KARIGARS_VIEW: "karigars:view",
+  KARIGARS_MANAGE: "karigars:manage",
+  KARIGARS_GOLD: "karigars:gold",
+  KARIGARS_CASH: "karigars:cash",
+  SUPPLIERS_VIEW: "suppliers:view",
+  SUPPLIERS_MANAGE: "suppliers:manage",
+  PURCHASES_VIEW: "purchases:view",
+  PURCHASES_CREATE: "purchases:create",
+  GOLD_LEDGER_VIEW: "gold_ledger:view",
+  GOLD_LEDGER_RECONCILE: "gold_ledger:reconcile",
+  CASH_VIEW: "cash:view",
+  CASH_MANAGE: "cash:manage",
+  CASH_RECONCILE: "cash:reconcile",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

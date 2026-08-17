@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/db/prisma";
 import { recordStockMovement } from "@/services/stock-movement.service";
 import { appendCustomerLedgerEntry } from "@/services/customer-ledger.service";
+import { recordCashTransactionInTx } from "@/services/cash-transaction.service";
 import { getMaxDiscountPercentForRole, getTaxSettings } from "@/services/sales-settings.service";
 import { writeAuditLog } from "@/services/audit.service";
 import { formatBarcodeCode } from "@/lib/barcode-code";
@@ -192,6 +193,21 @@ export async function completeSale(
           createdById: actingUser.id,
         },
       });
+
+      // CREDIT isn't a cash movement — nothing physically changed hands.
+      // See CASH-MANAGEMENT.md.
+      if (payment.method !== "CREDIT") {
+        await recordCashTransactionInTx(tx, {
+          transactionType: "SALE_PAYMENT",
+          direction: "IN",
+          amount: payment.amount,
+          paymentMethod: payment.method,
+          referenceType: "Sale",
+          referenceId: sale.id,
+          description: "Sale payment at checkout",
+          createdById: actingUser.id,
+        });
+      }
     }
 
     // A sale associated with a customer always posts to their ledger — a

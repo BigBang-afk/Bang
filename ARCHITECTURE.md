@@ -95,6 +95,63 @@ Each service owns one concern:
   place VIP/inactive/high-value/etc. logic is allowed to live), dashboard
   summary counts, and birthday/anniversary reminders. See
   `CUSTOMER-SEGMENTS.md`.
+- `karigar.service.ts` *(Phase 5)* — Karigar identity CRUD, ZJK-numbered
+  codes, duplicate-phone detection, search/list/filter, status transitions
+  (never a hard delete). Mirrors `customer.service.ts`'s shape closely on
+  purpose. See `KARIGAR-SYSTEM.md`.
+- `supplier.service.ts` *(Phase 5)* — the same shape again for Supplier
+  identity, ZJS-numbered codes, plus `getSupplierPurchaseSummary()` (a
+  snapshot rollup from `Purchase`, deliberately not including a live
+  payable figure — that comes from `party-cash-ledger.service.ts`, the same
+  split Phase 3/4 already has between `Sale.balanceAmount` and
+  `Customer.outstandingBalance`). See `SUPPLIER-SYSTEM.md`.
+- `gold-ledger.service.ts` *(Phase 5)* — `appendGoldLedgerEntry(tx, input)`,
+  the single write path for both `PartyGoldBalance` and `GoldLedgerEntry`,
+  shared by karigars and suppliers via a polymorphic `(partyType, partyId)`
+  pair; also `transferGoldBetweenParties()`, `recordGoldAdjustment()`, and
+  the purity-separated position/summary read models. See "The gold ledger
+  primitive" below and `GOLD-LEDGER.md`.
+- `karigar-job.service.ts` *(Phase 5)* — the job-work cycle:
+  `giveGoldToKarigar()` / `receiveGoldFromKarigar()`, wastage-difference
+  classification against a configurable tolerance, and
+  `classifyGoldJobDifference()` (an explicit human annotation that never
+  mutates the stored weights). Composes `gold-ledger.service.ts`, never
+  duplicates its balance logic. See `KARIGAR-SYSTEM.md` "Wastage
+  reconciliation".
+- `party-cash-ledger.service.ts` *(Phase 5)* — `appendPartyCashLedgerEntry(tx,
+  input)`, the karigar/supplier equivalent of `customer-ledger.service.ts`,
+  same polymorphic-party shape as the gold ledger but tracking rupees, never
+  grams. `getPartyCashPosition()` is the only place the raw signed balance
+  is turned into a `{ payable, receivable }` pair — nothing downstream ever
+  reads the raw number. See "The party cash ledger primitive" below and
+  `CASH-MANAGEMENT.md`.
+- `cash-transaction.service.ts` *(Phase 5)* — the company's physical
+  cash-in-hand book (`recordCashTransactionInTx()`), structurally separate
+  from the party cash ledger above. `getCashBalance()` computes live
+  (`opening + SUM(IN) - SUM(OUT)`) rather than caching, since it's cheap to
+  aggregate and must never drift. See "The company cash book vs. the party
+  cash ledger" below.
+- `purchase.service.ts` *(Phase 5)* — `createPurchase()`, the purchase
+  transaction engine: validates every line item up front (before opening
+  any transaction, so a mid-list failure creates zero rows), reuses the
+  Phase 1 `calculateGoldValue()` engine per item, then in one `$transaction`
+  writes `Purchase`/`PurchaseItem`/`PurchasePayment`, optionally composes
+  `createInventoryItemInTx()` for push-to-inventory, records each payment to
+  the company cash book, and posts the supplier's cash ledger. See "Composable
+  transactional primitives" below and `PURCHASE-SYSTEM.md`.
+- `reconciliation.service.ts` *(Phase 5)* — `runGoldReconciliation()` /
+  `runCashReconciliation()`: compute the live system figure, compare
+  against a user-entered physical count, classify `MATCHED` or
+  `RECONCILIATION_REQUIRED`, and persist the comparison. Deliberately never
+  calls any adjustment function itself — applying a fix is always a
+  separate, later, explicit action. See `RECONCILIATION.md`.
+- `karigar-cash.service.ts` *(Phase 5)* — `recordKarigarCashTransaction()`,
+  a thin composition of `party-cash-ledger.service.ts` +
+  `cash-transaction.service.ts` for the "Pay/Receive Cash" karigar workflow.
+- `supplier-payment.service.ts` *(Phase 5)* — the same composition for
+  supplier payments against a purchase payable, plus
+  `listPurchasePaymentsForSupplier()` for the Supplier profile's Payments
+  tab.
 
 ### `src/lib/auth/`
 
@@ -198,6 +255,31 @@ because the client-side form already validated it.
   switching, so none of that data has to be re-serialized across a
   Server→Client boundary — see "Pitfall" below for why that matters.
   `[id]/edit/page.tsx` is the edit form. See `CUSTOMER-CRM.md`.
+- `(app)/karigars/` *(Phase 5)* — its own nested `layout.tsx` requires
+  `karigars:view` once and renders the All Karigars/Add Karigar/Karigar
+  Ledger/Gold With Karigar/Cash With Karigar sub-nav tabs. `[id]/page.tsx`
+  is the profile page (Overview/Gold Ledger/Cash Ledger/Jobs/Transactions/
+  Notes tabs, same server-prerendered-tabs pattern as the Customer profile).
+  See `KARIGAR-SYSTEM.md`.
+- `(app)/suppliers/` *(Phase 5)* — mirrors `karigars/` exactly: All
+  Suppliers/Add Supplier/Ledger sub-nav, `[id]/page.tsx` profile
+  (Overview/Purchases/Ledger/Gold/Payments/Notes tabs). See
+  `SUPPLIER-SYSTEM.md`.
+- `(app)/purchases/` *(Phase 5)* — `page.tsx` is New Purchase (the primary
+  action lives at the route root, the same pattern POS uses for New Sale);
+  `history/page.tsx` is Purchase History; `[id]/page.tsx` is the purchase
+  detail view. See `PURCHASE-SYSTEM.md`.
+- `(app)/gold-ledger/` *(Phase 5)* — company-wide Gold Transactions, Gold
+  With Karigars, Gold With Suppliers, and Gold Reconciliation sub-nav.
+- `(app)/cash-management/` *(Phase 5)* — Cash Transactions (the physical
+  cash book), Cash Payable, Cash Receivable, and Cash Reconciliation
+  sub-nav.
+- `(app)/party-ledger/` *(Phase 5)* — a single combined page satisfying both
+  the spec's "Party Ledger" nav item and its "Reporting Foundation"
+  requirement (Karigar Gold/Cash Position, Supplier Payables/Gold Position,
+  Cash Summary, Purchase Summary, Gold Reconciliation) — deliberately not a
+  separate `/reports` module, since `/reports` remains an explicit
+  "coming in next phase" placeholder, same as every prior phase.
 
 ## Authentication design
 
@@ -263,6 +345,15 @@ Role-Based Access Control, stored in the database (`Role`, `Permission`,
   themselves already encode each future role's intended boundary — wiring
   them up is a data change, not a code change, once a role-management UI
   exists.
+- Phase 5 adds 13 permissions across six namespaces —
+  `karigars:view/manage/gold/cash`, `suppliers:view/manage`,
+  `purchases:view/create`, `gold_ledger:view/reconcile`,
+  `cash:view/manage/reconcile` — matching the spec's per-role matrix
+  (ACCOUNTANT owns ledgers/payments/reconciliation; INVENTORY_MANAGER only
+  the inventory-related purchase ops; CASHIER only cash/payment ops;
+  SALESPERSON gets none of them; KARIGAR_MANAGER owns karigar/job records).
+  Same pattern as Phase 4: only `OWNER`/`ADMIN` are seeded with grants
+  today, the keys already encode every future role's boundary.
 
 ## Settings as data — discount limits & tax *(Phase 3)*
 
@@ -292,6 +383,18 @@ Three more `SystemSetting` keys, same pattern: `customer.vip_spending_threshold`
 and `customer-payment.service.ts` read these fresh on every call — an owner
 tuning the VIP bar or the inactivity window takes effect immediately,
 everywhere, with no cache to invalidate. See `CUSTOMER-SEGMENTS.md`.
+
+## Settings as data — wastage tolerance & cash opening balance *(Phase 5)*
+
+Two more `SystemSetting` keys, same pattern:
+`karigar.wastage_tolerance_grams` (default `"0.100"`) and
+`cash.opening_balance` (default `"0"`). The tolerance is read fresh by
+`karigar-job.service.ts` at receive-time but then **snapshotted** onto the
+`KarigarGoldJob` row (`toleranceGramsSnapshot`) — the one deliberate
+exception to "always read fresh": a later change to the setting must never
+retroactively reclassify a job that was already received. The opening
+balance is read fresh by `cash-transaction.service.ts`'s
+`getCashBalance()` on every call, never cached.
 
 ## The ledger primitive — one write path, everywhere *(Phase 4)*
 
@@ -338,6 +441,89 @@ any `Sale`/`Invoice` the customer made (matched via that customer's own
 sale IDs, since a `SALE_COMPLETED` or `INVOICE_GENERATED` entry is written
 against the `Sale`, not the `Customer` — see `SALES.md`). One audit
 architecture, two read shapes, no new write path.
+
+## The gold ledger primitive *(Phase 5)*
+
+`appendGoldLedgerEntry(tx, input)` (`gold-ledger.service.ts`) is the
+**only** code allowed to change a `PartyGoldBalance` row. Same shape as the
+Phase 4 customer-ledger primitive: one atomic `INSERT ... ON CONFLICT
+(partyType, partyId, purity) DO UPDATE ... RETURNING balance`, then the
+`GoldLedgerEntry` row is created with the exact balance the upsert just
+returned. One unified sign convention covers both party types without any
+`if (partyType === "KARIGAR")` branching anywhere: `debit`
+(`GOLD_GIVEN`/`GOLD_RETURNED`) moves gold toward the party and raises their
+balance; `credit` (`GOLD_RECEIVED`) moves gold back to the business and
+lowers it. `balanceAfter > 0` → the party `HOLDS_GOLD` (the business is
+owed it back); `balanceAfter < 0` → the party `OWES_GOLD` (the business
+currently holds gold, or value, that belongs to the party). This is why
+giving raw gold to a karigar and receiving raw gold from a supplier on
+consignment both work correctly through the exact same function despite
+being conceptually opposite flows — see `GOLD-LEDGER.md` for the worked
+examples that verify both directions. `GOLD_ADJUSTMENT` is the one
+transaction type that requires the caller to state `direction` explicitly,
+since there's no natural default for a manual correction.
+
+## The party cash ledger primitive *(Phase 5)*
+
+`appendPartyCashLedgerEntry(tx, input)` (`party-cash-ledger.service.ts`)
+mirrors the gold ledger primitive exactly, but for rupees: an atomic
+upsert against `PartyCashBalance` (unique on `partyType, partyId`), then a
+`PartyCashLedgerEntry` row with the returned balance. `debit`
+(`PURCHASE`/`CASH_RECEIVED`) moves the balance toward payable; `credit`
+(`CASH_PAID`/`PAYMENT`) moves it toward receivable. The raw signed number
+is never returned to a caller outside this file — `getPartyCashPosition()`
+is the one function that turns it into `{ payable, receivable }`, so a UI
+component can never accidentally render "-50,000" instead of "Receivable:
+50,000". Verified against the spec's exact worked example (Purchase
+500,000 debit → Payment 400,000 credit → Payable 100,000 → Payment 100,000
+→ Payable 0) in `tests/party-cash-ledger.integration.test.ts`.
+
+## The company cash book vs. the party cash ledger *(Phase 5)*
+
+Phase 5 has two structurally separate ledgers that are easy to conflate
+because both are "cash":
+
+- **`PartyCashLedgerEntry`** answers "who owes whom, and how much" — a
+  karigar/supplier-scoped payable/receivable, exactly like
+  `CustomerLedgerEntry` answers it for customers.
+- **`CashTransaction`** answers "how much physical cash is in the drawer" —
+  a single company-wide book, unscoped to any party.
+
+A single business event can write to both in the same transaction. A
+purchase payment, for example, calls `appendPartyCashLedgerEntry()` (the
+supplier now owes less) **and** `recordCashTransactionInTx()` (cash
+physically left the drawer) inside `purchase.service.ts`'s one
+`$transaction`. Phase 3/4's `sale-transaction.service.ts` and
+`customer-payment.service.ts` were extended in Phase 5 the same way — a
+non-CREDIT sale payment or customer payment now also calls
+`recordCashTransactionInTx()` (`SALE_PAYMENT`/`CUSTOMER_PAYMENT`, `IN`) so
+the company cash book reflects every cash-in event across every module,
+not just Phase 5's own. Neither addition changes any Phase 3/4 balance or
+behavior — it's a pure additional write inside an existing transaction.
+
+## Composable transactional primitives — `createInventoryItemInTx` *(Phase 5)*
+
+Prisma does not support nesting one `prisma.$transaction()` call inside
+another. `purchase.service.ts`'s `createPurchase()` needs to create an
+`InventoryItem` (with its `Product`/`Barcode`/`StockMovement` rows) as one
+step inside its *own* `$transaction`, so it can't call the existing
+`createInventoryItem()` from `inventory-item.service.ts`, which always
+opens its own top-level transaction. The fix generalizes as a pattern
+worth reusing whenever a future module needs to compose an existing
+transactional service function into a larger transaction: the transactional
+body was extracted into `createInventoryItemInTx(tx, input, userId)` — a
+function that accepts a `tx` (Prisma transaction client) instead of opening
+its own — and the audit-log writes (which must always happen *after*
+commit) were extracted into a separate `writeInventoryItemCreatedAuditLogs()`
+helper. `createInventoryItem()` itself became a thin wrapper:
+`prisma.$transaction((tx) => createInventoryItemInTx(tx, input, userId))`
+followed by `writeInventoryItemCreatedAuditLogs()`. Both extracted pieces
+are exported specifically for `purchase.service.ts` to reuse, so a
+purchase's inventory push-through gets full transactional atomicity with
+`Purchase`/`PurchaseItem`/`PurchasePayment` while still going through the
+exact same inventory-creation logic Phase 2 built — nothing about Phase
+2/3's own `createInventoryItem()` behavior changed; this was verified by a
+full Phase 1-4 regression run after the refactor.
 
 ## Precision & money handling
 

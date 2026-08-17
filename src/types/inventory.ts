@@ -63,6 +63,11 @@ export type CreateInventoryItemInput = {
   otherCharge?: number;
   sellingPrice: number;
   confirmLowerPrice?: boolean;
+
+  /** Set only by purchase.service.ts when pushing a purchased item into inventory — see PURCHASE-SYSTEM.md "Purchased vs. manufactured stock". Every Phase 2 caller omits these and gets the original MANUFACTURED/no-supplier behavior unchanged. */
+  source?: "MANUFACTURED" | "PURCHASED";
+  supplierId?: string;
+  purchaseItemId?: string;
 };
 
 export type UpdateInventoryItemInput = CreateInventoryItemInput & {

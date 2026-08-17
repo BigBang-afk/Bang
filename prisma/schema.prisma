@@ -72,21 +72,31 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  role                  Role                  @relation(fields: [roleId], references: [id], onDelete: Restrict)
-  goldRatesCreated      GoldRate[]
-  settingsUpdated       SystemSetting[]
-  auditLogs             AuditLog[]
-  productsCreated       Product[]
-  inventoryItemsCreated InventoryItem[]
-  stockMovements        StockMovement[]
-  customersCreated      Customer[]
-  salesCreated          Sale[]
-  paymentsCreated       Payment[]
-  returnsRequested      Return[]              @relation("ReturnRequestedBy")
-  returnsProcessed      Return[]              @relation("ReturnProcessedBy")
-  customerNotesCreated  CustomerNote[]
-  customerPaymentsTaken CustomerPayment[]
-  ledgerEntriesCreated  CustomerLedgerEntry[]
+  role                   Role                   @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  goldRatesCreated       GoldRate[]
+  settingsUpdated        SystemSetting[]
+  auditLogs              AuditLog[]
+  productsCreated        Product[]
+  inventoryItemsCreated  InventoryItem[]
+  stockMovements         StockMovement[]
+  customersCreated       Customer[]
+  salesCreated           Sale[]
+  paymentsCreated        Payment[]
+  returnsRequested       Return[]               @relation("ReturnRequestedBy")
+  returnsProcessed       Return[]               @relation("ReturnProcessedBy")
+  customerNotesCreated   CustomerNote[]
+  customerPaymentsTaken  CustomerPayment[]
+  ledgerEntriesCreated   CustomerLedgerEntry[]
+  karigarsCreated        Karigar[]
+  suppliersCreated       Supplier[]
+  goldLedgerEntries      GoldLedgerEntry[]
+  partyCashLedgerEntries PartyCashLedgerEntry[]
+  cashTransactions       CashTransaction[]
+  purchasesCreated       Purchase[]
+  purchasePaymentsTaken  PurchasePayment[]
+  karigarGoldJobs        KarigarGoldJob[]
+  goldReconciliations    GoldReconciliation[]
+  cashReconciliations    CashReconciliation[]
 
   @@index([roleId])
   @@map("users")
@@ -184,6 +194,25 @@ enum AuditAction {
   CUSTOMER_LEDGER_ADJUSTED
   CUSTOMER_EXPORTED
   VIP_SETTING_CHANGED
+  KARIGAR_CREATED
+  KARIGAR_UPDATED
+  KARIGAR_STATUS_CHANGED
+  SUPPLIER_CREATED
+  SUPPLIER_UPDATED
+  SUPPLIER_STATUS_CHANGED
+  GOLD_GIVEN
+  GOLD_RECEIVED
+  GOLD_ADJUSTED
+  GOLD_JOB_COMPLETED
+  KARIGAR_CASH_PAID
+  KARIGAR_CASH_RECEIVED
+  PURCHASE_CREATED
+  PURCHASE_MODIFIED
+  SUPPLIER_PAYMENT_RECORDED
+  CASH_TRANSACTION_RECORDED
+  CASH_ADJUSTED
+  GOLD_RECONCILIATION_COMPLETED
+  CASH_RECONCILIATION_COMPLETED
 }
 
 model AuditLog {
@@ -246,7 +275,8 @@ model ProductCategory {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  products Product[]
+  products      Product[]
+  purchaseItems PurchaseItem[]
 
   @@map("product_categories")
 }
@@ -323,6 +353,18 @@ model InventoryItem {
   /// reused.
   archivedAt DateTime?
 
+  /// Where this physical piece came from — MANUFACTURED (Phase 2's Add
+  /// Stock flow, the default) or PURCHASED (Phase 5, bought finished from a
+  /// Supplier). See PURCHASE-SYSTEM.md "Purchased vs. manufactured stock".
+  source         InventorySource @default(MANUFACTURED)
+  /// Set only when source = PURCHASED. Additive to Product.supplier (a
+  /// free-text field Phase 2 already has) — this is the real FK.
+  supplierId     String?         @db.Uuid
+  /// Set only when source = PURCHASED — the exact purchase line this piece
+  /// came from. Purchase cost/rate/charges live on that row and are never
+  /// duplicated or overwritten here.
+  purchaseItemId String?         @unique @db.Uuid
+
   createdById String   @db.Uuid
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -330,6 +372,8 @@ model InventoryItem {
   product        Product         @relation(fields: [productId], references: [id], onDelete: Restrict)
   createdBy      User            @relation(fields: [createdById], references: [id], onDelete: Restrict)
   goldRateSource GoldRate?       @relation(fields: [goldRateSourceId], references: [id], onDelete: SetNull)
+  supplier       Supplier?       @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  purchaseItem   PurchaseItem?   @relation(fields: [purchaseItemId], references: [id], onDelete: SetNull)
   barcode        Barcode?
   movements      StockMovement[]
   saleItems      SaleItem[]
@@ -338,7 +382,14 @@ model InventoryItem {
   @@index([status])
   @@index([createdAt])
   @@index([archivedAt])
+  @@index([source])
+  @@index([supplierId])
   @@map("inventory_items")
+}
+
+enum InventorySource {
+  MANUFACTURED
+  PURCHASED
 }
 
 /// The ZJ identifier. `sequence` is a database-generated autoincrement —
@@ -742,4 +793,434 @@ model CustomerPayment {
 
   @@index([customerId])
   @@map("customer_payments")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 5 — Karigar, Supplier, Gold Ledger, Cash Management & Purchases
+// ---------------------------------------------------------------------------
+
+enum KarigarSpecialization {
+  GOLDSMITH
+  POLISHER
+  STONE_SETTER
+  DESIGNER
+  REPAIR
+  OTHER
+}
+
+enum KarigarStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
+
+/// Never hard-deleted — a Karigar with historical gold/cash transactions
+/// must keep them attributable forever. "Archiving" is a status change
+/// (-> INACTIVE), not a delete. See KARIGAR-SYSTEM.md.
+model Karigar {
+  id             String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// The real identity — a Postgres-native autoincrement column, exactly
+  /// the Barcode/Invoice/Customer pattern. "ZJK-000001" is derived from it
+  /// at read time (src/lib/karigar-code.ts), never stored redundantly.
+  karigarCode    Int                   @unique @default(autoincrement())
+  name           String
+  phone          String                @unique
+  secondaryPhone String?
+  address        String?
+  city           String?
+  specialization KarigarSpecialization @default(OTHER)
+  status         KarigarStatus         @default(ACTIVE)
+  notes          String?
+  createdById    String                @db.Uuid
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  createdBy User             @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  goldJobs  KarigarGoldJob[]
+
+  @@index([phone])
+  @@index([name])
+  @@index([status])
+  @@index([specialization])
+  @@map("karigars")
+}
+
+enum SupplierStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
+
+model Supplier {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// "ZJS-000001" — derived from this at read time (src/lib/supplier-code.ts).
+  supplierCode   Int            @unique @default(autoincrement())
+  name           String
+  companyName    String?
+  phone          String         @unique
+  secondaryPhone String?
+  email          String?
+  address        String?
+  city           String?
+  status         SupplierStatus @default(ACTIVE)
+  notes          String?
+  createdById    String         @db.Uuid
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  createdBy      User            @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  purchases      Purchase[]
+  inventoryItems InventoryItem[]
+
+  @@index([phone])
+  @@index([name])
+  @@index([status])
+  @@map("suppliers")
+}
+
+/// Karigar and Supplier ledgers (gold and cash) are polymorphic across both
+/// party types rather than four near-duplicate tables — see GOLD-LEDGER.md
+/// and CASH-MANAGEMENT.md.
+enum PartyType {
+  KARIGAR
+  SUPPLIER
+}
+
+enum GoldLedgerTransactionType {
+  GOLD_GIVEN
+  GOLD_RECEIVED
+  GOLD_ADJUSTMENT
+  GOLD_RETURNED
+  GOLD_TRANSFER
+}
+
+/// Append-only. The single source of truth for PartyGoldBalance, exactly
+/// the CustomerLedgerEntry pattern generalized across two party types and
+/// split per gold purity (21K and 22K gold are never combined — see
+/// GOLD-LEDGER.md "Purity separation"). `debit` moves gold toward the party
+/// (GOLD_GIVEN, GOLD_RETURNED — the party now holds more); `credit` moves
+/// it back toward the business (GOLD_RECEIVED). See GOLD-LEDGER.md for the
+/// full convention and worked examples.
+model GoldLedgerEntry {
+  id              String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  partyType       PartyType
+  partyId         String                    @db.Uuid
+  transactionType GoldLedgerTransactionType
+  purity          GoldPurity
+  debit           Decimal                   @default(0) @db.Decimal(10, 3)
+  credit          Decimal                   @default(0) @db.Decimal(10, 3)
+  /// The running (partyType, partyId, purity) balance immediately after
+  /// this entry — computed atomically alongside it, never backfilled.
+  balanceAfter    Decimal                   @db.Decimal(10, 3)
+  /// Snapshot of the rate/value used to record this transaction — never
+  /// recomputed from today's rate. Nullable: a pure weight adjustment may
+  /// carry no rate.
+  goldRate        Decimal?                  @db.Decimal(14, 2)
+  goldValue       Decimal?                  @db.Decimal(14, 2)
+  referenceType   String
+  referenceId     String
+  description     String?
+  createdById     String                    @db.Uuid
+  createdAt       DateTime                  @default(now())
+
+  createdBy User @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([partyType, partyId, purity, createdAt])
+  @@index([referenceType, referenceId])
+  @@map("gold_ledger_entries")
+}
+
+/// Cached running gold balance per (party, purity) — the value
+/// appendGoldLedgerEntry() maintains atomically via one UPDATE/INSERT ...
+/// RETURNING statement alongside each ledger row. Never written any other
+/// way. See GOLD-LEDGER.md "The gold ledger primitive".
+model PartyGoldBalance {
+  id        String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  partyType PartyType
+  partyId   String     @db.Uuid
+  purity    GoldPurity
+  balance   Decimal    @default(0) @db.Decimal(10, 3)
+  updatedAt DateTime   @updatedAt
+
+  @@unique([partyType, partyId, purity])
+  @@map("party_gold_balances")
+}
+
+enum PartyCashTransactionType {
+  PURCHASE
+  PAYMENT
+  CASH_PAID
+  CASH_RECEIVED
+  CASH_ADJUSTMENT
+}
+
+/// Append-only. Tracks what the BUSINESS owes the party (payable) vs. what
+/// the party owes the business (receivable) — the inverse relationship of
+/// CustomerLedgerEntry. `debit` increases what the business owes (PURCHASE,
+/// a karigar charge recorded via CASH_ADJUSTMENT, or CASH_RECEIVED paying
+/// down a receivable); `credit` decreases it (CASH_PAID / PAYMENT). See
+/// CASH-MANAGEMENT.md for the full convention — the UI never shows this
+/// raw signed number, only the derived Payable/Receivable pair.
+model PartyCashLedgerEntry {
+  id              String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  partyType       PartyType
+  partyId         String                   @db.Uuid
+  transactionType PartyCashTransactionType
+  debit           Decimal                  @default(0) @db.Decimal(14, 2)
+  credit          Decimal                  @default(0) @db.Decimal(14, 2)
+  balanceAfter    Decimal                  @db.Decimal(14, 2)
+  referenceType   String
+  referenceId     String
+  description     String?
+  createdById     String                   @db.Uuid
+  createdAt       DateTime                 @default(now())
+
+  createdBy User @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([partyType, partyId, createdAt])
+  @@index([referenceType, referenceId])
+  @@map("party_cash_ledger_entries")
+}
+
+model PartyCashBalance {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  partyType PartyType
+  partyId   String    @db.Uuid
+  balance   Decimal   @default(0) @db.Decimal(14, 2)
+  updatedAt DateTime  @updatedAt
+
+  @@unique([partyType, partyId])
+  @@map("party_cash_balances")
+}
+
+enum CashDirection {
+  IN
+  OUT
+}
+
+enum CashTransactionType {
+  SALE_PAYMENT
+  CUSTOMER_PAYMENT
+  PURCHASE_PAYMENT
+  SUPPLIER_PAYMENT
+  KARIGAR_PAYMENT
+  KARIGAR_RECEIPT
+  EXPENSE
+  CASH_ADJUSTMENT
+}
+
+/// The company-wide physical cash book — append-only, never edited or
+/// deleted; corrections are a new CASH_ADJUSTMENT row. Distinct from
+/// PartyCashLedgerEntry: this tracks how much cash the business physically
+/// holds; the party ledger tracks what is owed to/from one specific
+/// karigar or supplier. See CASH-MANAGEMENT.md.
+model CashTransaction {
+  id              String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  transactionType CashTransactionType
+  direction       CashDirection
+  amount          Decimal             @db.Decimal(14, 2)
+  paymentMethod   PaymentMethod
+  referenceType   String?
+  referenceId     String?
+  description     String?
+  createdById     String              @db.Uuid
+  createdAt       DateTime            @default(now())
+
+  createdBy User @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([transactionType])
+  @@index([paymentMethod])
+  @@index([createdAt])
+  @@map("cash_transactions")
+}
+
+enum PurchaseStatus {
+  COMPLETED
+}
+
+/// One completed supplier purchase — the same "server-recalculated totals,
+/// never trusted from the client" discipline as Sale. See
+/// PURCHASE-SYSTEM.md.
+model Purchase {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// "ZJ-PUR-000001" — derived from this at read time
+  /// (src/lib/purchase-number.ts), the same Barcode/Invoice pattern.
+  sequence        Int            @unique @default(autoincrement())
+  supplierId      String         @db.Uuid
+  purchaseDate    DateTime       @default(now())
+  referenceNumber String?
+  /// Sum of every PurchaseItem.goldValue.
+  subtotal        Decimal        @db.Decimal(14, 2)
+  /// Sum of every PurchaseItem's making+stone+diamond+other charges.
+  totalCharges    Decimal        @default(0) @db.Decimal(14, 2)
+  /// Sum of every PurchaseItem.totalCost — subtotal + totalCharges.
+  grandTotal      Decimal        @db.Decimal(14, 2)
+  paidAmount      Decimal        @default(0) @db.Decimal(14, 2)
+  balanceAmount   Decimal        @default(0) @db.Decimal(14, 2)
+  status          PurchaseStatus @default(COMPLETED)
+  notes           String?
+  createdById     String         @db.Uuid
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  supplier  Supplier          @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  createdBy User              @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  items     PurchaseItem[]
+  payments  PurchasePayment[]
+
+  @@index([supplierId])
+  @@index([createdAt])
+  @@index([status])
+  @@map("purchases")
+}
+
+/// One line item on a Purchase. Preserves the full costing snapshot
+/// (weight, purity, rate, charges) independent of whether it's later
+/// pushed into inventory — see PURCHASE-SYSTEM.md "Purchase workflow".
+model PurchaseItem {
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  purchaseId      String      @db.Uuid
+  productName     String
+  categoryId      String?     @db.Uuid
+  purity          GoldPurity
+  netWeight       Decimal     @db.Decimal(10, 3)
+  wastageType     WastageType
+  wastagePercent  Decimal?    @db.Decimal(6, 3)
+  wastageWeight   Decimal     @db.Decimal(10, 3)
+  grossWeight     Decimal     @db.Decimal(10, 3)
+  goldRatePerGram Decimal     @db.Decimal(14, 2)
+  goldValue       Decimal     @db.Decimal(14, 2)
+  makingCharge    Decimal     @default(0) @db.Decimal(14, 2)
+  stoneCharge     Decimal     @default(0) @db.Decimal(14, 2)
+  diamondCharge   Decimal     @default(0) @db.Decimal(14, 2)
+  otherCharge     Decimal     @default(0) @db.Decimal(14, 2)
+  totalCost       Decimal     @db.Decimal(14, 2)
+  notes           String?
+  createdAt       DateTime    @default(now())
+
+  purchase      Purchase         @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  category      ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  inventoryItem InventoryItem?
+
+  @@index([purchaseId])
+  @@map("purchase_items")
+}
+
+/// One payment line on a Purchase — the same split-payment shape as
+/// Phase 3's Payment, scoped to purchases instead of sales.
+model PurchasePayment {
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  purchaseId  String        @db.Uuid
+  amount      Decimal       @db.Decimal(14, 2)
+  method      PaymentMethod
+  reference   String?
+  notes       String?
+  createdById String        @db.Uuid
+  createdAt   DateTime      @default(now())
+
+  purchase  Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  createdBy User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([purchaseId])
+  @@map("purchase_payments")
+}
+
+enum JobReconciliationStatus {
+  WITHIN_ALLOWANCE
+  EXCESS_DIFFERENCE
+  SHORTAGE
+}
+
+/// One "give raw gold -> receive finished goods back" job-work cycle with a
+/// Karigar. Created when gold is given; completed when gold comes back.
+/// Expected/received/difference are always stored explicitly — the
+/// difference is never silently folded into "wastage" without an explicit
+/// classification. See KARIGAR-SYSTEM.md "Wastage reconciliation".
+model KarigarGoldJob {
+  id                    String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  karigarId             String                   @db.Uuid
+  purity                GoldPurity
+  purpose               String?
+  jobReference          String?
+  givenWeight           Decimal                  @db.Decimal(10, 3)
+  givenGoldRate         Decimal                  @db.Decimal(14, 2)
+  /// Nullable only for the brief window inside the creating transaction
+  /// before the ledger entry (which references this job's id) exists — set
+  /// immediately after. Never null once the transaction commits.
+  givenLedgerEntryId    String?                  @db.Uuid
+  /// The weight the karigar was expected to return (given weight minus any
+  /// agreed wastage) — set at give-time if known, editable at receive-time.
+  expectedWeight        Decimal?                 @db.Decimal(10, 3)
+  receivedWeight        Decimal?                 @db.Decimal(10, 3)
+  receivedLedgerEntryId String?                  @db.Uuid
+  /// expectedWeight - receivedWeight. Always computed and stored, never
+  /// hidden — see the spec's critical wastage test.
+  differenceWeight      Decimal?                 @db.Decimal(10, 3)
+  /// The tolerance in effect when this job was reconciled — a snapshot of
+  /// the configurable SystemSetting at that moment, never retroactively
+  /// changed by a later setting update.
+  toleranceGrams        Decimal?                 @db.Decimal(10, 3)
+  reconciliationStatus  JobReconciliationStatus?
+  /// Set only once a human explicitly classifies the difference (e.g.
+  /// "approved wastage", "shortage — investigate") — never auto-classified.
+  classification        String?
+  notes                 String?
+  createdById           String                   @db.Uuid
+  createdAt             DateTime                 @default(now())
+  receivedAt            DateTime?
+  updatedAt             DateTime                 @updatedAt
+
+  karigar   Karigar @relation(fields: [karigarId], references: [id], onDelete: Restrict)
+  createdBy User    @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([karigarId])
+  @@index([reconciliationStatus])
+  @@map("karigar_gold_jobs")
+}
+
+enum ReconciliationStatus {
+  MATCHED
+  RECONCILIATION_REQUIRED
+}
+
+/// A point-in-time comparison of the system's computed gold balance for one
+/// purity against a physical stock-take count. Never auto-corrects a
+/// mismatch — see RECONCILIATION.md. A correction is a separate, explicit
+/// GoldLedgerEntry (transactionType GOLD_ADJUSTMENT) a user creates
+/// afterward, referencing this row.
+model GoldReconciliation {
+  id               String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  purity           GoldPurity
+  systemWeight     Decimal              @db.Decimal(10, 3)
+  physicalWeight   Decimal              @db.Decimal(10, 3)
+  differenceWeight Decimal              @db.Decimal(10, 3)
+  status           ReconciliationStatus
+  notes            String?
+  createdById      String               @db.Uuid
+  createdAt        DateTime             @default(now())
+
+  createdBy User @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([purity])
+  @@index([createdAt])
+  @@map("gold_reconciliations")
+}
+
+/// The cash equivalent of GoldReconciliation — compares the computed
+/// physical-cash total against a manual count. Same "flag, never
+/// auto-correct" policy.
+model CashReconciliation {
+  id             String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  systemAmount   Decimal              @db.Decimal(14, 2)
+  physicalAmount Decimal              @db.Decimal(14, 2)
+  difference     Decimal              @db.Decimal(14, 2)
+  status         ReconciliationStatus
+  notes          String?
+  createdById    String               @db.Uuid
+  createdAt      DateTime             @default(now())
+
+  createdBy User @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([createdAt])
+  @@map("cash_reconciliations")
 }

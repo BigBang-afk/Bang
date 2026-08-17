@@ -17,6 +17,10 @@ export const SETTINGS_KEYS = {
   CUSTOMER_INACTIVITY_DAYS: "customer.inactivity_days",
   /** Whether recordCustomerPayment() may accept an amount greater than the current outstanding balance. Off by default — see CUSTOMER-LEDGER.md. */
   CUSTOMER_OVERPAYMENT_ALLOWED: "customer.overpayment_allowed",
+  /** Default acceptable difference (grams) between expected and received gold on a Karigar job before it's flagged EXCESS_DIFFERENCE/SHORTAGE — see KARIGAR-SYSTEM.md "Wastage reconciliation". */
+  KARIGAR_WASTAGE_TOLERANCE_GRAMS: "karigar.wastage_tolerance_grams",
+  /** The business's cash-in-hand at the moment Phase 5 cash tracking began — the base the running CashTransaction total is added to. See CASH-MANAGEMENT.md. */
+  CASH_OPENING_BALANCE: "cash.opening_balance",
 } as const;
 
 /** Per-role maximum discount percentage: "discount.max_percent.<ROLE_NAME>". */

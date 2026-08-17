@@ -5,9 +5,11 @@ import {
   Boxes,
   Users,
   Hammer,
+  Building2,
   Truck,
   ScrollText,
   Wallet,
+  BookUser,
   BarChart3,
   Megaphone,
   Sparkles,
@@ -48,29 +50,43 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Karigars",
     href: "/karigars",
     icon: Hammer,
-    status: "soon",
-    description: "Artisan management and job-work tracking.",
+    status: "active",
+    description: "Artisan management, gold-job tracking, and job-work wastage reconciliation.",
+  },
+  {
+    label: "Suppliers",
+    href: "/suppliers",
+    icon: Building2,
+    status: "active",
+    description: "Supplier management and gold/cash positions.",
   },
   {
     label: "Purchases",
     href: "/purchases",
     icon: Truck,
-    status: "soon",
+    status: "active",
     description: "Supplier purchases and incoming stock.",
   },
   {
     label: "Gold Ledger",
     href: "/gold-ledger",
     icon: ScrollText,
-    status: "soon",
-    description: "Gold-weight accounting across the business.",
+    status: "active",
+    description: "Gold-weight accounting across karigars and suppliers.",
   },
   {
     label: "Cash Management",
     href: "/cash-management",
     icon: Wallet,
-    status: "soon",
+    status: "active",
     description: "Cash in/out, till reconciliation, and expenses.",
+  },
+  {
+    label: "Party Ledger",
+    href: "/party-ledger",
+    icon: BookUser,
+    status: "active",
+    description: "Combined karigar/supplier gold and cash position.",
   },
   {
     label: "Reports",
@@ -121,4 +137,37 @@ export const CUSTOMERS_SUB_NAV: SubNavItem[] = [
   { label: "VIP Customers", href: "/customers/vip" },
   { label: "Inactive Customers", href: "/customers/inactive" },
   { label: "Customer Segments", href: "/customers/segments" },
+];
+
+export const KARIGARS_SUB_NAV: SubNavItem[] = [
+  { label: "All Karigars", href: "/karigars" },
+  { label: "Add Karigar", href: "/karigars/add" },
+  { label: "Karigar Ledger", href: "/karigars/ledger" },
+  { label: "Gold With Karigar", href: "/karigars/gold" },
+  { label: "Cash With Karigar", href: "/karigars/cash" },
+];
+
+export const SUPPLIERS_SUB_NAV: SubNavItem[] = [
+  { label: "All Suppliers", href: "/suppliers" },
+  { label: "Add Supplier", href: "/suppliers/add" },
+  { label: "Supplier Ledger", href: "/suppliers/ledger" },
+];
+
+export const PURCHASES_SUB_NAV: SubNavItem[] = [
+  { label: "New Purchase", href: "/purchases" },
+  { label: "Purchase History", href: "/purchases/history" },
+];
+
+export const GOLD_LEDGER_SUB_NAV: SubNavItem[] = [
+  { label: "Gold Transactions", href: "/gold-ledger" },
+  { label: "Gold With Karigars", href: "/gold-ledger/karigars" },
+  { label: "Gold With Suppliers", href: "/gold-ledger/suppliers" },
+  { label: "Gold Reconciliation", href: "/gold-ledger/reconciliation" },
+];
+
+export const CASH_MANAGEMENT_SUB_NAV: SubNavItem[] = [
+  { label: "Cash Transactions", href: "/cash-management" },
+  { label: "Cash Payable", href: "/cash-management/payable" },
+  { label: "Cash Receivable", href: "/cash-management/receivable" },
+  { label: "Cash Reconciliation", href: "/cash-management/reconciliation" },
 ];

@@ -133,3 +133,91 @@ describe("Authorization — customer CRM permissions (Test 19)", () => {
     await expect(userHasPermission(user, PERMISSIONS.CUSTOMERS_EXPORT)).resolves.toBe(true);
   });
 });
+
+describe("Authorization — karigar/supplier/purchase/gold-ledger/cash permissions (Test 21)", () => {
+  const PHASE5_PERMISSIONS = [
+    PERMISSIONS.KARIGARS_VIEW,
+    PERMISSIONS.KARIGARS_MANAGE,
+    PERMISSIONS.KARIGARS_GOLD,
+    PERMISSIONS.KARIGARS_CASH,
+    PERMISSIONS.SUPPLIERS_VIEW,
+    PERMISSIONS.SUPPLIERS_MANAGE,
+    PERMISSIONS.PURCHASES_VIEW,
+    PERMISSIONS.PURCHASES_CREATE,
+    PERMISSIONS.GOLD_LEDGER_VIEW,
+    PERMISSIONS.GOLD_LEDGER_RECONCILE,
+    PERMISSIONS.CASH_VIEW,
+    PERMISSIONS.CASH_MANAGE,
+    PERMISSIONS.CASH_RECONCILE,
+  ] as const;
+
+  it("a role with no grants has none of the Phase 5 permissions", async () => {
+    const role = await getOrCreateRoleWithNoPermissions();
+    const user = { role };
+
+    for (const key of PHASE5_PERMISSIONS) {
+      await expect(userHasPermission(user, key)).resolves.toBe(false);
+    }
+    await expect(assertPermission(user, PERMISSIONS.KARIGARS_MANAGE)).rejects.toThrow(AuthorizationError);
+    await expect(assertPermission(user, PERMISSIONS.PURCHASES_CREATE)).rejects.toThrow(AuthorizationError);
+    await expect(assertPermission(user, PERMISSIONS.CASH_RECONCILE)).rejects.toThrow(AuthorizationError);
+  });
+
+  it("a role granted only karigars:view cannot manage karigars, touch gold, or touch cash", async () => {
+    const role = await getOrCreateRoleWithNoPermissions();
+    const permission = await prisma.permission.findUniqueOrThrow({ where: { key: PERMISSIONS.KARIGARS_VIEW } });
+    await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: permission.id } });
+
+    const user = { role };
+    await expect(userHasPermission(user, PERMISSIONS.KARIGARS_VIEW)).resolves.toBe(true);
+    await expect(userHasPermission(user, PERMISSIONS.KARIGARS_MANAGE)).resolves.toBe(false);
+    await expect(userHasPermission(user, PERMISSIONS.KARIGARS_GOLD)).resolves.toBe(false);
+    await expect(userHasPermission(user, PERMISSIONS.KARIGARS_CASH)).resolves.toBe(false);
+  });
+
+  it("a role granted only purchases:view cannot create purchases", async () => {
+    const role = await getOrCreateRoleWithNoPermissions();
+    const permission = await prisma.permission.findUniqueOrThrow({ where: { key: PERMISSIONS.PURCHASES_VIEW } });
+    await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: permission.id } });
+
+    const user = { role };
+    await expect(userHasPermission(user, PERMISSIONS.PURCHASES_VIEW)).resolves.toBe(true);
+    await expect(userHasPermission(user, PERMISSIONS.PURCHASES_CREATE)).resolves.toBe(false);
+  });
+
+  it("a role granted only gold_ledger:view cannot reconcile gold", async () => {
+    const role = await getOrCreateRoleWithNoPermissions();
+    const permission = await prisma.permission.findUniqueOrThrow({ where: { key: PERMISSIONS.GOLD_LEDGER_VIEW } });
+    await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: permission.id } });
+
+    const user = { role };
+    await expect(userHasPermission(user, PERMISSIONS.GOLD_LEDGER_VIEW)).resolves.toBe(true);
+    await expect(userHasPermission(user, PERMISSIONS.GOLD_LEDGER_RECONCILE)).resolves.toBe(false);
+  });
+
+  it("a role granted only cash:view cannot manage or reconcile cash", async () => {
+    const role = await getOrCreateRoleWithNoPermissions();
+    const permission = await prisma.permission.findUniqueOrThrow({ where: { key: PERMISSIONS.CASH_VIEW } });
+    await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: permission.id } });
+
+    const user = { role };
+    await expect(userHasPermission(user, PERMISSIONS.CASH_VIEW)).resolves.toBe(true);
+    await expect(userHasPermission(user, PERMISSIONS.CASH_MANAGE)).resolves.toBe(false);
+    await expect(userHasPermission(user, PERMISSIONS.CASH_RECONCILE)).resolves.toBe(false);
+  });
+
+  it("OWNER always has every Phase 5 permission regardless of grants", async () => {
+    const owner = { role: { id: "irrelevant-for-owner", name: "OWNER" } };
+    for (const key of PHASE5_PERMISSIONS) {
+      await expect(userHasPermission(owner, key)).resolves.toBe(true);
+    }
+  });
+
+  it("ADMIN (seeded with every current permission) has every Phase 5 permission", async () => {
+    const adminRole = await prisma.role.findUniqueOrThrow({ where: { name: "ADMIN" } });
+    const user = { role: adminRole };
+    for (const key of PHASE5_PERMISSIONS) {
+      await expect(userHasPermission(user, key)).resolves.toBe(true);
+    }
+  });
+});

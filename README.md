@@ -21,11 +21,21 @@ phase by phase.
   balances, standalone customer payments, rule-based segmentation
   (VIP/inactive/high-value/credit/recent-buyer, all configurable), CSV
   export, and birthday/anniversary reminders.
+- **Phase 5: Karigar + Supplier + Gold Ledger + Cash Ledger + Purchase
+  Management** — the operational accounting foundation: ZJK/ZJS-numbered
+  karigar and supplier profiles, gold given to/received from karigars with
+  explicit expected/received/difference wastage reconciliation (never
+  silently absorbed), a purity-separated gold ledger shared by karigars and
+  suppliers, a karigar/supplier cash ledger (payable/receivable, never a
+  single ambiguous balance), supplier purchases with optional
+  push-to-inventory, the company-wide physical cash book, and gold/cash
+  reconciliation that flags a mismatch but never auto-corrects it.
 
 See [`PHASE-1-STATUS.md`](./PHASE-1-STATUS.md),
 [`PHASE-2-STATUS.md`](./PHASE-2-STATUS.md),
-[`PHASE-3-STATUS.md`](./PHASE-3-STATUS.md), and
-[`PHASE-4-STATUS.md`](./PHASE-4-STATUS.md) for exactly what is and isn't
+[`PHASE-3-STATUS.md`](./PHASE-3-STATUS.md),
+[`PHASE-4-STATUS.md`](./PHASE-4-STATUS.md), and
+[`PHASE-5-STATUS.md`](./PHASE-5-STATUS.md) for exactly what is and isn't
 built, [`ARCHITECTURE.md`](./ARCHITECTURE.md) for how the codebase is
 organized, [`DATABASE.md`](./DATABASE.md) for the schema,
 [`GOLD-RATE-ENGINE.md`](./GOLD-RATE-ENGINE.md) for the gold pricing/weight
@@ -37,8 +47,15 @@ architecture, [`INVOICE-SYSTEM.md`](./INVOICE-SYSTEM.md) for invoice
 numbering, printing, and PDF generation, [`CUSTOMER-CRM.md`](./CUSTOMER-CRM.md)
 for the customer profile/notes/preferences architecture,
 [`CUSTOMER-LEDGER.md`](./CUSTOMER-LEDGER.md) for the financial ledger and
-payment workflow, and [`CUSTOMER-SEGMENTS.md`](./CUSTOMER-SEGMENTS.md) for
-the VIP/inactive/segmentation rules.
+payment workflow, [`CUSTOMER-SEGMENTS.md`](./CUSTOMER-SEGMENTS.md) for
+the VIP/inactive/segmentation rules, [`KARIGAR-SYSTEM.md`](./KARIGAR-SYSTEM.md)
+for karigar management and wastage reconciliation,
+[`SUPPLIER-SYSTEM.md`](./SUPPLIER-SYSTEM.md) for supplier management,
+[`GOLD-LEDGER.md`](./GOLD-LEDGER.md) for the gold ledger and purity/rate
+rules, [`CASH-MANAGEMENT.md`](./CASH-MANAGEMENT.md) for the party cash
+ledger and company cash book, [`PURCHASE-SYSTEM.md`](./PURCHASE-SYSTEM.md)
+for the purchase workflow, and [`RECONCILIATION.md`](./RECONCILIATION.md)
+for the gold/cash reconciliation and adjustment policy.
 
 ## Technology stack
 
@@ -119,6 +136,16 @@ src/
                              print, Returns, Invoices
       customers/             All Customers, Add/Edit, Profile (tabs),
                              Ledger, VIP, Inactive, Segments
+      karigars/              All Karigars, Add/Edit, Profile (tabs),
+                             Ledger, Gold With Karigar, Cash With Karigar
+      suppliers/             All Suppliers, Add/Edit, Profile (tabs), Ledger
+      purchases/              New Purchase, Purchase History, Purchase Detail
+      gold-ledger/            Gold Transactions, Gold With Karigars/Suppliers,
+                             Gold Reconciliation
+      cash-management/        Cash Transactions, Cash Payable/Receivable,
+                             Cash Reconciliation
+      party-ledger/           Combined karigar/supplier gold+cash position
+                             and the Phase 5 reporting foundation
     api/invoices/[id]/pdf/  Route Handler — real PDF invoice download
   components/             UI: primitives, layout, feature components
   services/               Business logic — no React, no HTTP, no Next.js APIs
@@ -141,11 +168,12 @@ e2e/                      Playwright end-to-end tests
 - No self-service password reset or MFA.
 - Only `OWNER` and `ADMIN` roles are seeded; the additional roles named in
   the long-term vision (`MANAGER`, `CASHIER`, `SALESPERSON`, `ACCOUNTANT`,
-  `MARKETING_MANAGER`, etc.) are modeled by the schema and every Phase 4
-  `customers:*` permission is scoped precisely to what the spec describes
-  for each of them, but no role-management UI exists yet to actually create
-  those roles and grant the permissions — see `CUSTOMER-CRM.md`
-  "Permissions".
+  `MARKETING_MANAGER`, `KARIGAR_MANAGER`, etc.) are modeled by the schema
+  and every Phase 4 `customers:*` / Phase 5 `karigars:*`/`suppliers:*`/
+  `purchases:*`/`gold_ledger:*`/`cash:*` permission is scoped precisely to
+  what the spec describes for each of them, but no role-management UI
+  exists yet to actually create those roles and grant the permissions —
+  see `CUSTOMER-CRM.md` "Permissions" and `KARIGAR-SYSTEM.md` "Permissions".
 - Product images are stored on local disk, not object storage (see
   `INVENTORY.md`).
 - No payment gateway integrations — Phase 3 payments are recorded, not
@@ -155,7 +183,6 @@ e2e/                      Playwright end-to-end tests
   grand total.
 - WhatsApp sharing is a `wa.me` deep link the staff member sends manually;
   there is no WhatsApp Business API automation yet. See `INVOICE-SYSTEM.md`.
-- Karigar accounting is intentionally out of scope for Phase 4.
 - Returns are not yet wired to the customer ledger — approving a return
   (Phase 3) does not post a `REFUND`/`CREDIT_ADJUSTMENT` entry yet; the
   ledger schema supports it, but the spec explicitly deferred wiring it up
@@ -166,10 +193,23 @@ e2e/                      Playwright end-to-end tests
   anniversary".
 - CSV import is prepared architecturally (a service-layer function
   signature) but has no UI yet — see `CUSTOMER-CRM.md` "Customer import".
-- Every module other than Dashboard, Settings, Inventory, POS, and
-  Customers renders a "coming in next phase" placeholder — no fake data, no
+- Karigar accounting (job-work gold/cash tracking) and supplier purchase
+  management now exist as of Phase 5 — see `KARIGAR-SYSTEM.md`,
+  `SUPPLIER-SYSTEM.md`, and `PURCHASE-SYSTEM.md`. Full general-ledger
+  accounting, tax filing, and payroll remain explicitly out of scope.
+- Gold reconciliation's "System Gold" figure is scoped to gold currently
+  tracked in a karigar/supplier ledger — Phase 5 does not model a separate
+  raw/loose shop-gold inventory not yet allocated to a party. See
+  `RECONCILIATION.md`.
+- A reconciliation mismatch is flagged (`RECONCILIATION_REQUIRED`) but
+  never auto-corrected — applying a fix is always a separate, explicit
+  adjustment a user chooses to record. See `RECONCILIATION.md` "Adjustment
+  policy".
+- Every module other than Dashboard, Settings, Inventory, POS, Customers,
+  Karigars, Suppliers, Purchases, Gold Ledger, Cash Management, and Party
+  Ledger renders a "coming in next phase" placeholder — no fake data, no
   fake functionality.
 
 ## Next phase
 
-See the end of `PHASE-4-STATUS.md` for the recommended Phase 5 scope.
+See the end of `PHASE-5-STATUS.md` for the recommended Phase 6 scope.

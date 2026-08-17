@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/db/prisma";
 import { writeAuditLog } from "@/services/audit.service";
 import { appendCustomerLedgerEntry } from "@/services/customer-ledger.service";
+import { recordCashTransactionInTx } from "@/services/cash-transaction.service";
 import { SETTINGS_KEYS } from "@/lib/settings-keys";
 import { Prisma } from "@/generated/prisma/client";
 import type { PaymentMethod } from "@/generated/prisma/client";
@@ -97,6 +98,19 @@ export async function recordCustomerPayment(
       referenceId: payment.id,
       credit: input.amount,
       description: `Payment received (${input.method})`,
+      createdById: userId,
+    });
+
+    // method is never CREDIT here — rejected above — so this is always a
+    // real cash movement. See CASH-MANAGEMENT.md.
+    await recordCashTransactionInTx(tx, {
+      transactionType: "CUSTOMER_PAYMENT",
+      direction: "IN",
+      amount: input.amount,
+      paymentMethod: input.method,
+      referenceType: "CustomerPayment",
+      referenceId: payment.id,
+      description: "Customer payment against outstanding balance",
       createdById: userId,
     });
 
