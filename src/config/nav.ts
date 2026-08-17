@@ -14,6 +14,7 @@ import {
   Megaphone,
   Sparkles,
   Settings,
+  Calculator,
 } from "lucide-react";
 
 export type NavItem = {
@@ -89,11 +90,18 @@ export const NAV_ITEMS: NavItem[] = [
     description: "Combined karigar/supplier gold and cash position.",
   },
   {
+    label: "Accounting",
+    href: "/accounting",
+    icon: Calculator,
+    status: "active",
+    description: "Financial dashboard, expenses, daily closing, P&L, and financial reports.",
+  },
+  {
     label: "Reports",
     href: "/reports",
     icon: BarChart3,
     status: "soon",
-    description: "Profit & loss and operational reporting.",
+    description: "Additional operational reporting beyond Accounting.",
   },
   {
     label: "Marketing",
@@ -170,4 +178,20 @@ export const CASH_MANAGEMENT_SUB_NAV: SubNavItem[] = [
   { label: "Cash Payable", href: "/cash-management/payable" },
   { label: "Cash Receivable", href: "/cash-management/receivable" },
   { label: "Cash Reconciliation", href: "/cash-management/reconciliation" },
+];
+
+export const ACCOUNTING_SUB_NAV: SubNavItem[] = [
+  { label: "Financial Dashboard", href: "/accounting" },
+  { label: "Expenses", href: "/accounting/expenses" },
+  { label: "Income", href: "/accounting/income" },
+  { label: "Daily Closing", href: "/accounting/daily-closing" },
+  { label: "Profit & Loss", href: "/accounting/profit-loss" },
+  { label: "Cash Report", href: "/accounting/cash-report" },
+  { label: "Gold Report", href: "/accounting/gold-report" },
+  { label: "Receivables", href: "/accounting/receivables" },
+  { label: "Payables", href: "/accounting/payables" },
+  { label: "Sales Report", href: "/accounting/sales-report" },
+  { label: "Purchase Report", href: "/accounting/purchase-report" },
+  { label: "Inventory Valuation", href: "/accounting/inventory-valuation" },
+  { label: "Financial Reconciliation", href: "/accounting/reconciliation" },
 ];

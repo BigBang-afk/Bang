@@ -138,6 +138,73 @@ const PERMISSION_CATALOG: { key: string; module: string; description: string }[]
     module: "CASH",
     description: "Run and record cash reconciliation.",
   },
+  {
+    key: PERMISSIONS.ACCOUNTING_REPORTS_VIEW,
+    module: "ACCOUNTING",
+    description: "View the financial dashboard and all financial reports (P&L, sales, purchase, cash, gold, receivables, payables, inventory valuation).",
+  },
+  {
+    key: PERMISSIONS.ACCOUNTING_EXPENSES_VIEW,
+    module: "ACCOUNTING",
+    description: "View expenses and expense categories.",
+  },
+  {
+    key: PERMISSIONS.ACCOUNTING_EXPENSES_CREATE,
+    module: "ACCOUNTING",
+    description: "Record a new expense.",
+  },
+  {
+    key: PERMISSIONS.ACCOUNTING_EXPENSES_MANAGE,
+    module: "ACCOUNTING",
+    description: "Void/reverse expenses and manage expense categories.",
+  },
+  {
+    key: PERMISSIONS.ACCOUNTING_INCOME_MANAGE,
+    module: "ACCOUNTING",
+    description: "Record and void other-income entries.",
+  },
+  {
+    key: PERMISSIONS.ACCOUNTING_DAILY_CLOSING,
+    module: "ACCOUNTING",
+    description: "Submit and close the daily business day.",
+  },
+  {
+    key: PERMISSIONS.ACCOUNTING_DAILY_CLOSING_REOPEN,
+    module: "ACCOUNTING",
+    description: "Reopen a closed business day.",
+  },
+  {
+    key: PERMISSIONS.ACCOUNTING_RECONCILE,
+    module: "ACCOUNTING",
+    description: "Run the financial (cross-book) reconciliation checks.",
+  },
+  {
+    key: PERMISSIONS.ACCOUNTING_EXPORT,
+    module: "ACCOUNTING",
+    description: "Export financial reports to CSV.",
+  },
+];
+
+const DEFAULT_EXPENSE_CATEGORIES = [
+  "Rent",
+  "Electricity",
+  "Gas",
+  "Water",
+  "Internet",
+  "Telephone",
+  "Salaries",
+  "Shop Maintenance",
+  "Security",
+  "Transportation",
+  "Packaging",
+  "Marketing",
+  "Advertising",
+  "Office Supplies",
+  "Software",
+  "Bank Charges",
+  "Repair",
+  "Cleaning",
+  "Miscellaneous",
 ];
 
 const DEFAULT_CATEGORIES = [
@@ -207,7 +274,7 @@ async function main() {
   const ownerPassword = process.env.SEED_OWNER_PASSWORD ?? "ChangeMe123!";
   const passwordHash = await bcrypt.hash(ownerPassword, 12);
 
-  await prisma.user.upsert({
+  const ownerUser = await prisma.user.upsert({
     where: { email: ownerEmail },
     update: {},
     create: {
@@ -334,6 +401,44 @@ async function main() {
       where: { name },
       update: {},
       create: { name, isSystem: true },
+    });
+  }
+
+  console.log("Seeding accounting settings...");
+  await prisma.systemSetting.upsert({
+    where: { key: SETTINGS_KEYS.BUSINESS_TIMEZONE },
+    update: {},
+    create: {
+      key: SETTINGS_KEYS.BUSINESS_TIMEZONE,
+      value: "Asia/Karachi",
+      description: "IANA timezone used to resolve the business date for daily closing and financial report date presets.",
+    },
+  });
+  await prisma.systemSetting.upsert({
+    where: { key: SETTINGS_KEYS.RECEIVABLE_AGING_BUCKET_DAYS },
+    update: {},
+    create: {
+      key: SETTINGS_KEYS.RECEIVABLE_AGING_BUCKET_DAYS,
+      value: "30,60,90",
+      description: "Day breakpoints for the receivable aging report's buckets (Current / 1-30 / 31-60 / 61-90 / 90+).",
+    },
+  });
+  await prisma.systemSetting.upsert({
+    where: { key: SETTINGS_KEYS.FLAG_UNPAID_BALANCES_ON_CLOSING },
+    update: {},
+    create: {
+      key: SETTINGS_KEYS.FLAG_UNPAID_BALANCES_ON_CLOSING,
+      value: "false",
+      description: "Whether Daily Closing's unresolved-issues checklist flags outstanding customer/supplier balances.",
+    },
+  });
+
+  console.log("Seeding default expense categories...");
+  for (const name of DEFAULT_EXPENSE_CATEGORIES) {
+    await prisma.expenseCategory.upsert({
+      where: { name },
+      update: {},
+      create: { name, isSystem: true, createdById: ownerUser.id },
     });
   }
 

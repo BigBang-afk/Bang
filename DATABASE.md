@@ -143,6 +143,13 @@ Phase 5 adds `KARIGAR_CREATED`, `KARIGAR_UPDATED`, `KARIGAR_STATUS_CHANGED`,
 `GOLD_RECONCILIATION_COMPLETED`, and `CASH_RECONCILIATION_COMPLETED` — same
 table again, no new entity, same append-only pattern.
 
+Phase 6 adds `EXPENSE_CATEGORY_CREATED`, `EXPENSE_CREATED`, `EXPENSE_VOIDED`,
+`INCOME_CREATED`, `INCOME_VOIDED`, `DAILY_CLOSING_SUBMITTED`, `DAY_CLOSED`,
+`DAY_REOPENED`, `REPORT_EXPORTED`, and `FINANCIAL_RECONCILIATION_PERFORMED`
+— same table again, no new entity. As with every prior phase, `metadata`
+never carries a secret; `REPORT_EXPORTED` metadata records the report type
+and date range, never the exported rows themselves.
+
 ### `ProductCategory` *(Phase 2)*
 
 | Column        | Type        | Notes                                    |
@@ -587,7 +594,7 @@ data.
 | Column            | Type        | Notes                                      |
 | ------------------ | ----------- | ------------------------------------------- |
 | `id`               | uuid (PK)   |                                              |
-| `transactionType`  | enum `CashTransactionType` (`SALE_PAYMENT`, `CUSTOMER_PAYMENT`, `PURCHASE_PAYMENT`, `SUPPLIER_PAYMENT`, `KARIGAR_PAYMENT`, `KARIGAR_RECEIPT`, `EXPENSE`, `CASH_ADJUSTMENT`) |  |
+| `transactionType`  | enum `CashTransactionType` (`SALE_PAYMENT`, `CUSTOMER_PAYMENT`, `PURCHASE_PAYMENT`, `SUPPLIER_PAYMENT`, `KARIGAR_PAYMENT`, `KARIGAR_RECEIPT`, `EXPENSE`, `CASH_ADJUSTMENT`, `INCOME_RECEIVED` *(Phase 6)*) | `expense.service.ts` reuses the existing `EXPENSE`/`OUT` value; `INCOME_RECEIVED` was added in a second Phase 6 migration once `income.service.ts` needed a cash-in type no existing value fit |
 | `direction`        | enum `CashDirection` (`IN`, `OUT`) |                       |
 | `amount`           | `Decimal(14,2)` |                                          |
 | `paymentMethod`    | enum `PaymentMethod`, nullable |                            |
@@ -703,6 +710,83 @@ separate, later, explicit adjustment call. See `RECONCILIATION.md`.
 
 Indexed on `createdAt` (`GoldReconciliation` also on `purity`).
 
+### `ExpenseCategory` *(Phase 6)*
+
+Configurable, never hardcoded. 19 starter categories are seeded
+(`isSystem = true`); OWNER/ADMIN can add more via Accounting → Expenses.
+
+| Column        | Type        | Notes                                    |
+| ------------- | ----------- | ------------------------------------------ |
+| `id`          | uuid (PK)   |                                            |
+| `name`        | text, unique |                                           |
+| `description` | text, nullable |                                          |
+| `isSystem`    | boolean, default false | seeded defaults, informational only — doesn't restrict editing/deactivating |
+| `isActive`    | boolean, default true | soft toggle — a category with existing expenses is never deleted, only hidden from the "add expense" picker |
+| `createdById` | uuid, nullable (FK → User, `onDelete: SetNull`) |               |
+| `createdAt` / `updatedAt` | timestamp |                              |
+
+### `Expense` / `Income` *(Phase 6)*
+
+Both follow the identical shape and the identical **void, never edit or
+delete** correction policy — see `EXPENSE-SYSTEM.md`.
+
+`Expense`:
+
+| Column          | Type        | Notes                                    |
+| ---------------- | ----------- | ----------------------------------------- |
+| `id`             | uuid (PK)   |                                            |
+| `sequence`       | `Int`, unique, `@default(autoincrement())` | "ZJ-EXP-000001", derived at read time (`src/lib/expense-number.ts`), same `Barcode`/`Invoice`/`Purchase` pattern |
+| `categoryId`     | uuid (FK → ExpenseCategory, `onDelete: Restrict`) |            |
+| `description`    | text        |                                            |
+| `amount`         | `Decimal(14,2)` |                                        |
+| `paymentMethod`  | enum `PaymentMethod` |                                    |
+| `expenseDate`    | `date`      | the business date the expense applies to — may be backdated, distinct from `createdAt` |
+| `reference` / `vendorName` / `notes` | text, nullable |                    |
+| `status`         | enum `FinancialEntryStatus` (`ACTIVE`, `VOIDED`) |               |
+| `voidReason` / `voidedById` / `voidedAt` | text/uuid/timestamp, nullable |    |
+| `reversalOfId`   | uuid, nullable, unique (FK → Expense, `onDelete: SetNull`, self-relation) | set on the correcting entry, never on the one being voided |
+| `createdById`    | uuid (FK → User, `onDelete: Restrict`) |                    |
+| `createdAt` / `updatedAt` | timestamp |                              |
+
+Indexed on `categoryId`, `status`, `expenseDate`, `createdAt`. Every
+`createExpense()` call also writes a `CashTransaction` (`EXPENSE`, `OUT`) in
+the same transaction; every `voidExpense()` call writes a compensating
+`CashTransaction` (`CASH_ADJUSTMENT`, opposite direction) alongside setting
+`status = VOIDED`.
+
+`Income` mirrors `Expense` exactly, with `incomeType` (enum `IncomeType`:
+`OTHER_INCOME`, `SERVICE_INCOME`, `MISC_INCOME`) in place of `categoryId`,
+`incomeDate` in place of `expenseDate`, and a `CashTransaction`
+(`INCOME_RECEIVED`, `IN`) instead of `EXPENSE`/`OUT`. Indexed on
+`incomeType`, `status`, `incomeDate`, `createdAt`.
+
+### `DailyClosing` *(Phase 6)*
+
+One row per business date, created only when a user actually acts on that
+day — a date with no row is implicitly `OPEN`. Never duplicates the
+transactions it summarizes; the physical cash count and the closing
+decision are the only genuinely new data. See `DAILY-CLOSING.md`.
+
+| Column                | Type        | Notes                                  |
+| ---------------------- | ----------- | ----------------------------------------- |
+| `id`                   | uuid (PK)   |                                            |
+| `businessDate`         | `date`, unique | the calendar day this closing covers, in the configured business timezone |
+| `status`               | enum `DailyClosingStatus` (`OPEN`, `PENDING_REVIEW`, `CLOSED`, `REOPENED`) |  |
+| `openingCash`          | `Decimal(14,2)` | the company cash balance at the instant this row was submitted, frozen |
+| `cashReceived` / `cashPaid` | `Decimal(14,2)` |                                    |
+| `cashAdjustments`      | `Decimal(14,2)`, default 0 |                             |
+| `expectedClosingCash`  | `Decimal(14,2)` | `openingCash + cashReceived - cashPaid + cashAdjustments` |
+| `physicalCashAmount`   | `Decimal(14,2)`, nullable | user-entered physical till count — null until submitted |
+| `cashDifference`       | `Decimal(14,2)`, nullable | `physicalCashAmount - expectedClosingCash`; negative = shortage, positive = excess; **never auto-adjusted** |
+| `unresolvedIssues`     | jsonb, nullable | a snapshot of the unresolved-issues checklist shown at submit time, kept for audit even if the underlying conditions later change |
+| `notes`                | text, nullable |                                          |
+| `submittedById` / `submittedAt` | uuid/timestamp, nullable |               |
+| `closedById` / `closedAt` | uuid/timestamp, nullable |                    |
+| `reopenedById` / `reopenedAt` / `reopenReason` | uuid/timestamp/text, nullable | reopening a `CLOSED` day requires OWNER/an explicitly authorized manager, and a reason |
+| `createdAt` / `updatedAt` | timestamp |                              |
+
+Indexed on `status`.
+
 ## Entity relationship summary
 
 ```
@@ -754,6 +838,14 @@ User 1---* Karigar / Supplier (createdBy)
 User 1---* GoldLedgerEntry / PartyCashLedgerEntry / CashTransaction (createdBy)
 User 1---* Purchase / PurchasePayment (createdBy)
 User 1---* GoldReconciliation / CashReconciliation (createdBy)
+
+ExpenseCategory 1---* Expense
+Expense 1---1 Expense (reversalOf / reversedBy, self-relation, optional)
+Income 1---1 Income (reversalOf / reversedBy, self-relation, optional)
+User 1---* ExpenseCategory (createdBy)
+User 1---* Expense (createdBy / voidedBy)
+User 1---* Income (createdBy / voidedBy)
+User 1---* DailyClosing (submittedBy / closedBy / reopenedBy)
 ```
 
 ## Regenerating / migrating
@@ -764,6 +856,13 @@ npm run db:generate    # prisma generate — regenerate the client only
 npm run db:seed        # prisma db seed — roles, permissions, owner, settings
 npm run db:studio      # prisma studio — visual browser
 ```
+
+Phase 6 shipped two migrations:
+`20260817061208_phase6_accounting_expenses_daily_closing` (the
+`ExpenseCategory`/`Expense`/`Income`/`DailyClosing` tables, their enums, and
+the new `AuditAction`/permission/`User`-relation additions) and
+`20260817061536_phase6_income_cash_transaction_type` (adding
+`CashTransactionType.INCOME_RECEIVED` once `income.service.ts` needed it).
 
 The generated Prisma Client lives at `src/generated/prisma/` (gitignored) —
 Prisma 7 requires an explicit `output` path and no longer writes into

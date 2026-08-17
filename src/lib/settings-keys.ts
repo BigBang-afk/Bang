@@ -21,6 +21,12 @@ export const SETTINGS_KEYS = {
   KARIGAR_WASTAGE_TOLERANCE_GRAMS: "karigar.wastage_tolerance_grams",
   /** The business's cash-in-hand at the moment Phase 5 cash tracking began — the base the running CashTransaction total is added to. See CASH-MANAGEMENT.md. */
   CASH_OPENING_BALANCE: "cash.opening_balance",
+  /** IANA timezone used to resolve "today's business date" for Phase 6 daily closing and report date presets — see ACCOUNTING.md "Business date". Default "Asia/Karachi". Does NOT affect Phase 1's gold-rate business-date helper (src/lib/business-date.ts toBusinessDate/getTodayBusinessDate), which keeps its original server-local-day behavior unchanged. */
+  BUSINESS_TIMEZONE: "business.timezone",
+  /** Comma-separated day breakpoints for the Receivable Aging report's buckets, e.g. "30,60,90" produces Current / 1-30 / 31-60 / 61-90 / 90+. See FINANCIAL-REPORTS.md "Receivable aging". */
+  RECEIVABLE_AGING_BUCKET_DAYS: "accounting.receivable_aging_bucket_days",
+  /** Whether Daily Closing's unresolved-issues checklist flags any customer/supplier with an outstanding balance. Off by default — most days legitimately have open balances. See DAILY-CLOSING.md. */
+  FLAG_UNPAID_BALANCES_ON_CLOSING: "accounting.flag_unpaid_balances_on_closing",
 } as const;
 
 /** Per-role maximum discount percentage: "discount.max_percent.<ROLE_NAME>". */

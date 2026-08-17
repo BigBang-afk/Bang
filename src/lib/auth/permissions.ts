@@ -36,6 +36,15 @@ export const PERMISSIONS = {
   CASH_VIEW: "cash:view",
   CASH_MANAGE: "cash:manage",
   CASH_RECONCILE: "cash:reconcile",
+  ACCOUNTING_REPORTS_VIEW: "accounting:reports_view",
+  ACCOUNTING_EXPENSES_VIEW: "accounting:expenses_view",
+  ACCOUNTING_EXPENSES_CREATE: "accounting:expenses_create",
+  ACCOUNTING_EXPENSES_MANAGE: "accounting:expenses_manage",
+  ACCOUNTING_INCOME_MANAGE: "accounting:income_manage",
+  ACCOUNTING_DAILY_CLOSING: "accounting:daily_closing",
+  ACCOUNTING_DAILY_CLOSING_REOPEN: "accounting:daily_closing_reopen",
+  ACCOUNTING_RECONCILE: "accounting:reconcile",
+  ACCOUNTING_EXPORT: "accounting:export",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

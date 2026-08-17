@@ -72,31 +72,39 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  role                   Role                   @relation(fields: [roleId], references: [id], onDelete: Restrict)
-  goldRatesCreated       GoldRate[]
-  settingsUpdated        SystemSetting[]
-  auditLogs              AuditLog[]
-  productsCreated        Product[]
-  inventoryItemsCreated  InventoryItem[]
-  stockMovements         StockMovement[]
-  customersCreated       Customer[]
-  salesCreated           Sale[]
-  paymentsCreated        Payment[]
-  returnsRequested       Return[]               @relation("ReturnRequestedBy")
-  returnsProcessed       Return[]               @relation("ReturnProcessedBy")
-  customerNotesCreated   CustomerNote[]
-  customerPaymentsTaken  CustomerPayment[]
-  ledgerEntriesCreated   CustomerLedgerEntry[]
-  karigarsCreated        Karigar[]
-  suppliersCreated       Supplier[]
-  goldLedgerEntries      GoldLedgerEntry[]
-  partyCashLedgerEntries PartyCashLedgerEntry[]
-  cashTransactions       CashTransaction[]
-  purchasesCreated       Purchase[]
-  purchasePaymentsTaken  PurchasePayment[]
-  karigarGoldJobs        KarigarGoldJob[]
-  goldReconciliations    GoldReconciliation[]
-  cashReconciliations    CashReconciliation[]
+  role                     Role                   @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  goldRatesCreated         GoldRate[]
+  settingsUpdated          SystemSetting[]
+  auditLogs                AuditLog[]
+  productsCreated          Product[]
+  inventoryItemsCreated    InventoryItem[]
+  stockMovements           StockMovement[]
+  customersCreated         Customer[]
+  salesCreated             Sale[]
+  paymentsCreated          Payment[]
+  returnsRequested         Return[]               @relation("ReturnRequestedBy")
+  returnsProcessed         Return[]               @relation("ReturnProcessedBy")
+  customerNotesCreated     CustomerNote[]
+  customerPaymentsTaken    CustomerPayment[]
+  ledgerEntriesCreated     CustomerLedgerEntry[]
+  karigarsCreated          Karigar[]
+  suppliersCreated         Supplier[]
+  goldLedgerEntries        GoldLedgerEntry[]
+  partyCashLedgerEntries   PartyCashLedgerEntry[]
+  cashTransactions         CashTransaction[]
+  purchasesCreated         Purchase[]
+  purchasePaymentsTaken    PurchasePayment[]
+  karigarGoldJobs          KarigarGoldJob[]
+  goldReconciliations      GoldReconciliation[]
+  cashReconciliations      CashReconciliation[]
+  expenseCategoriesCreated ExpenseCategory[]
+  expensesCreated          Expense[]              @relation("ExpenseCreatedBy")
+  expensesVoided           Expense[]              @relation("ExpenseVoidedBy")
+  incomesCreated           Income[]               @relation("IncomeCreatedBy")
+  incomesVoided            Income[]               @relation("IncomeVoidedBy")
+  dailyClosingsSubmitted   DailyClosing[]         @relation("DailyClosingSubmittedBy")
+  dailyClosingsClosed      DailyClosing[]         @relation("DailyClosingClosedBy")
+  dailyClosingsReopened    DailyClosing[]         @relation("DailyClosingReopenedBy")
 
   @@index([roleId])
   @@map("users")
@@ -213,6 +221,16 @@ enum AuditAction {
   CASH_ADJUSTED
   GOLD_RECONCILIATION_COMPLETED
   CASH_RECONCILIATION_COMPLETED
+  EXPENSE_CATEGORY_CREATED
+  EXPENSE_CREATED
+  EXPENSE_VOIDED
+  INCOME_CREATED
+  INCOME_VOIDED
+  DAILY_CLOSING_SUBMITTED
+  DAY_CLOSED
+  DAY_REOPENED
+  REPORT_EXPORTED
+  FINANCIAL_RECONCILIATION_PERFORMED
 }
 
 model AuditLog {
@@ -1007,6 +1025,10 @@ enum CashTransactionType {
   KARIGAR_RECEIPT
   EXPENSE
   CASH_ADJUSTMENT
+  /// Standalone other/service/misc income (Phase 6) — never a duplicate of
+  /// a POS sale, which already posts SALE_PAYMENT. See ACCOUNTING.md
+  /// "Sources of truth".
+  INCOME_RECEIVED
 }
 
 /// The company-wide physical cash book — append-only, never edited or
@@ -1223,4 +1245,189 @@ model CashReconciliation {
 
   @@index([createdAt])
   @@map("cash_reconciliations")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 6 — Accounting, Expenses, Daily Closing & Financial Reports
+// ---------------------------------------------------------------------------
+//
+// This phase adds NO new source-of-truth ledger for money already tracked
+// elsewhere. Sales figures come from Sale/SaleItem/Payment (Phase 3);
+// receivables from CustomerLedgerEntry (Phase 4); payables/gold from
+// PartyCashLedgerEntry/GoldLedgerEntry (Phase 5); cash movement from
+// CashTransaction (Phase 5). The only genuinely NEW money this phase
+// introduces is Expense and Income — everything else is read and aggregated
+// from existing tables at report time. See ACCOUNTING.md.
+
+/// Shared by Expense and Income — a financial entry is never deleted or
+/// silently edited. A mistake is corrected by voiding the original (with a
+/// reason, actor, and timestamp) and creating a new entry that references it
+/// via reversalOfId. See EXPENSE-SYSTEM.md "Edit policy".
+enum FinancialEntryStatus {
+  ACTIVE
+  VOIDED
+}
+
+enum IncomeType {
+  OTHER_INCOME
+  SERVICE_INCOME
+  MISC_INCOME
+}
+
+/// Configurable — OWNER/ADMIN can add categories beyond the seeded starter
+/// set. Never hardcode a category name into business logic; category rules
+/// (if any are ever needed) key off the id, not the name string.
+model ExpenseCategory {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String   @unique
+  description String?
+  /// Seeded starter categories (Rent, Electricity, ...) — informational only,
+  /// does not restrict editing or deactivating them.
+  isSystem    Boolean  @default(false)
+  /// Soft toggle — a category with existing expenses is never deleted, only
+  /// hidden from the "add expense" picker.
+  isActive    Boolean  @default(true)
+  createdById String?  @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy User?     @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  expenses  Expense[]
+
+  @@map("expense_categories")
+}
+
+/// A business expense. Always paired with a CashTransaction (transactionType
+/// EXPENSE, direction OUT) written in the same transaction — see
+/// EXPENSE-SYSTEM.md "Expense payment". Never hard-deleted or edited after
+/// creation; see FinancialEntryStatus.
+model Expense {
+  id            String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// "ZJ-EXP-000001" is derived from this at read time
+  /// (src/lib/expense-number.ts), the same Barcode/Invoice/Purchase pattern.
+  sequence      Int                  @unique @default(autoincrement())
+  categoryId    String               @db.Uuid
+  description   String
+  amount        Decimal              @db.Decimal(14, 2)
+  paymentMethod PaymentMethod
+  /// The business date the expense applies to — may be backdated, distinct
+  /// from createdAt (when the record was entered).
+  expenseDate   DateTime             @db.Date
+  reference     String?
+  vendorName    String?
+  notes         String?
+  status        FinancialEntryStatus @default(ACTIVE)
+  voidReason    String?
+  voidedById    String?              @db.Uuid
+  voidedAt      DateTime?
+  /// Set when this expense is the CORRECTING entry for a previously voided
+  /// one — never when this expense is itself the one being voided.
+  reversalOfId  String?              @unique @db.Uuid
+  createdById   String               @db.Uuid
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  category   ExpenseCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  createdBy  User            @relation("ExpenseCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  voidedBy   User?           @relation("ExpenseVoidedBy", fields: [voidedById], references: [id], onDelete: SetNull)
+  reversalOf Expense?        @relation("ExpenseReversal", fields: [reversalOfId], references: [id], onDelete: SetNull)
+  reversedBy Expense?        @relation("ExpenseReversal")
+
+  @@index([categoryId])
+  @@index([status])
+  @@index([expenseDate])
+  @@index([createdAt])
+  @@map("expenses")
+}
+
+/// Standalone, non-sales income (service charges, misc receipts). POS sales
+/// are never duplicated here — see ACCOUNTING.md "Sources of truth". Same
+/// void/reversal correction policy as Expense.
+model Income {
+  id            String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// "ZJ-INC-000001", derived at read time (src/lib/income-number.ts).
+  sequence      Int                  @unique @default(autoincrement())
+  incomeType    IncomeType
+  description   String
+  amount        Decimal              @db.Decimal(14, 2)
+  paymentMethod PaymentMethod
+  incomeDate    DateTime             @db.Date
+  reference     String?
+  notes         String?
+  status        FinancialEntryStatus @default(ACTIVE)
+  voidReason    String?
+  voidedById    String?              @db.Uuid
+  voidedAt      DateTime?
+  reversalOfId  String?              @unique @db.Uuid
+  createdById   String               @db.Uuid
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  createdBy  User    @relation("IncomeCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  voidedBy   User?   @relation("IncomeVoidedBy", fields: [voidedById], references: [id], onDelete: SetNull)
+  reversalOf Income? @relation("IncomeReversal", fields: [reversalOfId], references: [id], onDelete: SetNull)
+  reversedBy Income? @relation("IncomeReversal")
+
+  @@index([incomeType])
+  @@index([status])
+  @@index([incomeDate])
+  @@index([createdAt])
+  @@map("incomes")
+}
+
+enum DailyClosingStatus {
+  OPEN
+  PENDING_REVIEW
+  CLOSED
+  REOPENED
+}
+
+/// One row per business date, created only when a user actually acts on that
+/// day (submits or closes it) — a day with no row is implicitly OPEN. Never
+/// duplicates the transactions it summarizes; only the physical cash count
+/// and the closing decision itself are genuinely new data. See
+/// DAILY-CLOSING.md.
+model DailyClosing {
+  id           String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// The calendar day this closing covers, in the configured business
+  /// timezone — see src/lib/business-date.ts. One closing per business date.
+  businessDate DateTime           @unique @db.Date
+  status       DailyClosingStatus @default(OPEN)
+
+  /// Cash balance (getCashBalance()) at the instant this row was
+  /// submitted — the start-of-day figure, frozen at submit time.
+  openingCash         Decimal  @db.Decimal(14, 2)
+  cashReceived        Decimal  @db.Decimal(14, 2)
+  cashPaid            Decimal  @db.Decimal(14, 2)
+  cashAdjustments     Decimal  @default(0) @db.Decimal(14, 2)
+  /// openingCash + cashReceived - cashPaid + cashAdjustments.
+  expectedClosingCash Decimal  @db.Decimal(14, 2)
+  /// User-entered physical till count — null until submitted.
+  physicalCashAmount  Decimal? @db.Decimal(14, 2)
+  /// physicalCashAmount - expectedClosingCash. Negative = shortage, positive
+  /// = excess. Never auto-adjusted — see DAILY-CLOSING.md "Cash difference".
+  cashDifference      Decimal? @db.Decimal(14, 2)
+  /// Snapshot of the unresolved-issues checklist shown to the user at
+  /// submit time (see DAILY-CLOSING.md "Unresolved issues") — kept for audit
+  /// even though the underlying conditions may change afterward.
+  unresolvedIssues    Json?
+  notes               String?
+
+  submittedById String?   @db.Uuid
+  submittedAt   DateTime?
+  closedById    String?   @db.Uuid
+  closedAt      DateTime?
+  reopenedById  String?   @db.Uuid
+  reopenedAt    DateTime?
+  reopenReason  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  submittedBy User? @relation("DailyClosingSubmittedBy", fields: [submittedById], references: [id], onDelete: SetNull)
+  closedBy    User? @relation("DailyClosingClosedBy", fields: [closedById], references: [id], onDelete: SetNull)
+  reopenedBy  User? @relation("DailyClosingReopenedBy", fields: [reopenedById], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@map("daily_closings")
 }

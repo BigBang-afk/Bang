@@ -152,6 +152,54 @@ Each service owns one concern:
   supplier payments against a purchase payable, plus
   `listPurchasePaymentsForSupplier()` for the Supplier profile's Payments
   tab.
+- `financial-settings.service.ts` *(Phase 6)* — reads the accounting-related
+  `SystemSetting` keys fresh on every call: `getBusinessTimezone()`,
+  `getCurrentBusinessDate()`, `getReceivableAgingBucketDays()`,
+  `getFlagUnpaidBalancesOnClosing()`. Same "settings as data, never cached"
+  pattern as every prior phase.
+- `expense-category.service.ts` *(Phase 6)* — CRUD + enable/disable for
+  `ExpenseCategory`. Categories are data, never a hardcoded enum, so
+  OWNER/ADMIN can add one without a code change — see `EXPENSE-SYSTEM.md`.
+- `expense.service.ts` *(Phase 6)* — `createExpense()`, `voidExpense()`,
+  `listExpenses()`, `getExpenseById()`. `createExpense()` atomically writes
+  an `Expense` row and a `CashTransaction` (`EXPENSE_PAID`, `OUT`) in one
+  `$transaction`; `voidExpense()` never deletes or edits the original row —
+  see "The void/reversal correction pattern" below.
+- `income.service.ts` *(Phase 6)* — mirrors `expense.service.ts` exactly for
+  standalone (non-POS) income: `createIncome()`/`voidIncome()` pairs an
+  `Income` row with a `CashTransaction` (`INCOME_RECEIVED`, `IN`). Never
+  duplicates a POS sale — `Sale` and `Income` are structurally separate
+  tables with no overlap.
+- `historical-balance.service.ts` *(Phase 6)* — reconstructs "balance as of
+  a past instant" for ledgers that only cache a *live* running balance
+  (`CustomerLedgerEntry`, `PartyCashLedgerEntry`, `GoldLedgerEntry`,
+  `CashTransaction`), via a raw `DISTINCT ON` SQL query. Extracted out of
+  `daily-closing.service.ts` once `financial-reports.service.ts` needed the
+  same technique — see "Historical balance reconstruction" below.
+- `daily-closing.service.ts` *(Phase 6)* — builds every section of the
+  Daily Closing screen (Sales/Payments/Expenses/Cash/Gold/Receivables/
+  Payables), computes the daily cash formula, the unresolved-issues
+  checklist, and drives the OPEN → PENDING_REVIEW → CLOSED → REOPENED
+  workflow. See `DAILY-CLOSING.md`.
+- `profit-loss.service.ts` *(Phase 6)* — `getProfitAndLoss(preset, custom?)`:
+  Revenue → COGS → Gross Profit → Operating Expenses → Net Profit, entirely
+  from existing `Sale`/`SaleItem`/`Return`/`Expense`/`Income` rows. COGS
+  always reads the sold item's own recorded `totalCost` snapshot, never
+  today's gold rate. See `PROFIT-LOSS.md`.
+- `financial-reports.service.ts` *(Phase 6)* — the report suite: Sales,
+  Purchase, Expense, Cash, Gold (purity-separated, never summed), Receivable
+  Aging, Payable, Gold Obligation, Inventory Valuation, and a separately
+  labeled Current Market Valuation. Every report aggregates server-side and
+  accepts a resolved date range — see `FINANCIAL-REPORTS.md`.
+- `financial-reconciliation.service.ts` *(Phase 6)* — independent
+  cross-book integrity checks: `reconcileSales()`, `reconcileCustomerLedger()`,
+  `reconcileSupplierLedger()`, `reconcileKarigarLedger()`, `reconcileCash()`,
+  `reconcileGold()`, `reconcileInventory()`, and `runFullFinancialReconciliation()`.
+  Structurally distinct from Phase 5's `reconciliation.service.ts` — see "Two
+  kinds of reconciliation" below.
+- `financial-dashboard.service.ts` *(Phase 6)* — `getFinancialDashboardSummary()`,
+  `getDailyTrend()`, `getSalesByCategoryThisMonth()`: the real-data-only
+  aggregates behind the Financial Dashboard's cards and charts.
 
 ### `src/lib/auth/`
 
@@ -280,6 +328,17 @@ because the client-side form already validated it.
   Cash Summary, Purchase Summary, Gold Reconciliation) — deliberately not a
   separate `/reports` module, since `/reports` remains an explicit
   "coming in next phase" placeholder, same as every prior phase.
+- `(app)/accounting/` *(Phase 6)* — its own nested `layout.tsx` requires
+  `accounting:reports:view` once and renders the 13-item Accounting sub-nav
+  exactly as specified: Financial Dashboard (`page.tsx`), Expenses, Income,
+  Daily Closing, Profit & Loss, Cash Report, Gold Report, Receivables,
+  Payables, Sales Report, Purchase Report, Inventory Valuation, Financial
+  Reconciliation. Every report page is a Server Component that reads
+  `searchParams` for the date-range preset/custom range, calls the matching
+  `financial-reports.service.ts`/`profit-loss.service.ts` function
+  server-side, and renders an `<ExportCsvButton>` — no report ever loads
+  every underlying transaction into the browser. See `ACCOUNTING.md`,
+  `DAILY-CLOSING.md`, `PROFIT-LOSS.md`, and `FINANCIAL-REPORTS.md`.
 
 ## Authentication design
 
@@ -354,6 +413,20 @@ Role-Based Access Control, stored in the database (`Role`, `Permission`,
   SALESPERSON gets none of them; KARIGAR_MANAGER owns karigar/job records).
   Same pattern as Phase 4: only `OWNER`/`ADMIN` are seeded with grants
   today, the keys already encode every future role's boundary.
+- Phase 6 adds 9 `accounting:*` permissions —
+  `accounting:reports:view`, `accounting:expenses:view/create/manage`,
+  `accounting:income:manage`, `accounting:daily_closing`,
+  `accounting:daily_closing:reopen`, `accounting:reconcile`,
+  `accounting:export` — matching the spec's role matrix (ACCOUNTANT gets
+  full financial reports/expenses/payments/reconciliation; MANAGER gets
+  view + daily closing + limited adjustments; CASHIER gets daily closing +
+  cash transactions + limited expense access; SALESPERSON gets none of
+  them unless explicitly granted). `accounting:daily_closing:reopen` is
+  intentionally its own key, separate from `accounting:daily_closing`,
+  because the spec restricts reopening a closed day to OWNER/an explicitly
+  authorized manager — a strictly narrower audience than who can *submit*
+  a closing. Same pattern as every prior phase: only `OWNER`/`ADMIN` are
+  seeded with grants today.
 
 ## Settings as data — discount limits & tax *(Phase 3)*
 
@@ -395,6 +468,117 @@ exception to "always read fresh": a later change to the setting must never
 retroactively reclassify a job that was already received. The opening
 balance is read fresh by `cash-transaction.service.ts`'s
 `getCashBalance()` on every call, never cached.
+
+## Settings as data — business timezone, aging, unpaid-balance flag *(Phase 6)*
+
+Three more `SystemSetting` keys, same pattern: `business.timezone` (default
+`"Asia/Karachi"`), `accounting.receivable_aging_bucket_days` (default
+`"30"`, defining the width of each aging bucket), and
+`accounting.flag_unpaid_balances_on_closing` (default `"false"`).
+`financial-settings.service.ts` reads all three fresh on every call —
+`daily-closing.service.ts` and `profit-loss.service.ts`'s date-preset
+resolution never assume the browser's or server's local calendar day, they
+resolve "today" in the configured business timezone instead (see
+`resolveBusinessDateInTimezone()` in `src/lib/business-date.ts`, additive to
+Phase 1's unchanged `toBusinessDate()`/`getTodayBusinessDate()`).
+
+## The void/reversal correction pattern *(Phase 6)*
+
+Expense and Income rows are financial history, and the spec is explicit:
+never silently modify a historical financial transaction. `voidExpense()`/
+`voidIncome()` therefore never `UPDATE` or `DELETE` the original row's
+amount/date/category — they flip `status` to `VOIDED` and record
+`voidReason`/`voidedById`/`voidedAt`, **and**, in the same `$transaction`,
+write a compensating `CashTransaction` (`CASH_ADJUSTMENT`, opposite
+direction, same amount, `referenceType`/`referenceId` pointing back at the
+voided row) so the physical cash book is never left wrong by a void. A
+correction is then a *separate*, later `createExpense()`/`createIncome()`
+call with `reversalOfId` set to the voided row's id, which the read side
+surfaces as `reversalOf`/`reversedBy` — producing a full auditable chain:
+original `CREATED` → `VOIDED` (with its own cash reversal) → new corrected
+`CREATED` referencing the old one. Nothing is ever deleted; nothing is ever
+edited in place.
+
+## Historical balance reconstruction *(Phase 6)*
+
+None of `CustomerLedgerEntry`, `PartyCashLedgerEntry`, `GoldLedgerEntry`, or
+`CashTransaction` cache a per-date snapshot — each row only carries the
+*live* running balance at the moment it was written. Daily Closing's
+opening receivable/payable/gold figures and the Cash section's opening cash
+need "what was the balance at instant X in the past", which isn't a value
+any table stores directly. `historical-balance.service.ts` reconstructs it
+with a raw SQL `DISTINCT ON (party/customer key) ... ORDER BY key,
+"createdAt" DESC WHERE "createdAt" < $cutoff`, summing each party's/
+customer's own latest entry strictly before the cutoff. This was originally
+written privately inside `daily-closing.service.ts`, then extracted to its
+own file once `financial-reports.service.ts` needed the identical
+technique for report opening balances — one implementation, two callers.
+
+## Two kinds of reconciliation *(Phase 5 vs. Phase 6)*
+
+The codebase now has two structurally different things both called
+"reconciliation," and they must not be conflated:
+
+- **Phase 5's `reconciliation.service.ts`** — *system-vs-physical-count*
+  reconciliation. "Does the ledger's live figure match what a human
+  actually counted in the till/vault?" Always requires a user-entered
+  physical count as input.
+- **Phase 6's `financial-reconciliation.service.ts`** — *cross-book*
+  integrity reconciliation. "Does this cached/derived figure match an
+  independent recomputation from the ledger rows that are supposed to
+  justify it?" No physical count involved — it catches a code/data bug
+  (two numbers that were supposed to always agree, but don't), not a
+  physical-count mismatch. For example, `reconcileCustomerLedger()`
+  recomputes each customer's outstanding balance from their
+  `CustomerLedgerEntry` rows and compares it against the cached
+  `Customer.outstandingBalance` column.
+
+Both follow the identical **flag, never auto-correct** policy — every
+`reconcile*()` function returns `{ status, expected, actual, difference,
+errors }` and stops there; applying a fix is always a separate, explicit,
+later action a human takes. See `RECONCILIATION.md` for both, in their own
+sections.
+
+## The Server Action / Client Component boundary — bare references vs. closures *(Phase 6)*
+
+Next.js allows a Server Component to pass a **bare, exported `"use server"`
+function reference** as a prop into a Client Component — it gets serialized
+as an action reference the client can invoke. It does **not** allow an
+ad-hoc closure that merely *calls* one internally
+(`action={() => someServerAction(x)}`) — that throws *"Functions cannot be
+passed directly to Client Components unless explicitly exposed with 'use
+server'"* at runtime (again, like the `Decimal`-boundary pitfall above,
+TypeScript does not catch this).
+
+Two real instances were caught during Phase 6 manual/Playwright testing:
+`ExportCsvButton` and `VoidFinancialEntryDialog` both originally took a
+closure prop built by the Server Component that rendered them. The fix in
+both cases was the same shape: redesign the component to accept the **bare**
+action function plus separate, serializable data props (`actionInput` for
+the export button; `entryId`/`idField` for the void dialog), and build the
+actual call arguments **inside** the `"use client"` component instead of in
+the Server Component. When adding a new client component that needs to
+trigger a Server Action with per-instance arguments, pass the bare action
+and the arguments as separate props — never a closure.
+
+## Test infrastructure — `fileParallelism: false` *(Phase 6)*
+
+Every integration test in this repository shares one real, mutable Postgres
+database with no per-test transaction rollback (see "Testing" below).
+Vitest's default parallel-file execution let two files' concurrent writes
+land inside each other's aggregate before/after read windows — harmless at
+Phase 1-5's scale, but Phase 6's system-wide aggregate reads
+(`getProfitAndLoss`, `getSalesReport`, `getCashReport`,
+`runFullFinancialReconciliation`) made this 5-8 flaky failures per full-suite
+run, well past what any prior phase's single "accepted flake" precedent
+covered. `vitest.config.mts` now sets `fileParallelism: false`, serializing
+test *file* execution (tests within a file still interleave normally). This
+is a genuine root-cause fix, not a per-test workaround — it benefits every
+phase's integration tests, not just Phase 6's — verified via repeated
+full-suite runs going from 5-8 failures down to 0-1 (the remaining 1, when
+it occurs, is the pre-existing Phase 4 customer-search flake, unrelated to
+concurrency). Runtime cost: the full suite still finishes in well under a
+minute.
 
 ## The ledger primitive — one write path, everywhere *(Phase 4)*
 

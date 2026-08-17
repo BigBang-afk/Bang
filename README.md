@@ -30,12 +30,28 @@ phase by phase.
   single ambiguous balance), supplier purchases with optional
   push-to-inventory, the company-wide physical cash book, and gold/cash
   reconciliation that flags a mismatch but never auto-corrects it.
+- **Phase 6: Accounting + Expenses + Profit & Loss + Daily Closing +
+  Financial Reports** — a practical (not statutory) accounting layer built
+  entirely on top of Phase 1-5's own transactional tables: ZJ-EXP/ZJ-INC
+  numbered expense/income entries with configurable categories and a
+  void-then-reversal correction policy (historical entries are never edited
+  or deleted), a full business-day Daily Closing workflow (cash formula,
+  unresolved-issues checklist, OPEN/PENDING_REVIEW/CLOSED/REOPENED states,
+  shortage/excess flagged but never auto-adjusted), a Profit & Loss report
+  driven by each item's recorded inventory cost (never today's gold rate),
+  a full financial report suite (Sales, Purchase, Expense, Cash, Gold,
+  Receivable Aging, Payable, Inventory Valuation), a real-data financial
+  dashboard, server-side date filtering with CSV export, and cross-book
+  financial reconciliation (`reconcileSales`/`CustomerLedger`/
+  `SupplierLedger`/`Gold`/`Cash`/`Inventory`) that flags integrity errors
+  but never auto-corrects them.
 
 See [`PHASE-1-STATUS.md`](./PHASE-1-STATUS.md),
 [`PHASE-2-STATUS.md`](./PHASE-2-STATUS.md),
 [`PHASE-3-STATUS.md`](./PHASE-3-STATUS.md),
-[`PHASE-4-STATUS.md`](./PHASE-4-STATUS.md), and
-[`PHASE-5-STATUS.md`](./PHASE-5-STATUS.md) for exactly what is and isn't
+[`PHASE-4-STATUS.md`](./PHASE-4-STATUS.md),
+[`PHASE-5-STATUS.md`](./PHASE-5-STATUS.md), and
+[`PHASE-6-STATUS.md`](./PHASE-6-STATUS.md) for exactly what is and isn't
 built, [`ARCHITECTURE.md`](./ARCHITECTURE.md) for how the codebase is
 organized, [`DATABASE.md`](./DATABASE.md) for the schema,
 [`GOLD-RATE-ENGINE.md`](./GOLD-RATE-ENGINE.md) for the gold pricing/weight
@@ -54,8 +70,16 @@ for karigar management and wastage reconciliation,
 [`GOLD-LEDGER.md`](./GOLD-LEDGER.md) for the gold ledger and purity/rate
 rules, [`CASH-MANAGEMENT.md`](./CASH-MANAGEMENT.md) for the party cash
 ledger and company cash book, [`PURCHASE-SYSTEM.md`](./PURCHASE-SYSTEM.md)
-for the purchase workflow, and [`RECONCILIATION.md`](./RECONCILIATION.md)
-for the gold/cash reconciliation and adjustment policy.
+for the purchase workflow, [`RECONCILIATION.md`](./RECONCILIATION.md)
+for the gold/cash reconciliation and adjustment policy (Phase 5) plus the
+cross-book financial reconciliation appendix (Phase 6),
+[`ACCOUNTING.md`](./ACCOUNTING.md) for the Phase 6 accounting architecture
+and "sources of truth" principle, [`EXPENSE-SYSTEM.md`](./EXPENSE-SYSTEM.md)
+for expense/income numbering and the void/reversal correction pattern,
+[`DAILY-CLOSING.md`](./DAILY-CLOSING.md) for the daily cash formula and
+closing workflow, [`PROFIT-LOSS.md`](./PROFIT-LOSS.md) for COGS methodology
+and the P&L formula, and [`FINANCIAL-REPORTS.md`](./FINANCIAL-REPORTS.md)
+for the full report suite and CSV export architecture.
 
 ## Technology stack
 
@@ -146,6 +170,10 @@ src/
                              Cash Reconciliation
       party-ledger/           Combined karigar/supplier gold+cash position
                              and the Phase 5 reporting foundation
+      accounting/             Financial Dashboard, Expenses, Income, Daily
+                             Closing, Profit & Loss, Cash/Gold/Sales/
+                             Purchase Reports, Receivables, Payables,
+                             Inventory Valuation, Financial Reconciliation
     api/invoices/[id]/pdf/  Route Handler — real PDF invoice download
   components/             UI: primitives, layout, feature components
   services/               Business logic — no React, no HTTP, no Next.js APIs
@@ -163,17 +191,24 @@ e2e/                      Playwright end-to-end tests
 
 ## Known limitations
 
-- Business date for gold rates uses the server's local calendar day — no
-  per-store timezone configuration yet.
+- Business date for gold rates (Phase 1's `toBusinessDate`/
+  `getTodayBusinessDate`) still uses the server's local calendar day — that
+  specific helper was deliberately left unchanged. Phase 6 adds a
+  *separate*, configurable-timezone business date
+  (`resolveBusinessDateInTimezone`, default `Asia/Karachi`, via the
+  `business.timezone` setting) used specifically for accounting/reporting
+  purposes (Daily Closing, Profit & Loss presets, report date filters) —
+  see `DAILY-CLOSING.md`.
 - No self-service password reset or MFA.
 - Only `OWNER` and `ADMIN` roles are seeded; the additional roles named in
   the long-term vision (`MANAGER`, `CASHIER`, `SALESPERSON`, `ACCOUNTANT`,
   `MARKETING_MANAGER`, `KARIGAR_MANAGER`, etc.) are modeled by the schema
   and every Phase 4 `customers:*` / Phase 5 `karigars:*`/`suppliers:*`/
-  `purchases:*`/`gold_ledger:*`/`cash:*` permission is scoped precisely to
-  what the spec describes for each of them, but no role-management UI
-  exists yet to actually create those roles and grant the permissions —
-  see `CUSTOMER-CRM.md` "Permissions" and `KARIGAR-SYSTEM.md` "Permissions".
+  `purchases:*`/`gold_ledger:*`/`cash:*` / Phase 6 `accounting:*`
+  permission is scoped precisely to what the spec describes for each of
+  them, but no role-management UI exists yet to actually create those
+  roles and grant the permissions — see `CUSTOMER-CRM.md` "Permissions",
+  `KARIGAR-SYSTEM.md` "Permissions", and `ACCOUNTING.md` "Permissions".
 - Product images are stored on local disk, not object storage (see
   `INVENTORY.md`).
 - No payment gateway integrations — Phase 3 payments are recorded, not
@@ -206,10 +241,30 @@ e2e/                      Playwright end-to-end tests
   adjustment a user chooses to record. See `RECONCILIATION.md` "Adjustment
   policy".
 - Every module other than Dashboard, Settings, Inventory, POS, Customers,
-  Karigars, Suppliers, Purchases, Gold Ledger, Cash Management, and Party
-  Ledger renders a "coming in next phase" placeholder — no fake data, no
-  fake functionality.
+  Karigars, Suppliers, Purchases, Gold Ledger, Cash Management, Party
+  Ledger, and Accounting renders a "coming in next phase" placeholder — no
+  fake data, no fake functionality.
+- Accounting is explicitly a **practical bookkeeping layer, not a
+  legally-compliant statutory tax/accounting system** — see `ACCOUNTING.md`
+  "Disclaimer". Tax handling remains configurable and off by default; no
+  tax filing, payroll, or full general-ledger (debit/credit,
+  chart-of-accounts) accounting is built.
+- Receivable aging (`FINANCIAL-REPORTS.md`) is computed per-customer, not
+  per-invoice — a customer's whole outstanding balance ages from their
+  ledger's oldest unpaid activity, not a per-sale FIFO allocation.
+- The Gold Report/Gold Obligation Report inherit Phase 5's "System Gold"
+  scope (gold currently tracked in a karigar/supplier ledger, not a
+  separate raw/loose shop inventory) — see `RECONCILIATION.md`.
+- Financial reconciliation (`reconcile*()` in
+  `financial-reconciliation.service.ts`) flags a cross-book mismatch
+  (`FINANCIAL INTEGRITY ERROR`) but never auto-corrects it, mirroring
+  Phase 5's reconciliation policy — see `RECONCILIATION.md`.
+- The integration test suite runs against one shared, non-transactional
+  Postgres dev database (see `ARCHITECTURE.md` "Testing"); `vitest.config.mts`
+  now sets `fileParallelism: false` to serialize test files and eliminate
+  the cross-file aggregate-read races this shared-DB approach otherwise
+  produces (see `PHASE-6-STATUS.md` "Known issues").
 
 ## Next phase
 
-See the end of `PHASE-5-STATUS.md` for the recommended Phase 6 scope.
+See the end of `PHASE-6-STATUS.md` for the recommended Phase 7 scope.

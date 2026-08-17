@@ -221,3 +221,77 @@ describe("Authorization — karigar/supplier/purchase/gold-ledger/cash permissio
     }
   });
 });
+
+describe("Authorization — accounting permissions (Test 23)", () => {
+  const PHASE6_PERMISSIONS = [
+    PERMISSIONS.ACCOUNTING_REPORTS_VIEW,
+    PERMISSIONS.ACCOUNTING_EXPENSES_VIEW,
+    PERMISSIONS.ACCOUNTING_EXPENSES_CREATE,
+    PERMISSIONS.ACCOUNTING_EXPENSES_MANAGE,
+    PERMISSIONS.ACCOUNTING_INCOME_MANAGE,
+    PERMISSIONS.ACCOUNTING_DAILY_CLOSING,
+    PERMISSIONS.ACCOUNTING_DAILY_CLOSING_REOPEN,
+    PERMISSIONS.ACCOUNTING_RECONCILE,
+    PERMISSIONS.ACCOUNTING_EXPORT,
+  ] as const;
+
+  it("a role with no grants has none of the Phase 6 permissions", async () => {
+    const role = await getOrCreateRoleWithNoPermissions();
+    const user = { role };
+
+    for (const key of PHASE6_PERMISSIONS) {
+      await expect(userHasPermission(user, key)).resolves.toBe(false);
+    }
+    await expect(assertPermission(user, PERMISSIONS.ACCOUNTING_EXPENSES_CREATE)).rejects.toThrow(AuthorizationError);
+    await expect(assertPermission(user, PERMISSIONS.ACCOUNTING_DAILY_CLOSING_REOPEN)).rejects.toThrow(AuthorizationError);
+    await expect(assertPermission(user, PERMISSIONS.ACCOUNTING_EXPORT)).rejects.toThrow(AuthorizationError);
+  });
+
+  it("a role granted only accounting:expenses_view cannot create, manage, or export", async () => {
+    const role = await getOrCreateRoleWithNoPermissions();
+    const permission = await prisma.permission.findUniqueOrThrow({ where: { key: PERMISSIONS.ACCOUNTING_EXPENSES_VIEW } });
+    await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: permission.id } });
+
+    const user = { role };
+    await expect(userHasPermission(user, PERMISSIONS.ACCOUNTING_EXPENSES_VIEW)).resolves.toBe(true);
+    await expect(userHasPermission(user, PERMISSIONS.ACCOUNTING_EXPENSES_CREATE)).resolves.toBe(false);
+    await expect(userHasPermission(user, PERMISSIONS.ACCOUNTING_EXPENSES_MANAGE)).resolves.toBe(false);
+    await expect(userHasPermission(user, PERMISSIONS.ACCOUNTING_EXPORT)).resolves.toBe(false);
+  });
+
+  it("a role granted only accounting:daily_closing cannot reopen a closed day", async () => {
+    const role = await getOrCreateRoleWithNoPermissions();
+    const permission = await prisma.permission.findUniqueOrThrow({ where: { key: PERMISSIONS.ACCOUNTING_DAILY_CLOSING } });
+    await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: permission.id } });
+
+    const user = { role };
+    await expect(userHasPermission(user, PERMISSIONS.ACCOUNTING_DAILY_CLOSING)).resolves.toBe(true);
+    await expect(userHasPermission(user, PERMISSIONS.ACCOUNTING_DAILY_CLOSING_REOPEN)).resolves.toBe(false);
+  });
+
+  it("a role granted only accounting:reports_view cannot reconcile or export", async () => {
+    const role = await getOrCreateRoleWithNoPermissions();
+    const permission = await prisma.permission.findUniqueOrThrow({ where: { key: PERMISSIONS.ACCOUNTING_REPORTS_VIEW } });
+    await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: permission.id } });
+
+    const user = { role };
+    await expect(userHasPermission(user, PERMISSIONS.ACCOUNTING_REPORTS_VIEW)).resolves.toBe(true);
+    await expect(userHasPermission(user, PERMISSIONS.ACCOUNTING_RECONCILE)).resolves.toBe(false);
+    await expect(userHasPermission(user, PERMISSIONS.ACCOUNTING_EXPORT)).resolves.toBe(false);
+  });
+
+  it("OWNER always has every Phase 6 permission regardless of grants", async () => {
+    const owner = { role: { id: "irrelevant-for-owner", name: "OWNER" } };
+    for (const key of PHASE6_PERMISSIONS) {
+      await expect(userHasPermission(owner, key)).resolves.toBe(true);
+    }
+  });
+
+  it("ADMIN (seeded with every current permission) has every Phase 6 permission", async () => {
+    const adminRole = await prisma.role.findUniqueOrThrow({ where: { name: "ADMIN" } });
+    const user = { role: adminRole };
+    for (const key of PHASE6_PERMISSIONS) {
+      await expect(userHasPermission(user, key)).resolves.toBe(true);
+    }
+  });
+});
