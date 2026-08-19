@@ -1,0 +1,602 @@
+// Zarghoon Jewellers — database schema
+// See README.md for setup instructions.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Auth / Admin
+// ────────────────────────────────────────────────────────────────────────
+
+enum AdminRole {
+  SUPER_ADMIN
+  MANAGER
+  STAFF
+}
+
+model Admin {
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  passwordHash String
+  role         AdminRole @default(STAFF)
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  goldRates       GoldRate[]
+  activityLogs    AdminActivityLog[]
+  messageCampaigns MessageCampaign[]
+  resetTokens     AdminPasswordResetToken[]
+
+  @@map("admins")
+}
+
+model AdminPasswordResetToken {
+  id        String    @id @default(cuid())
+  adminId   String
+  admin     Admin     @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([adminId])
+  @@map("admin_password_reset_tokens")
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Customers
+// ────────────────────────────────────────────────────────────────────────
+
+enum CustomerType {
+  REGULAR
+  VIP
+}
+
+model Customer {
+  id                String    @id @default(cuid())
+  fullName          String
+  mobile            String    @unique
+  dob               DateTime
+  email             String?   @unique
+  passwordHash      String
+  customerType      CustomerType @default(REGULAR)
+  marketingConsent  Boolean   @default(true)
+  isActive          Boolean   @default(true)
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  wishlist          Wishlist[]
+  orders            Order[]
+  messageRecipients MessageRecipient[]
+  groupMemberships  CustomerGroupMember[]
+  resetTokens       CustomerPasswordResetToken[]
+
+  @@index([dob])
+  @@index([createdAt])
+  @@map("customers")
+}
+
+model CustomerPasswordResetToken {
+  id         String    @id @default(cuid())
+  customerId String
+  customer   Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([customerId])
+  @@map("customer_password_reset_tokens")
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Catalog
+// ────────────────────────────────────────────────────────────────────────
+
+model Category {
+  id          String     @id @default(cuid())
+  name        String
+  slug        String     @unique
+  description String?
+  imageUrl    String?
+  parentId    String?
+  parent      Category?  @relation("CategoryToSubcategory", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Category[] @relation("CategoryToSubcategory")
+  sortOrder   Int        @default(0)
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  products           Product[]
+  homepageCollections HomepageCollection[]
+
+  @@index([parentId])
+  @@map("categories")
+}
+
+enum GoldPurity {
+  K24
+  K21
+  K18
+}
+
+enum ProductStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum StockStatus {
+  IN_STOCK
+  OUT_OF_STOCK
+  MADE_TO_ORDER
+}
+
+model Product {
+  id             String        @id @default(cuid())
+  name           String
+  sku            String        @unique
+  categoryId     String
+  category       Category      @relation(fields: [categoryId], references: [id])
+  description    String?
+  purity         GoldPurity
+  grossWeight    Decimal       @db.Decimal(10, 3)
+  netGoldWeight  Decimal       @db.Decimal(10, 3)
+  stoneWeight    Decimal       @default(0) @db.Decimal(10, 3)
+
+  // Optional, configurable extra pricing components (see Settings.pricingUsesExtras)
+  makingCharges  Decimal       @default(0) @db.Decimal(12, 2)
+  stoneCharges   Decimal       @default(0) @db.Decimal(12, 2)
+  otherCharges   Decimal       @default(0) @db.Decimal(12, 2)
+  discount       Decimal       @default(0) @db.Decimal(12, 2)
+  taxPercent     Decimal       @default(0) @db.Decimal(5, 2)
+
+  status         ProductStatus @default(DRAFT)
+  isFeatured     Boolean       @default(false)
+  isNewArrival   Boolean       @default(false)
+  isBestseller   Boolean       @default(false)
+  stockStatus    StockStatus   @default(IN_STOCK)
+
+  viewCount      Int           @default(0)
+  inquiryCount   Int           @default(0)
+
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  images              ProductImage[]
+  wishlist            Wishlist[]
+  orderItems          OrderItem[]
+  homepageFeatured    HomepageFeaturedProduct[]
+
+  @@index([categoryId])
+  @@index([status])
+  @@index([purity])
+  @@map("products")
+}
+
+model ProductImage {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  altText   String?
+  sortOrder Int      @default(0)
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+  @@map("product_images")
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Gold rates (append-only history)
+// ────────────────────────────────────────────────────────────────────────
+
+model GoldRate {
+  id              String     @id @default(cuid())
+  purity          GoldPurity
+  ratePerGram     Decimal    @db.Decimal(12, 2)
+  effectiveAt     DateTime   @default(now())
+  notes           String?
+  updatedByAdminId String?
+  updatedByAdmin  Admin?     @relation(fields: [updatedByAdminId], references: [id], onDelete: SetNull)
+  createdAt       DateTime   @default(now())
+
+  orderItems      OrderItem[]
+
+  @@index([purity, effectiveAt])
+  @@map("gold_rates")
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Orders / Inquiries
+// ────────────────────────────────────────────────────────────────────────
+
+enum OrderStatus {
+  NEW
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  orderNumber String      @unique
+  customerId  String?
+  customer    Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  guestName   String?
+  guestMobile String?
+  status      OrderStatus @default(NEW)
+  notes       String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  items       OrderItem[]
+
+  @@index([customerId])
+  @@index([status])
+  @@map("orders")
+}
+
+model OrderItem {
+  id                     String   @id @default(cuid())
+  orderId                String
+  order                  Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId              String?
+  product                Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productNameAtOrder     String
+  quantity               Int      @default(1)
+
+  purityAtOrder          GoldPurity
+  grossWeightAtOrder     Decimal  @db.Decimal(10, 3)
+  goldRateId             String?
+  goldRate               GoldRate? @relation(fields: [goldRateId], references: [id], onDelete: SetNull)
+  goldRatePerGramAtOrder Decimal  @db.Decimal(12, 2)
+
+  makingChargesAtOrder   Decimal  @default(0) @db.Decimal(12, 2)
+  stoneChargesAtOrder    Decimal  @default(0) @db.Decimal(12, 2)
+  otherChargesAtOrder    Decimal  @default(0) @db.Decimal(12, 2)
+  discountAtOrder        Decimal  @default(0) @db.Decimal(12, 2)
+  taxAtOrder             Decimal  @default(0) @db.Decimal(12, 2)
+  finalPriceAtOrder      Decimal  @db.Decimal(14, 2)
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Wishlist
+// ────────────────────────────────────────────────────────────────────────
+
+model Wishlist {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([customerId, productId])
+  @@map("wishlists")
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Marketing / Messaging
+// ────────────────────────────────────────────────────────────────────────
+
+enum MessageChannel {
+  SMS
+  WHATSAPP
+}
+
+enum MessageType {
+  BIRTHDAY
+  NEW_COLLECTION
+  GOLD_RATE_UPDATE
+  SPECIAL_OFFER
+  FESTIVAL
+  ANNOUNCEMENT
+  CUSTOM
+}
+
+model MessageTemplate {
+  id        String      @id @default(cuid())
+  name      String
+  type      MessageType
+  channel   MessageChannel @default(SMS)
+  body      String
+  isActive  Boolean     @default(true)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  campaigns MessageCampaign[]
+
+  @@map("message_templates")
+}
+
+enum CustomerGroupType {
+  STATIC
+  DYNAMIC
+}
+
+// Dynamic group rule keys (stored in filterJson), evaluated server-side:
+// "all" | "new_customers" | "vip" | "birthday_today" | "birthday_week" |
+// "birthday_month" | "purchased" | "inactive"
+model CustomerGroup {
+  id          String            @id @default(cuid())
+  name        String
+  description String?
+  type        CustomerGroupType @default(STATIC)
+  filterKey   String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  members     CustomerGroupMember[]
+  campaigns   MessageCampaign[]
+
+  @@map("customer_groups")
+}
+
+model CustomerGroupMember {
+  id         String        @id @default(cuid())
+  groupId    String
+  group      CustomerGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  customerId String
+  customer   Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  addedAt    DateTime      @default(now())
+
+  @@unique([groupId, customerId])
+  @@map("customer_group_members")
+}
+
+enum CampaignStatus {
+  DRAFT
+  QUEUED
+  SENDING
+  SENT
+  FAILED
+  PARTIAL
+}
+
+model MessageCampaign {
+  id              String          @id @default(cuid())
+  name            String
+  templateId      String?
+  template        MessageTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  channel         MessageChannel  @default(SMS)
+  body            String
+  groupId         String?
+  group           CustomerGroup?  @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  createdByAdminId String?
+  createdByAdmin  Admin?          @relation(fields: [createdByAdminId], references: [id], onDelete: SetNull)
+  status          CampaignStatus  @default(DRAFT)
+  totalRecipients Int             @default(0)
+  sentCount       Int             @default(0)
+  failedCount     Int             @default(0)
+  scheduledAt     DateTime?
+  sentAt          DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  recipients      MessageRecipient[]
+
+  @@map("message_campaigns")
+}
+
+enum MessageDeliveryStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+}
+
+model MessageRecipient {
+  id               String                @id @default(cuid())
+  campaignId       String
+  campaign         MessageCampaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  customerId       String
+  customer         Customer              @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  renderedBody     String
+  status           MessageDeliveryStatus @default(PENDING)
+  providerMessageId String?
+  errorMessage     String?
+  sentAt           DateTime?
+  createdAt        DateTime              @default(now())
+
+  @@index([campaignId])
+  @@index([customerId])
+  @@index([status])
+  @@map("message_recipients")
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Gallery
+// ────────────────────────────────────────────────────────────────────────
+
+enum GalleryCategory {
+  SHOWROOM
+  JEWELLERY
+  EVENTS
+  BRIDAL
+  CUSTOMERS
+  COLLECTIONS
+}
+
+model GalleryItem {
+  id        String          @id @default(cuid())
+  title     String?
+  imageUrl  String
+  category  GalleryCategory
+  sortOrder Int             @default(0)
+  isActive  Boolean         @default(true)
+  createdAt DateTime        @default(now())
+
+  @@map("gallery_items")
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Homepage CMS
+// ────────────────────────────────────────────────────────────────────────
+
+enum PublishStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model HomepageSettings {
+  id               String        @id @default("singleton")
+  status           PublishStatus @default(PUBLISHED)
+
+  heroEnabled      Boolean       @default(true)
+  heroTitle        String        @default("Timeless Gold. Trusted Legacy.")
+  heroSubtitle     String        @default("Experience the beauty of pure gold jewellery, crafted with trust, purity and perfection.")
+  heroImageUrl     String?
+  heroButtonText   String        @default("Explore Collection")
+  heroButtonUrl    String        @default("/collections")
+  heroButton2Text  String        @default("View Gold Rates")
+  heroButton2Url   String        @default("/gold-rate")
+
+  goldRateBarEnabled Boolean     @default(true)
+  showRate24k        Boolean     @default(true)
+  showRate21k        Boolean     @default(true)
+  showRate18k        Boolean     @default(true)
+
+  trustBadge1Title   String      @default("Pure Gold")
+  trustBadge1Text    String      @default("100% certified purity on every piece")
+  trustBadge2Title   String      @default("Certified Gold")
+  trustBadge2Text    String      @default("Hallmark certified craftsmanship")
+  trustBadge3Title   String      @default("Trusted Since")
+  trustBadge3Text    String      @default("A legacy of trust in Quetta")
+  trustBadge4Title   String      @default("Quality Guarantee")
+  trustBadge4Text    String      @default("Exchange & quality assurance")
+
+  updatedAt        DateTime      @updatedAt
+
+  collections      HomepageCollection[]
+  featuredProducts HomepageFeaturedProduct[]
+  banners          Banner[]
+
+  @@map("homepage_settings")
+}
+
+model HomepageCollection {
+  id                 String           @id @default(cuid())
+  homepageSettingsId String           @default("singleton")
+  homepageSettings   HomepageSettings @relation(fields: [homepageSettingsId], references: [id], onDelete: Cascade)
+  categoryId         String
+  category           Category         @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  sortOrder          Int              @default(0)
+  isActive           Boolean          @default(true)
+
+  @@unique([homepageSettingsId, categoryId])
+  @@map("homepage_collections")
+}
+
+model HomepageFeaturedProduct {
+  id                 String           @id @default(cuid())
+  homepageSettingsId String           @default("singleton")
+  homepageSettings   HomepageSettings @relation(fields: [homepageSettingsId], references: [id], onDelete: Cascade)
+  productId          String
+  product            Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sortOrder          Int              @default(0)
+
+  @@unique([homepageSettingsId, productId])
+  @@map("homepage_featured_products")
+}
+
+model Banner {
+  id                 String           @id @default(cuid())
+  homepageSettingsId String           @default("singleton")
+  homepageSettings   HomepageSettings @relation(fields: [homepageSettingsId], references: [id], onDelete: Cascade)
+  imageUrl           String
+  heading            String?
+  description        String?
+  buttonText         String?
+  buttonUrl          String?
+  isActive           Boolean          @default(true)
+  sortOrder          Int              @default(0)
+  createdAt          DateTime         @default(now())
+
+  @@map("banners")
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Settings (singleton)
+// ────────────────────────────────────────────────────────────────────────
+
+model Settings {
+  id                  String   @id @default("singleton")
+
+  // Business
+  businessName        String   @default("Zarghoon Jewellers")
+  logoUrl              String?
+  address              String   @default("Liaquat Bazar Sarafa Market, Quetta, Pakistan")
+  phone                String   @default("+92 300 0000000")
+  whatsapp             String   @default("+92 300 0000000")
+  email                String   @default("info@zarghoonjewellers.com")
+  openingHours         String   @default("Sat–Thu: 10:00 AM – 9:00 PM")
+
+  // Gold / pricing
+  decimalPrecision     Int      @default(2)
+  pricingUsesExtras    Boolean  @default(false)
+
+  // Product defaults
+  currency             String   @default("PKR")
+  weightUnit           String   @default("g")
+  defaultPurity        GoldPurity @default(K21)
+
+  // Customer
+  registrationEnabled  Boolean  @default(true)
+  birthdayRemindersEnabled Boolean @default(true)
+  requireMarketingConsent  Boolean @default(false)
+
+  // Social
+  facebookUrl          String?
+  instagramUrl         String?
+  whatsappUrl          String?
+  youtubeUrl           String?
+  tiktokUrl            String?
+
+  // Notifications
+  notifyBirthdayReminders   Boolean @default(true)
+  notifyNewCustomer         Boolean @default(true)
+  notifyNewInquiry          Boolean @default(true)
+  notifyGoldRateUpdate      Boolean @default(false)
+
+  updatedAt            DateTime @updatedAt
+
+  @@map("settings")
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Admin activity log
+// ────────────────────────────────────────────────────────────────────────
+
+model AdminActivityLog {
+  id          String   @id @default(cuid())
+  adminId     String?
+  admin       Admin?   @relation(fields: [adminId], references: [id], onDelete: SetNull)
+  action      String
+  description String?
+  entityType  String?
+  entityId    String?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  @@index([adminId])
+  @@index([createdAt])
+  @@map("admin_activity_logs")
+}

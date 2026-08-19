@@ -1,0 +1,99 @@
+@import "tailwindcss";
+
+:root {
+  /* Brand palette — Zarghoon Jewellers */
+  --brand-maroon: #5c0e21;
+  --brand-maroon-dark: #3a0715;
+  --brand-maroon-light: #7a1a30;
+  --brand-brown: #2a1a12;
+  --brand-brown-light: #4a3225;
+  --brand-gold: #c9a24b;
+  --brand-gold-light: #e8d6a0;
+  --brand-gold-dark: #a67f2e;
+  --brand-cream: #faf5ea;
+  --brand-cream-dark: #f1e6cf;
+  --brand-ivory: #fffdf8;
+
+  --background: var(--brand-cream);
+  --foreground: var(--brand-brown);
+}
+
+@theme inline {
+  --color-maroon: var(--brand-maroon);
+  --color-maroon-dark: var(--brand-maroon-dark);
+  --color-maroon-light: var(--brand-maroon-light);
+  --color-brown: var(--brand-brown);
+  --color-brown-light: var(--brand-brown-light);
+  --color-gold: var(--brand-gold);
+  --color-gold-light: var(--brand-gold-light);
+  --color-gold-dark: var(--brand-gold-dark);
+  --color-cream: var(--brand-cream);
+  --color-cream-dark: var(--brand-cream-dark);
+  --color-ivory: var(--brand-ivory);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-display: var(--font-playfair);
+  --font-sans: var(--font-jost);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+.font-display {
+  font-family: var(--font-display), Georgia, serif;
+}
+
+/* Subtle gold hairline divider used throughout the storefront */
+.gold-divider {
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--brand-gold) 20%,
+    var(--brand-gold) 80%,
+    transparent
+  );
+}
+
+.gold-divider-thick {
+  height: 3px;
+  background: linear-gradient(
+    to right,
+    var(--brand-gold-dark),
+    var(--brand-gold),
+    var(--brand-gold-dark)
+  );
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.7s ease-out both;
+}
+
+::selection {
+  background: var(--brand-gold-light);
+  color: var(--brand-maroon-dark);
+}
+
+/* Reusable scrollbar styling for admin data tables */
+.thin-scrollbar::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--brand-gold-dark);
+  border-radius: 9999px;
+}
