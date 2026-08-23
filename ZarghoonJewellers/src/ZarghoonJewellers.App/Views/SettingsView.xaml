@@ -1,0 +1,47 @@
+<UserControl x:Class="ZarghoonJewellers.App.Views.SettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="32,26,32,26" MaxWidth="700" HorizontalAlignment="Left">
+
+            <TextBlock Text="Settings" Style="{StaticResource PageTitle}"/>
+            <TextBlock Text="Shop details used across the app and printed on A4 reports" Style="{StaticResource PageSubtitle}" Margin="0,0,0,18"/>
+
+            <Border Style="{StaticResource CardBorder}">
+                <StackPanel>
+                    <StackPanel Margin="0,0,0,14">
+                        <TextBlock Text="Shop Name" Style="{StaticResource FieldLabel}"/>
+                        <TextBox x:Name="TxtShopName" Style="{StaticResource InputTextBox}"/>
+                    </StackPanel>
+
+                    <StackPanel Margin="0,0,0,14">
+                        <TextBlock Text="Shop Address" Style="{StaticResource FieldLabel}"/>
+                        <TextBox x:Name="TxtShopAddress" Style="{StaticResource InputTextBox}"/>
+                    </StackPanel>
+
+                    <StackPanel Margin="0,0,0,14">
+                        <TextBlock Text="Phone Number" Style="{StaticResource FieldLabel}"/>
+                        <TextBox x:Name="TxtPhoneNumber" Style="{StaticResource InputTextBox}"/>
+                    </StackPanel>
+
+                    <StackPanel Margin="0,0,0,14">
+                        <TextBlock Text="Report Header" Style="{StaticResource FieldLabel}"/>
+                        <TextBox x:Name="TxtReportHeader" Style="{StaticResource InputTextBox}"/>
+                    </StackPanel>
+
+                    <StackPanel Margin="0,0,0,18">
+                        <TextBlock Text="Report Footer" Style="{StaticResource FieldLabel}"/>
+                        <TextBox x:Name="TxtReportFooter" Style="{StaticResource InputTextArea}"/>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button x:Name="BtnReset" Content="Reset to Default" Style="{StaticResource SecondaryButton}" Margin="0,0,8,0" Click="BtnReset_Click"/>
+                        <Button x:Name="BtnSave" Content="Save Settings" Style="{StaticResource PrimaryButton}" Click="BtnSave_Click"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <TextBlock x:Name="TxtDbPath" Style="{StaticResource PageSubtitle}" Margin="0,16,0,0" TextWrapping="Wrap"/>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

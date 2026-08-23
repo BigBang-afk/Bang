@@ -1,0 +1,26 @@
+<UserControl x:Class="ZarghoonJewellers.App.Views.DateFilterBar"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Border Style="{StaticResource CardBorder}" Padding="14,12">
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+            <TextBlock Text="Show:" VerticalAlignment="Center" Margin="0,0,10,0"
+                       FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}"/>
+
+            <Button x:Name="BtnToday" Content="Today" Style="{StaticResource SecondaryButton}"
+                    Padding="14,7" Margin="0,0,8,0" Click="BtnToday_Click"/>
+            <Button x:Name="BtnThisMonth" Content="This Month" Style="{StaticResource SecondaryButton}"
+                    Padding="14,7" Margin="0,0,8,0" Click="BtnThisMonth_Click"/>
+            <Button x:Name="BtnAllTime" Content="All Time" Style="{StaticResource PrimaryButton}"
+                    Padding="14,7" Margin="0,0,18,0" Click="BtnAllTime_Click"/>
+
+            <TextBlock Text="From:" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{StaticResource TextMutedBrush}"/>
+            <DatePicker x:Name="DpFrom" Style="{StaticResource InputDatePicker}" Width="130" Margin="0,0,14,0"/>
+
+            <TextBlock Text="To:" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{StaticResource TextMutedBrush}"/>
+            <DatePicker x:Name="DpTo" Style="{StaticResource InputDatePicker}" Width="130" Margin="0,0,14,0"/>
+
+            <Button x:Name="BtnApply" Content="Apply" Style="{StaticResource SuccessButton}"
+                    Padding="16,7" Click="BtnApply_Click"/>
+        </StackPanel>
+    </Border>
+</UserControl>

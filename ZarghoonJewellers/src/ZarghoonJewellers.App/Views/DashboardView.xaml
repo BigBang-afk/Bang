@@ -1,0 +1,97 @@
+<UserControl x:Class="ZarghoonJewellers.App.Views.DashboardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:ZarghoonJewellers.App.Views">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Background="{StaticResource AppBgBrush}">
+        <StackPanel Margin="32,26,32,26">
+
+            <TextBlock x:Name="TxtShopTitle" Text="ZARGHOON JEWELLERS" Style="{StaticResource PageTitle}"/>
+            <TextBlock Text="Dashboard overview of cash, gold and Karigar balances" Style="{StaticResource PageSubtitle}" Margin="0,0,0,18"/>
+
+            <local:DateFilterBar x:Name="Filter" FilterChanged="Filter_FilterChanged"/>
+
+            <TextBlock Text="Cash Overview" Style="{StaticResource SectionTitle}" Margin="0,22,0,10"/>
+            <WrapPanel>
+                <Border Style="{StaticResource CardBorder}" Width="255" Margin="0,0,16,16">
+                    <StackPanel>
+                        <TextBlock Text="TOTAL CASH IN" Style="{StaticResource CardTitle}"/>
+                        <TextBlock x:Name="TxtCashIn" Text="0.00" Style="{StaticResource CardValue}" Foreground="{StaticResource SuccessBrush}"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource CardBorder}" Width="255" Margin="0,0,16,16">
+                    <StackPanel>
+                        <TextBlock Text="TOTAL CASH OUT" Style="{StaticResource CardTitle}"/>
+                        <TextBlock x:Name="TxtCashOut" Text="0.00" Style="{StaticResource CardValue}" Foreground="{StaticResource DangerBrush}"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource CardBorder}" Width="255" Margin="0,0,16,16">
+                    <StackPanel>
+                        <TextBlock Text="CURRENT CASH BALANCE" Style="{StaticResource CardTitle}"/>
+                        <TextBlock x:Name="TxtCashBalance" Text="0.00" Style="{StaticResource CardValue}" Foreground="{StaticResource GoldDarkBrush}"/>
+                    </StackPanel>
+                </Border>
+            </WrapPanel>
+
+            <TextBlock Text="Gold Overview" Style="{StaticResource SectionTitle}" Margin="0,10,0,10"/>
+            <WrapPanel>
+                <Border Style="{StaticResource CardBorder}" Width="255" Margin="0,0,16,16">
+                    <StackPanel>
+                        <TextBlock Text="TOTAL GOLD IN" Style="{StaticResource CardTitle}"/>
+                        <TextBlock x:Name="TxtGoldIn" Text="0.000 g" Style="{StaticResource CardValue}" Foreground="{StaticResource SuccessBrush}"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource CardBorder}" Width="255" Margin="0,0,16,16">
+                    <StackPanel>
+                        <TextBlock Text="TOTAL GOLD OUT" Style="{StaticResource CardTitle}"/>
+                        <TextBlock x:Name="TxtGoldOut" Text="0.000 g" Style="{StaticResource CardValue}" Foreground="{StaticResource DangerBrush}"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource CardBorder}" Width="255" Margin="0,0,16,16">
+                    <StackPanel>
+                        <TextBlock Text="GOLD BALANCE" Style="{StaticResource CardTitle}"/>
+                        <TextBlock x:Name="TxtGoldBalance" Text="0.000 g" Style="{StaticResource CardValue}" Foreground="{StaticResource GoldDarkBrush}"/>
+                    </StackPanel>
+                </Border>
+            </WrapPanel>
+
+            <TextBlock Text="Karigar Overview" Style="{StaticResource SectionTitle}" Margin="0,10,0,10"/>
+            <WrapPanel>
+                <Border Style="{StaticResource CardBorder}" Width="255" Margin="0,0,16,16">
+                    <StackPanel>
+                        <TextBlock Text="TOTAL KARIGARS" Style="{StaticResource CardTitle}"/>
+                        <TextBlock x:Name="TxtTotalKarigars" Text="0" Style="{StaticResource CardValue}" Foreground="{StaticResource InfoBrush}"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource CardBorder}" Width="255" Margin="0,0,16,16">
+                    <StackPanel>
+                        <TextBlock Text="TOTAL GOLD PAYABLE" Style="{StaticResource CardTitle}"/>
+                        <TextBlock x:Name="TxtGoldPayable" Text="0.000 g" Style="{StaticResource CardValue}" Foreground="{StaticResource DangerBrush}"/>
+                        <TextBlock Text="Shop owes Karigars" Style="{StaticResource PageSubtitle}"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource CardBorder}" Width="255" Margin="0,0,16,16">
+                    <StackPanel>
+                        <TextBlock Text="TOTAL GOLD RECEIVABLE" Style="{StaticResource CardTitle}"/>
+                        <TextBlock x:Name="TxtGoldReceivable" Text="0.000 g" Style="{StaticResource CardValue}" Foreground="{StaticResource SuccessBrush}"/>
+                        <TextBlock Text="Karigars owe Shop" Style="{StaticResource PageSubtitle}"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource CardBorder}" Width="255" Margin="0,0,16,16">
+                    <StackPanel>
+                        <TextBlock Text="TOTAL CASH PAYABLE" Style="{StaticResource CardTitle}"/>
+                        <TextBlock x:Name="TxtCashPayable" Text="0.00" Style="{StaticResource CardValue}" Foreground="{StaticResource DangerBrush}"/>
+                        <TextBlock Text="Shop owes Karigars" Style="{StaticResource PageSubtitle}"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource CardBorder}" Width="255" Margin="0,0,16,16">
+                    <StackPanel>
+                        <TextBlock Text="TOTAL CASH RECEIVABLE" Style="{StaticResource CardTitle}"/>
+                        <TextBlock x:Name="TxtCashReceivable" Text="0.00" Style="{StaticResource CardValue}" Foreground="{StaticResource SuccessBrush}"/>
+                        <TextBlock Text="Karigars owe Shop" Style="{StaticResource PageSubtitle}"/>
+                    </StackPanel>
+                </Border>
+            </WrapPanel>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

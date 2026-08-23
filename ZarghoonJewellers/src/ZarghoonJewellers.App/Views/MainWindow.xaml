@@ -1,0 +1,49 @@
+<Window x:Class="ZarghoonJewellers.App.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Zarghoon Jewellers - Account &amp; Ledger Management"
+        Height="820" Width="1360" MinHeight="640" MinWidth="1080"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource AppBgBrush}"
+        FontFamily="Segoe UI">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="235"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Sidebar -->
+        <Border Grid.Column="0" Background="{StaticResource SidebarBgBrush}">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top" Margin="0,26,0,26">
+                    <TextBlock Text="ZARGHOON" FontSize="20" FontWeight="Bold" Foreground="{StaticResource GoldBrush}"
+                               HorizontalAlignment="Center"/>
+                    <TextBlock Text="JEWELLERS" FontSize="20" FontWeight="Bold" Foreground="White"
+                               HorizontalAlignment="Center" Margin="0,-4,0,0"/>
+                    <TextBlock Text="ACCOUNT &amp; LEDGER MANAGEMENT" FontSize="9" Foreground="{StaticResource SidebarTextBrush}"
+                               HorizontalAlignment="Center" Margin="0,6,0,0"/>
+                </StackPanel>
+
+                <StackPanel DockPanel.Dock="Top">
+                    <Button x:Name="BtnDashboard" Style="{StaticResource SidebarButton}" Content="Dashboard" Click="Nav_Click"/>
+                    <Button x:Name="BtnCashIn" Style="{StaticResource SidebarButton}" Content="Cash In" Click="Nav_Click"/>
+                    <Button x:Name="BtnCashOut" Style="{StaticResource SidebarButton}" Content="Cash Out" Click="Nav_Click"/>
+                    <Button x:Name="BtnGoldIn" Style="{StaticResource SidebarButton}" Content="Gold In" Click="Nav_Click"/>
+                    <Button x:Name="BtnGoldOut" Style="{StaticResource SidebarButton}" Content="Gold Out" Click="Nav_Click"/>
+                    <Button x:Name="BtnKarigarLedger" Style="{StaticResource SidebarButton}" Content="Karigar Ledger" Click="Nav_Click"/>
+                    <Button x:Name="BtnKarigarManagement" Style="{StaticResource SidebarButton}" Content="Karigar Management" Click="Nav_Click"/>
+                    <Button x:Name="BtnReports" Style="{StaticResource SidebarButton}" Content="Reports" Click="Nav_Click"/>
+                    <Button x:Name="BtnSettings" Style="{StaticResource SidebarButton}" Content="Settings" Click="Nav_Click"/>
+                </StackPanel>
+
+                <TextBlock DockPanel.Dock="Bottom" Text="v1.0.0" Foreground="{StaticResource SidebarTextBrush}"
+                           FontSize="10" HorizontalAlignment="Center" Margin="0,0,0,16" Opacity="0.6"/>
+
+                <Grid/>
+            </DockPanel>
+        </Border>
+
+        <!-- Content -->
+        <ContentControl x:Name="MainContent" Grid.Column="1" Margin="0"/>
+    </Grid>
+</Window>

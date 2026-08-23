@@ -1,0 +1,95 @@
+<UserControl x:Class="ZarghoonJewellers.App.Views.ReportsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:ZarghoonJewellers.App.Views">
+    <Grid Margin="32,26,32,26">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,18">
+            <TextBlock Text="Karigar Reports" Style="{StaticResource PageTitle}"/>
+            <TextBlock Text="Gold and cash position of every Karigar" Style="{StaticResource PageSubtitle}"/>
+        </StackPanel>
+
+        <!-- Search + filter + print -->
+        <Grid Grid.Row="1" Margin="0,0,0,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="280"/>
+                <ColumnDefinition Width="16"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="16"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                <TextBlock Text="Search Karigar" Style="{StaticResource FieldLabel}"/>
+                <TextBox x:Name="TxtSearch" Style="{StaticResource InputTextBox}" TextChanged="TxtSearch_TextChanged"/>
+            </StackPanel>
+
+            <local:DateFilterBar Grid.Column="2" x:Name="Filter" FilterChanged="Filter_FilterChanged"/>
+
+            <Button Grid.Column="4" x:Name="BtnPrint" Content="Print A4 Report / Export PDF" Style="{StaticResource PrimaryButton}"
+                    VerticalAlignment="Bottom" Padding="18,10" Click="BtnPrint_Click"
+                    ToolTip="Opens the print dialog. Choose &quot;Microsoft Print to PDF&quot; to save as a PDF file."/>
+        </Grid>
+
+        <TextBlock Grid.Row="2" Text="Grand Totals" Style="{StaticResource SectionTitle}" Margin="0,0,0,10"/>
+        <WrapPanel Grid.Row="3" Margin="0,0,0,16">
+            <Border Style="{StaticResource CardBorder}" Width="230" Margin="0,0,14,14">
+                <StackPanel>
+                    <TextBlock Text="TOTAL GOLD PAYABLE" Style="{StaticResource CardTitle}"/>
+                    <TextBlock x:Name="TxtTotalGoldPayable" Text="0.000 g" Style="{StaticResource CardValue}" FontSize="19" Foreground="{StaticResource DangerBrush}"/>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource CardBorder}" Width="230" Margin="0,0,14,14">
+                <StackPanel>
+                    <TextBlock Text="TOTAL GOLD RECEIVABLE" Style="{StaticResource CardTitle}"/>
+                    <TextBlock x:Name="TxtTotalGoldReceivable" Text="0.000 g" Style="{StaticResource CardValue}" FontSize="19" Foreground="{StaticResource SuccessBrush}"/>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource CardBorder}" Width="230" Margin="0,0,14,14">
+                <StackPanel>
+                    <TextBlock Text="TOTAL NET GOLD" Style="{StaticResource CardTitle}"/>
+                    <TextBlock x:Name="TxtTotalNetGold" Text="0.000 g" Style="{StaticResource CardValue}" FontSize="19" Foreground="{StaticResource GoldDarkBrush}"/>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource CardBorder}" Width="230" Margin="0,0,14,14">
+                <StackPanel>
+                    <TextBlock Text="TOTAL CASH PAYABLE" Style="{StaticResource CardTitle}"/>
+                    <TextBlock x:Name="TxtTotalCashPayable" Text="0.00" Style="{StaticResource CardValue}" FontSize="19" Foreground="{StaticResource DangerBrush}"/>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource CardBorder}" Width="230" Margin="0,0,14,14">
+                <StackPanel>
+                    <TextBlock Text="TOTAL CASH RECEIVABLE" Style="{StaticResource CardTitle}"/>
+                    <TextBlock x:Name="TxtTotalCashReceivable" Text="0.00" Style="{StaticResource CardValue}" FontSize="19" Foreground="{StaticResource SuccessBrush}"/>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource CardBorder}" Width="230" Margin="0,0,14,14">
+                <StackPanel>
+                    <TextBlock Text="TOTAL NET CASH" Style="{StaticResource CardTitle}"/>
+                    <TextBlock x:Name="TxtTotalNetCash" Text="0.00" Style="{StaticResource CardValue}" FontSize="19" Foreground="{StaticResource GoldDarkBrush}"/>
+                </StackPanel>
+            </Border>
+        </WrapPanel>
+
+        <Border Grid.Row="4" Style="{StaticResource CardBorder}" Padding="0">
+            <DataGrid x:Name="SummaryGrid" Style="{StaticResource ProDataGrid}">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Karigar Name" Binding="{Binding KarigarName}" Width="*"/>
+                    <DataGridTextColumn Header="Gold Payable" Binding="{Binding GoldPayable, StringFormat={}{0:N3}}" Width="120"/>
+                    <DataGridTextColumn Header="Gold Receivable" Binding="{Binding GoldReceivable, StringFormat={}{0:N3}}" Width="130"/>
+                    <DataGridTextColumn Header="Net Gold Balance" Binding="{Binding NetGoldBalance, StringFormat={}{0:N3}}" Width="130"/>
+                    <DataGridTextColumn Header="Cash Payable" Binding="{Binding CashPayable, StringFormat={}{0:N2}}" Width="120"/>
+                    <DataGridTextColumn Header="Cash Receivable" Binding="{Binding CashReceivable, StringFormat={}{0:N2}}" Width="130"/>
+                    <DataGridTextColumn Header="Net Cash Balance" Binding="{Binding NetCashBalance, StringFormat={}{0:N2}}" Width="130"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+    </Grid>
+</UserControl>
