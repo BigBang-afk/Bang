@@ -1,0 +1,11 @@
+/.dev_env.sh
+/uploads/products/*
+!/uploads/products/.gitkeep
+/uploads/categories/*
+!/uploads/categories/.gitkeep
+/uploads/banners/*
+!/uploads/banners/.gitkeep
+/uploads/settings/*
+!/uploads/settings/.gitkeep
+*.log
+.DS_Store

@@ -1,0 +1,173 @@
+/* Zarghoon Jewellers - Admin Panel */
+:root {
+    --a-ivory: #F8F5F0;
+    --a-gold: #B08A4A;
+    --a-dark: #111111;
+    --a-text: #292725;
+    --a-light-gold: #E7D6B5;
+    --a-card: #ffffff;
+    --a-border: #e8e3da;
+    --a-sidebar-w: 250px;
+}
+* { box-sizing: border-box; }
+body.admin-body {
+    margin: 0;
+    font-family: 'Jost', 'Helvetica Neue', Arial, sans-serif;
+    background: var(--a-ivory);
+    color: var(--a-text);
+}
+a { text-decoration: none; color: inherit; }
+h1,h2,h3,h4 { font-family: 'Playfair Display', Georgia, serif; margin: 0 0 .4em; color: var(--a-dark); }
+
+.admin-login-wrap {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #111 0%, #2b2620 100%);
+}
+.admin-login-card {
+    background: #fff;
+    padding: 48px;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.3);
+}
+.admin-login-card h1 { text-align: center; font-size: 1.6rem; }
+.admin-login-card .sub { text-align: center; color: #8a8579; margin-bottom: 28px; font-size: .85rem; letter-spacing: .1em; text-transform: uppercase; }
+
+.admin-shell { display: flex; min-height: 100vh; }
+.admin-sidebar {
+    width: var(--a-sidebar-w);
+    background: var(--a-dark);
+    color: #cfcbc3;
+    flex-shrink: 0;
+    padding: 24px 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+}
+.admin-sidebar .brand { padding: 0 24px 24px; border-bottom: 1px solid #2a2a2a; margin-bottom: 16px; }
+.admin-sidebar .brand strong { display: block; color: #fff; font-family: 'Playfair Display', serif; font-size: 1.2rem; }
+.admin-sidebar .brand span { font-size: .68rem; letter-spacing: .2em; color: var(--a-gold); text-transform: uppercase; }
+.admin-nav-group { margin-bottom: 6px; }
+.admin-nav-label { font-size: .68rem; letter-spacing: .12em; text-transform: uppercase; color: #6f6a60; padding: 16px 24px 8px; }
+.admin-sidebar a.nav-link {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 24px;
+    font-size: .9rem;
+    color: #cfcbc3;
+    border-left: 3px solid transparent;
+    transition: all .2s ease;
+}
+.admin-sidebar a.nav-link:hover { background: rgba(255,255,255,.04); color: #fff; }
+.admin-sidebar a.nav-link.active { background: rgba(176,138,74,.15); border-left-color: var(--a-gold); color: #fff; }
+
+.admin-main { flex: 1; min-width: 0; }
+.admin-topbar {
+    background: #fff;
+    border-bottom: 1px solid var(--a-border);
+    padding: 16px 32px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 10;
+}
+.admin-topbar h1 { font-size: 1.3rem; }
+.admin-topbar .who { font-size: .85rem; color: #8a8579; }
+.admin-content { padding: 32px; }
+
+.admin-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 32px; }
+.admin-card {
+    background: var(--a-card);
+    border: 1px solid var(--a-border);
+    border-radius: 10px;
+    padding: 22px;
+}
+.admin-card .label { font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: #8a8579; margin-bottom: 8px; }
+.admin-card .value { font-family: 'Playfair Display', serif; font-size: 1.9rem; color: var(--a-dark); }
+.admin-card .value.gold { color: var(--a-gold); }
+
+.admin-panel {
+    background: var(--a-card);
+    border: 1px solid var(--a-border);
+    border-radius: 10px;
+    padding: 24px;
+    margin-bottom: 24px;
+}
+.admin-panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+.admin-panel-head h2 { font-size: 1.15rem; }
+
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; border-radius: 6px; font-size: .85rem; font-weight: 500; cursor: pointer; border: 1px solid transparent; transition: all .2s ease; }
+.btn-primary { background: var(--a-dark); color: #fff; }
+.btn-primary:hover { background: var(--a-gold); }
+.btn-gold { background: var(--a-gold); color: #fff; }
+.btn-gold:hover { background: #8f6f39; }
+.btn-outline { background: #fff; border-color: var(--a-border); color: var(--a-text); }
+.btn-outline:hover { border-color: var(--a-gold); color: var(--a-gold); }
+.btn-danger { background: #c0392b; color: #fff; }
+.btn-danger:hover { background: #a5301f; }
+.btn-sm { padding: 6px 12px; font-size: .78rem; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+table.data-table { width: 100%; border-collapse: collapse; }
+table.data-table th, table.data-table td { padding: 12px 14px; border-bottom: 1px solid var(--a-border); font-size: .87rem; text-align: left; vertical-align: middle; }
+table.data-table th { background: #faf8f4; text-transform: uppercase; font-size: .72rem; letter-spacing: .05em; color: #8a8579; }
+.table-wrap { overflow-x: auto; }
+table.data-table img.thumb { width: 46px; height: 46px; object-fit: cover; border-radius: 6px; }
+
+.status-pill { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; }
+.status-active, .status-in_stock, .status-completed, .status-confirmed { background: #e6f4ea; color: #256b30; }
+.status-inactive, .status-out_of_stock, .status-cancelled { background: #fbe9e7; color: #a13324; }
+.status-pending { background: #fff6e0; color: #8a6d00; }
+.status-processing, .status-made_to_order { background: #e7effa; color: #24487a; }
+.status-ready { background: #ece3fa; color: #5b3a9c; }
+.status-new { background: #fff6e0; color: #8a6d00; }
+.status-read { background: #e7effa; color: #24487a; }
+.status-replied { background: #e6f4ea; color: #256b30; }
+
+.form-group { margin-bottom: 18px; }
+.form-group label { display: block; margin-bottom: 6px; font-size: .82rem; font-weight: 500; color: var(--a-text); }
+.form-control {
+    width: 100%; padding: 10px 14px; border: 1px solid var(--a-border); border-radius: 6px;
+    font-family: inherit; font-size: .92rem; background: #fff;
+}
+.form-control:focus { outline: none; border-color: var(--a-gold); }
+textarea.form-control { min-height: 100px; resize: vertical; }
+.form-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+.form-row-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.form-help { font-size: .76rem; color: #8a8579; margin-top: 4px; }
+.form-error { font-size: .76rem; color: #c0392b; margin-top: 4px; }
+.checkbox-row { display: flex; align-items: center; gap: 8px; }
+.checkbox-group { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 18px; }
+
+.filters-bar { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; align-items: center; }
+.filters-bar select, .filters-bar input { padding: 9px 12px; border: 1px solid var(--a-border); border-radius: 6px; font-size: .85rem; }
+
+.alert { padding: 14px 18px; border-radius: 8px; margin-bottom: 20px; font-size: .88rem; }
+.alert-success { background: #e6f4ea; color: #256b30; border: 1px solid #bfe4c8; }
+.alert-error { background: #fbe9e7; color: #a13324; border: 1px solid #f3c6bd; }
+.alert-info { background: #f1ece4; color: var(--a-text); border: 1px solid var(--a-light-gold); }
+
+.image-grid { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; }
+.image-grid .img-item { position: relative; width: 110px; }
+.image-grid .img-item img { width: 110px; height: 110px; object-fit: cover; border-radius: 8px; border: 2px solid transparent; }
+.image-grid .img-item.is-main img { border-color: var(--a-gold); }
+.image-grid .img-item .tag { position: absolute; top: 4px; left: 4px; background: var(--a-gold); color: #fff; font-size: .62rem; padding: 2px 6px; border-radius: 4px; }
+.image-grid .img-item .actions { display: flex; gap: 4px; margin-top: 6px; }
+
+.pagination { display: flex; gap: 6px; margin-top: 20px; }
+.pagination a, .pagination span { padding: 8px 13px; border: 1px solid var(--a-border); border-radius: 6px; font-size: .82rem; }
+.pagination .current { background: var(--a-dark); color: #fff; }
+
+.login-error { color: #c0392b; font-size: .85rem; text-align: center; margin-bottom: 14px; }
+
+@media (max-width: 1100px) {
+    .admin-cards { grid-template-columns: repeat(2, 1fr); }
+    .form-row, .form-row-3 { grid-template-columns: 1fr; }
+}
+@media (max-width: 860px) {
+    .admin-shell { flex-direction: column; }
+    .admin-sidebar { width: 100%; height: auto; position: relative; }
+    .admin-cards { grid-template-columns: 1fr; }
+}
