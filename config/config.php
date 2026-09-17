@@ -83,6 +83,19 @@ define('ITEMS_PER_PAGE', 12);        // storefront product grids
 define('ADMIN_ITEMS_PER_PAGE', 20);  // admin panel tables
 
 // ---------------------------------------------------------------
+// Admin security (Phase 2)
+// ---------------------------------------------------------------
+// Admin sessions are force-logged-out after this many seconds of
+// inactivity. Refreshed on every authenticated admin request, so an
+// admin actively using the dashboard is never interrupted.
+define('ADMIN_SESSION_TIMEOUT', 1800); // 30 minutes
+
+// Basic brute-force throttling for admin/login.php. Session-scoped (not
+// a permanent account lock) - see includes/auth.php.
+define('ADMIN_LOGIN_MAX_ATTEMPTS', 5);
+define('ADMIN_LOGIN_LOCKOUT_SECONDS', 60);
+
+// ---------------------------------------------------------------
 // Secure session bootstrap
 // ---------------------------------------------------------------
 if (session_status() === PHP_SESSION_NONE) {

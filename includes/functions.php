@@ -247,6 +247,51 @@ function getGoldRate(string $purity): ?float
     return $rate !== null ? (float) $rate : null;
 }
 
+/**
+ * Returns the current rate + timestamp for every purity that has at
+ * least one recorded rate, keyed by purity (e.g. '24K' => [...]).
+ * Used by the admin dashboard's gold rate widget, which needs the
+ * "last updated" timestamp in addition to the rate itself.
+ */
+function getCurrentGoldRates(): array
+{
+    $rows = dbFetchAll(
+        'SELECT g1.purity, g1.rate, g1.effective_date, g1.created_at
+         FROM gold_rates g1
+         INNER JOIN (
+             SELECT purity, MAX(created_at) AS max_created
+             FROM gold_rates GROUP BY purity
+         ) g2 ON g1.purity = g2.purity AND g1.created_at = g2.max_created
+         ORDER BY FIELD(g1.purity, "24K", "22K", "21K", "18K")'
+    );
+
+    $rates = [];
+    foreach ($rows as $row) {
+        $rates[$row['purity']] = $row;
+    }
+    return $rates;
+}
+
+// ---------------------------------------------------------------
+// Admin dashboard alerts
+// ---------------------------------------------------------------
+
+/**
+ * Returns real, database-backed counts used for the admin dashboard's
+ * "Admin Alerts" panel and the header notification bell:
+ * - pending_orders: orders awaiting confirmation
+ * - unread_messages: contact/enquiry messages not yet read
+ * - new_customers_today: customer accounts registered today
+ */
+function getAdminAlertCounts(): array
+{
+    return [
+        'pending_orders' => (int) dbFetchColumn('SELECT COUNT(*) FROM orders WHERE order_status = "pending"'),
+        'unread_messages' => (int) dbFetchColumn('SELECT COUNT(*) FROM messages WHERE status = "new"'),
+        'new_customers_today' => (int) dbFetchColumn('SELECT COUNT(*) FROM users WHERE DATE(created_at) = CURDATE()'),
+    ];
+}
+
 // ---------------------------------------------------------------
 // Secure image upload
 // ---------------------------------------------------------------

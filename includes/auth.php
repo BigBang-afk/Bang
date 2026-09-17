@@ -116,31 +116,97 @@ function isAdminLoggedIn(): bool
 }
 
 /**
- * Logs an admin in: regenerates the session ID and records the login
- * timestamp.
+ * Logs an admin in: regenerates the session ID (prevents session
+ * fixation), stores the admin's id/username/role in the session, and
+ * records the login timestamp. Pass the full admin row fetched after
+ * password_verify() succeeds.
  */
-function loginAdmin(int $adminId): void
+function loginAdmin(array $admin): void
 {
     session_regenerate_id(true);
-    $_SESSION['admin_id'] = $adminId;
-    dbExecute('UPDATE admins SET last_login = NOW() WHERE id = ?', [$adminId]);
+    $_SESSION['admin_id'] = (int) $admin['id'];
+    $_SESSION['admin_username'] = $admin['username'];
+    $_SESSION['admin_role'] = $admin['role'];
+    $_SESSION['admin_last_activity'] = time();
+    dbExecute('UPDATE admins SET last_login = NOW() WHERE id = ?', [$admin['id']]);
 }
 
+/**
+ * Destroys the admin's authentication data and regenerates the session
+ * ID, without touching any customer session data that may also be
+ * present in the same browser session.
+ */
 function logoutAdmin(): void
 {
-    unset($_SESSION['admin_id']);
+    unset($_SESSION['admin_id'], $_SESSION['admin_username'], $_SESSION['admin_role'], $_SESSION['admin_last_activity']);
     session_regenerate_id(true);
 }
 
 /**
- * Redirects to the admin login page if no admin is logged in. Call this
- * as the first line of every protected admin/*.php page.
+ * Redirects to the admin login page if no admin is logged in, and also
+ * enforces the admin session inactivity timeout (ADMIN_SESSION_TIMEOUT).
+ * Call this as the first line of every protected admin/*.php page.
  */
 function requireAdmin(): void
 {
     if (!isAdminLoggedIn()) {
         redirect(SITE_URL . '/admin/login.php');
     }
+
+    if (!empty($_SESSION['admin_last_activity']) && (time() - $_SESSION['admin_last_activity']) > ADMIN_SESSION_TIMEOUT) {
+        logoutAdmin();
+        if (function_exists('flash')) {
+            flash('error', 'Your session has expired due to inactivity. Please log in again.');
+        }
+        redirect(SITE_URL . '/admin/login.php');
+    }
+
+    // Sliding expiry: any authenticated request resets the inactivity clock,
+    // so an admin actively using the dashboard is never logged out mid-task.
+    $_SESSION['admin_last_activity'] = time();
+}
+
+// ---------------------------------------------------------------
+// Admin login rate limiting (session-scoped brute-force throttling)
+// ---------------------------------------------------------------
+
+/**
+ * Records one failed admin login attempt for the current session.
+ */
+function recordFailedAdminLogin(): void
+{
+    $_SESSION['admin_login_attempts'] = ($_SESSION['admin_login_attempts'] ?? 0) + 1;
+    $_SESSION['admin_login_last_attempt'] = time();
+}
+
+/**
+ * Clears failed-login tracking for the current session (call on success).
+ */
+function resetAdminLoginAttempts(): void
+{
+    unset($_SESSION['admin_login_attempts'], $_SESSION['admin_login_last_attempt']);
+}
+
+/**
+ * True if this session has failed to log in too many times recently.
+ * Not a permanent account lock - it clears itself once
+ * ADMIN_LOGIN_LOCKOUT_SECONDS has passed since the last failed attempt.
+ */
+function isAdminLoginBlocked(): bool
+{
+    $attempts = $_SESSION['admin_login_attempts'] ?? 0;
+    $lastAttempt = $_SESSION['admin_login_last_attempt'] ?? 0;
+
+    if ($attempts < ADMIN_LOGIN_MAX_ATTEMPTS) {
+        return false;
+    }
+
+    if ((time() - $lastAttempt) >= ADMIN_LOGIN_LOCKOUT_SECONDS) {
+        resetAdminLoginAttempts();
+        return false;
+    }
+
+    return true;
 }
 
 /**
