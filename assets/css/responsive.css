@@ -1,0 +1,42 @@
+/* ==========================================================================
+   ZARGHOON JEWELLERS - Responsive Foundation (Phase 1)
+   Base responsive behavior for the foundation elements defined in
+   style.css. Component-specific breakpoints (product grids, header nav
+   collapse, etc.) will be added alongside those components in a later
+   phase. Load this file AFTER style.css.
+   ========================================================================== */
+
+@media (max-width: 1100px) {
+    .container {
+        padding: 0 20px;
+    }
+
+    .section {
+        padding: 56px 0;
+    }
+}
+
+@media (max-width: 768px) {
+    body {
+        font-size: 15px;
+    }
+
+    .section {
+        padding: 44px 0;
+    }
+
+    .section-tight {
+        padding: 32px 0;
+    }
+
+    .btn {
+        padding: 12px 24px;
+        font-size: 0.76rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        padding: 0 16px;
+    }
+}

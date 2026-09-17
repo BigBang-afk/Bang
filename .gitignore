@@ -5,7 +5,7 @@
 !/uploads/categories/.gitkeep
 /uploads/banners/*
 !/uploads/banners/.gitkeep
-/uploads/settings/*
-!/uploads/settings/.gitkeep
+/uploads/logo/*
+!/uploads/logo/.gitkeep
 *.log
 .DS_Store
