@@ -112,6 +112,25 @@
     .homepage-category-grid {
         grid-template-columns: repeat(2, 1fr);
     }
+
+    .site-footer-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .quickview-body {
+        grid-template-columns: 1fr;
+    }
+
+    .quickview-image {
+        aspect-ratio: 16 / 10;
+    }
+
+    /* Touch devices have no hover state to reveal Quick View, so it is
+       shown at rest instead of appearing only on :hover. */
+    .product-card-quickview {
+        opacity: 1;
+        bottom: 12px;
+    }
 }
 
 @media (max-width: 480px) {
@@ -125,12 +144,37 @@
         font-size: 1.3rem;
     }
 
+    /* Spec: 2x2 grid on mobile, not a single column - kept at 2 columns
+       down to the smallest supported width. */
     .features-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+    }
+
+    .feature-card {
+        padding: 16px 8px;
     }
 
     .instagram-grid {
         grid-template-columns: repeat(2, 1fr);
+    }
+
+    .site-footer-grid {
+        grid-template-columns: 1fr;
+        gap: 28px;
+    }
+}
+
+/* ---------------------------------------------------------------------
+   Large-screen refinement (Phase 8, Part 34: 1280 / 1440 / 1920)
+   --------------------------------------------------------------------- */
+@media (min-width: 1440px) {
+    :root {
+        --container-max: 1360px;
+    }
+
+    .hero-slider {
+        height: 680px;
     }
 }
 

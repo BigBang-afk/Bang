@@ -77,7 +77,7 @@ $goldRates = isHomepageSectionActive('gold_rates') ? getCurrentGoldRates() : [];
 <?php endif; ?>
 
 <?php if ($categories): ?>
-<section class="section">
+<section data-reveal class="section">
     <div class="container">
         <div class="section-heading">
             <span class="eyebrow">Shop by Category</span>
@@ -103,7 +103,7 @@ $goldRates = isHomepageSectionActive('gold_rates') ? getCurrentGoldRates() : [];
 <?php endif; ?>
 
 <?php if ($featuredProducts): ?>
-<section class="section">
+<section data-reveal class="section">
     <div class="container">
         <div class="section-heading">
             <span class="eyebrow">Featured Collection</span>
@@ -117,21 +117,25 @@ $goldRates = isHomepageSectionActive('gold_rates') ? getCurrentGoldRates() : [];
 <?php endif; ?>
 
 <?php if (count($bestSellers) > 0): ?>
-<section class="section">
+<section data-reveal class="section">
     <div class="container">
         <div class="section-heading">
             <span class="eyebrow">Customer Favourites</span>
             <h2>Best Sellers</h2>
+            <p class="text-muted">Our most loved pieces.</p>
         </div>
         <div class="product-grid">
             <?php foreach ($bestSellers as $product): include __DIR__ . '/includes/product-card.php'; endforeach; ?>
+        </div>
+        <div style="text-align:center;margin-top:32px;">
+            <a href="<?= SITE_URL ?>/shop.php?sort=featured" class="btn btn-outline">View All</a>
         </div>
     </div>
 </section>
 <?php endif; ?>
 
 <?php $collectionTitle = getSetting('collection_title', ''); if ($collectionTitle || getSetting('collection_image', '')): ?>
-<section class="collection-banner">
+<section data-reveal class="collection-banner">
     <?php $collectionImage = getSetting('collection_image', ''); ?>
     <?php if ($collectionImage): ?>
         <img src="<?= e(BANNERS_UPLOAD_URL . $collectionImage) ?>" alt="<?= e(getSetting('collection_subtitle', '')) ?>" class="collection-banner-image">
@@ -139,6 +143,7 @@ $goldRates = isHomepageSectionActive('gold_rates') ? getCurrentGoldRates() : [];
     <div class="collection-banner-overlay"></div>
     <div class="collection-banner-content">
         <div class="container" style="text-align:center;">
+            <hr class="gold-rule" style="margin:0 auto 20px;">
             <?php if ($collectionTitle): ?><span class="eyebrow" style="color:var(--light-gold);"><?= e($collectionTitle) ?></span><?php endif; ?>
             <?php if (getSetting('collection_subtitle', '')): ?><h2><?= e(getSetting('collection_subtitle', '')) ?></h2><?php endif; ?>
             <?php if (getSetting('collection_description', '')): ?><p><?= e(getSetting('collection_description', '')) ?></p><?php endif; ?>
@@ -151,21 +156,25 @@ $goldRates = isHomepageSectionActive('gold_rates') ? getCurrentGoldRates() : [];
 <?php endif; ?>
 
 <?php if (count($newArrivals) > 0): ?>
-<section class="section">
+<section data-reveal class="section">
     <div class="container">
         <div class="section-heading">
             <span class="eyebrow">Just In</span>
             <h2>New Arrivals</h2>
+            <p class="text-muted">Recently added pieces.</p>
         </div>
         <div class="product-grid">
             <?php foreach ($newArrivals as $product): include __DIR__ . '/includes/product-card.php'; endforeach; ?>
+        </div>
+        <div style="text-align:center;margin-top:32px;">
+            <a href="<?= SITE_URL ?>/shop.php?sort=newest" class="btn btn-outline">View All</a>
         </div>
     </div>
 </section>
 <?php endif; ?>
 
 <?php if ($features): ?>
-<section class="section bg-card">
+<section data-reveal class="section bg-card">
     <div class="container">
         <div class="section-heading">
             <span class="eyebrow">Why Zarghoon</span>
@@ -185,7 +194,7 @@ $goldRates = isHomepageSectionActive('gold_rates') ? getCurrentGoldRates() : [];
 <?php endif; ?>
 
 <?php if ($goldRates): ?>
-<section class="section gold-rate-section">
+<section data-reveal class="section gold-rate-section">
     <div class="container" style="text-align:center;">
         <span class="eyebrow">Today's Gold Rate</span>
         <h2>Live From Zarghoon Jewellers</h2>
@@ -205,7 +214,7 @@ $goldRates = isHomepageSectionActive('gold_rates') ? getCurrentGoldRates() : [];
 <?php endif; ?>
 
 <?php $aboutHeading = getSetting('about_heading', ''); if ($aboutHeading): ?>
-<section class="section about-section">
+<section data-reveal class="section about-section">
     <div class="container about-layout">
         <div class="about-image">
             <?php $aboutImage = getSetting('about_image', ''); ?>
@@ -228,7 +237,7 @@ $goldRates = isHomepageSectionActive('gold_rates') ? getCurrentGoldRates() : [];
 <?php endif; ?>
 
 <?php if ($galleryTiles): ?>
-<section class="section instagram-section">
+<section data-reveal class="section instagram-section">
     <div class="container" style="text-align:center;">
         <span class="eyebrow">Follow Zarghoon Jewellers</span>
         <h2>@<?= e(getSetting('instagram_username', 'zarghoon_jewellers')) ?></h2>
@@ -248,7 +257,7 @@ $goldRates = isHomepageSectionActive('gold_rates') ? getCurrentGoldRates() : [];
 <?php endif; ?>
 
 <?php if (isHomepageSectionActive('newsletter')): ?>
-<section class="section-tight newsletter-section">
+<section data-reveal class="section-tight newsletter-section">
     <div class="container" style="text-align:center;">
         <span class="eyebrow" style="color:var(--light-gold);">Join Our World</span>
         <h2 style="color:var(--white);">Stay Inspired</h2>

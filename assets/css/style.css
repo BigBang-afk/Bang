@@ -19,6 +19,13 @@
     --white: #FFFFFF;
     --border-soft: rgba(17, 17, 17, 0.08);
 
+    /* Phase 8: named aliases matching the brand spec exactly, so new
+       component CSS can reference the spec's own variable names without
+       renaming (and risking breakage of) every existing declaration. */
+    --gold-light: var(--light-gold);
+    --muted: #77716A;
+    --border: var(--border-soft);
+
     /* Typography */
     --font-serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
     --font-sans: 'Jost', 'Helvetica Neue', Arial, sans-serif;
@@ -29,6 +36,23 @@
     --radius-lg: 18px;
     --shadow-soft: 0 10px 30px rgba(17, 17, 17, 0.06);
     --container-max: 1280px;
+
+    /* Phase 8: animation timing scale (spec Part 35) */
+    --ease-fast: 180ms ease;
+    --ease-normal: 300ms ease;
+    --ease-slow: 600ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Respect prefers-reduced-motion globally: collapses every transition/
+   animation duration to near-zero rather than disabling each one by
+   hand, so nothing here needs a parallel "no-motion" variant. */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+    }
 }
 
 /* ---------------------------------------------------------------------
@@ -72,6 +96,50 @@ ol {
     margin: 0;
     padding: 0;
     list-style: none;
+}
+
+/* ---------------------------------------------------------------------
+   Accessibility foundation (Phase 8)
+   --------------------------------------------------------------------- */
+.skip-link {
+    position: absolute;
+    top: -48px;
+    left: 12px;
+    z-index: 3000;
+    background-color: var(--black);
+    color: var(--white);
+    padding: 12px 20px;
+    border-radius: var(--radius-sm);
+    font-size: 0.82rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    transition: top var(--ease-fast);
+}
+
+.skip-link:focus {
+    top: 12px;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }
 
 button,
@@ -296,6 +364,18 @@ p {
     position: sticky;
     top: 0;
     z-index: 500;
+    transition: box-shadow var(--ease-normal);
+}
+
+/* Phase 8: a small scripted class toggle (assets/js/main.js) - a subtle
+   shadow and tighter padding once the page has scrolled, so the header
+   never grows heavy or distracting while still feeling "alive". */
+.site-header.is-scrolled {
+    box-shadow: 0 6px 24px rgba(17, 17, 17, 0.08);
+}
+
+.site-header.is-scrolled .site-header-inner {
+    padding: 12px 0;
 }
 
 .site-header-inner {
@@ -304,6 +384,7 @@ p {
     justify-content: space-between;
     gap: 20px;
     padding: 18px 0;
+    transition: padding var(--ease-normal);
 }
 
 .site-logo {
@@ -356,21 +437,62 @@ p {
     padding: 6px;
 }
 
-.site-account-menu {
+/* Phase 8: the hamburger/menu drawer - a real slide-in panel (not a
+   dropdown), with a dedicated overlay and close button, and body-scroll
+   locked while open (see assets/js/main.js). */
+.site-account-menu-overlay {
     display: none;
-    flex-direction: column;
+    position: fixed;
+    inset: 0;
+    background-color: rgba(17, 17, 17, 0.5);
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity var(--ease-normal);
+}
+
+.site-account-menu-overlay.open {
+    display: block;
+    opacity: 1;
+}
+
+.site-account-menu {
+    position: fixed;
+    top: 0;
+    right: 0;
+    height: 100vh;
+    width: 320px;
+    max-width: 86vw;
     background-color: var(--white);
-    border-top: 1px solid var(--border-soft);
-    padding: 8px 24px 16px;
+    z-index: 1001;
+    display: flex;
+    flex-direction: column;
+    padding: 64px 28px 24px;
+    transform: translateX(100%);
+    transition: transform var(--ease-normal);
+    box-shadow: -12px 0 40px rgba(17, 17, 17, 0.12);
 }
 
 .site-account-menu.open {
-    display: flex;
+    transform: translateX(0);
+}
+
+.site-account-menu-close {
+    position: absolute;
+    top: 18px;
+    right: 20px;
+    background: none;
+    border: none;
+    font-size: 1.6rem;
+    line-height: 1;
+    cursor: pointer;
+    color: var(--black);
+    padding: 6px;
 }
 
 .site-account-menu a {
-    padding: 10px 0;
-    font-size: 0.9rem;
+    padding: 12px 0;
+    font-size: 0.92rem;
+    letter-spacing: 0.03em;
     border-bottom: 1px solid var(--border-soft);
 }
 
@@ -379,7 +501,7 @@ p {
 }
 
 /* ---------------------------------------------------------------------
-   Public site footer (Phase 4)
+   Public site footer (Phase 4, expanded Phase 8)
    --------------------------------------------------------------------- */
 .site-footer {
     background-color: var(--black);
@@ -387,29 +509,44 @@ p {
     margin-top: 48px;
 }
 
-.site-footer-inner {
-    display: flex;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 24px;
-    padding: 48px 0;
+.site-footer-grid {
+    display: grid;
+    grid-template-columns: 1.6fr repeat(4, 1fr);
+    gap: 32px;
+    padding: 56px 0 40px;
 }
 
-.site-footer-inner .site-logo-name {
+.footer-col .site-logo-name {
     color: var(--white);
 }
 
-.site-footer-inner .text-muted {
+.footer-col .text-muted {
     color: #a8a39a;
+    font-size: 0.86rem;
 }
 
-.site-footer-links {
+.footer-col h4 {
+    color: var(--gold-light);
+    font-family: var(--font-sans);
+    font-size: 0.76rem;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+}
+
+.footer-col {
     display: flex;
     flex-direction: column;
     gap: 10px;
 }
 
-.site-footer-links a:hover {
+.footer-col a {
+    color: #cfcbc3;
+    font-size: 0.88rem;
+}
+
+.footer-col a:hover {
     color: var(--gold);
 }
 
@@ -419,6 +556,15 @@ p {
     font-size: 0.78rem;
     text-align: center;
     color: #8a857c;
+}
+
+/* Generic link-list utility, reused outside the footer (e.g. the social
+   row on contact.php) - kept separate from .footer-col so it isn't tied
+   to the footer's dark-background color. */
+.site-footer-links {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 /* ---------------------------------------------------------------------
@@ -1800,4 +1946,246 @@ body.no-scroll {
 
 .contact-info-panel a:hover {
     color: var(--gold-dark);
+}
+
+/* ---------------------------------------------------------------------
+   Hero entrance animation (Phase 8)
+   Text and image both animate in once on load - never looping, never
+   re-triggering on slide change, so it reads as a single editorial
+   "reveal" rather than a distracting effect. Disabled entirely when
+   the OS-level reduced-motion setting is on (see the global rule near
+   the top of this file).
+   --------------------------------------------------------------------- */
+.hero-slide-content .container > * {
+    opacity: 0;
+    transform: translateY(18px);
+    animation: heroFadeUp var(--ease-slow) forwards;
+}
+
+.hero-slide-content .eyebrow { animation-delay: 0.05s; }
+.hero-slide-content h1 { animation-delay: 0.15s; }
+.hero-slide-content p { animation-delay: 0.28s; }
+.hero-slide-content .hero-slide-buttons { animation-delay: 0.4s; }
+
+@keyframes heroFadeUp {
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.hero-slide-media {
+    animation: heroImageScale 8s ease-out forwards;
+}
+
+@keyframes heroImageScale {
+    from { transform: scale(1.06); }
+    to { transform: scale(1); }
+}
+
+/* ---------------------------------------------------------------------
+   Category card hover zoom (Phase 8)
+   --------------------------------------------------------------------- */
+.homepage-category-card img {
+    transition: transform var(--ease-slow);
+}
+
+.homepage-category-card:hover img {
+    transform: scale(1.04);
+}
+
+/* ---------------------------------------------------------------------
+   Quick View trigger + modal (Phase 8, Part 9/32)
+   --------------------------------------------------------------------- */
+.product-card-quickview {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: -44px;
+    background-color: var(--white);
+    color: var(--black);
+    border: none;
+    padding: 11px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity var(--ease-normal), bottom var(--ease-normal);
+    z-index: 3;
+}
+
+.product-card-media:hover .product-card-quickview,
+.product-card-quickview:focus {
+    opacity: 1;
+    bottom: 12px;
+}
+
+.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background-color: rgba(17, 17, 17, 0.6);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.modal-overlay.open {
+    display: flex;
+}
+
+.modal-panel {
+    background-color: var(--white);
+    border-radius: var(--radius-md);
+    max-width: 760px;
+    width: 100%;
+    max-height: 88vh;
+    overflow-y: auto;
+    position: relative;
+    animation: modalPop var(--ease-normal);
+}
+
+@keyframes modalPop {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.modal-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background-color: var(--card);
+    font-size: 1.3rem;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 2;
+}
+
+.quickview-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+}
+
+.quickview-image {
+    aspect-ratio: 4 / 5;
+    background-color: var(--card);
+    overflow: hidden;
+}
+
+.quickview-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.quickview-info {
+    padding: 32px 28px;
+}
+
+.quickview-info h3 {
+    margin-bottom: 6px;
+}
+
+.quickview-info .product-price {
+    font-size: 1.6rem;
+    margin: 12px 0;
+}
+
+/* ---------------------------------------------------------------------
+   Toast notifications (Phase 8)
+   Reuses the existing server-rendered .alert markup (see
+   includes/header.php) but repositions it as a stacked, auto-dismissing
+   corner toast instead of a full-width inline banner - no change to the
+   PRG/flash() flow that produces the message itself.
+   --------------------------------------------------------------------- */
+.toast-stack {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 2500;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 340px;
+}
+
+.toast {
+    background-color: var(--white);
+    border-left: 4px solid var(--gold);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-soft);
+    padding: 14px 18px;
+    font-size: 0.88rem;
+    transform: translateX(120%);
+    animation: toastIn var(--ease-normal) forwards;
+}
+
+.toast.toast-success { border-left-color: #2f8f4e; }
+.toast.toast-error { border-left-color: #c0392b; }
+.toast.toast-info { border-left-color: var(--gold); }
+
+.toast.toast-hide {
+    animation: toastOut var(--ease-fast) forwards;
+}
+
+@keyframes toastIn {
+    to { transform: translateX(0); }
+}
+
+@keyframes toastOut {
+    to { transform: translateX(120%); opacity: 0; }
+}
+
+/* ---------------------------------------------------------------------
+   Scroll reveal (Phase 8) - toggled by IntersectionObserver in main.js.
+   Elements are visible by default (progressive enhancement: JS failing
+   to load must never hide content).
+   --------------------------------------------------------------------- */
+.reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity var(--ease-slow), transform var(--ease-slow);
+}
+
+.reveal.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* ---------------------------------------------------------------------
+   Static content pages (About, FAQ, Privacy, Terms, Shipping - Phase 8)
+   --------------------------------------------------------------------- */
+.content-page h2 {
+    margin-top: 36px;
+}
+
+.content-page p,
+.content-page li {
+    line-height: 1.8;
+    color: var(--text);
+}
+
+.content-page ul,
+.content-page ol {
+    margin: 0 0 1em 1.4em;
+    list-style: disc;
+}
+
+.content-page ol {
+    list-style: decimal;
+}
+
+.faq-item {
+    border-bottom: 1px solid var(--border-soft);
+    padding: 20px 0;
+}
+
+.faq-item h3 {
+    font-size: 1.05rem;
+    margin-bottom: 8px;
 }

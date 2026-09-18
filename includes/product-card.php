@@ -62,6 +62,26 @@ $cardCurrentPath = $_SERVER['REQUEST_URI'] ?? '/shop.php';
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="<?= $cardIsWishlisted ? 'currentColor' : 'none' ?>" stroke="currentColor" stroke-width="1.6"><path d="M12 21s-7.5-4.9-10-9.3C.5 8.1 2.3 4.5 5.8 4c2-.3 3.9.7 5 2.4C11.9 4.7 13.8 3.7 15.8 4c3.5.5 5.3 4.1 3.8 7.7C19.5 16.1 12 21 12 21z"/></svg>
             </button>
         </form>
+
+        <?php
+            // Quick View reads these data-* attributes directly (see
+            // assets/js/main.js) rather than a separate AJAX endpoint -
+            // every value is already public and already on the page, so
+            // there is nothing here a fetch would reveal that view-source
+            // doesn't already.
+        ?>
+        <button type="button" class="product-card-quickview" data-quickview
+            data-name="<?= e($product['name']) ?>"
+            data-url="<?= SITE_URL ?>/product.php?slug=<?= e($product['slug']) ?>"
+            data-image="<?= $primaryImage ? e(PRODUCTS_UPLOAD_URL . $primaryImage) : '' ?>"
+            data-purity="<?= e($product['purity']) ?>"
+            data-weight="<?= rtrim(rtrim(number_format((float) $product['net_weight'], 3), '0'), '.') ?>g"
+            data-price="<?= e(formatPrice($cardPrice)) ?>"
+            data-stock="<?= e($cardStockLabels[$product['stock_status']] ?? $product['stock_status']) ?>"
+            data-in-stock="<?= $product['stock_status'] === 'in_stock' ? '1' : '0' ?>"
+            data-product-id="<?= $cardProductId ?>">
+            Quick View
+        </button>
     </div>
 
     <div class="product-card-body">

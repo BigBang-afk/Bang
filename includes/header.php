@@ -48,6 +48,7 @@ $headerGoldRates = $headerTickerEnabled ? getCurrentGoldRates() : [];
 <link rel="stylesheet" href="<?= SITE_URL ?>/assets/css/responsive.css">
 </head>
 <body>
+<a href="#main-content" class="skip-link">Skip to content</a>
 <?php if ($headerTickerEnabled && $headerGoldRates): ?>
 <div class="site-gold-ticker">
     <div class="container site-gold-ticker-inner">
@@ -70,9 +71,12 @@ $headerGoldRates = $headerTickerEnabled ? getCurrentGoldRates() : [];
             <?php endif; ?>
         </a>
 
-        <nav class="site-nav">
+        <nav class="site-nav" aria-label="Primary">
+            <a href="<?= SITE_URL ?>/" class="site-nav-link">Home</a>
             <a href="<?= SITE_URL ?>/shop.php" class="site-nav-link">Shop</a>
             <a href="<?= SITE_URL ?>/collections.php" class="site-nav-link">Collections</a>
+            <a href="<?= SITE_URL ?>/about.php" class="site-nav-link">About Us</a>
+            <a href="<?= SITE_URL ?>/contact.php" class="site-nav-link">Contact</a>
             <?php if ($headerCurrentUser): ?>
                 <span class="site-nav-hi">Hi, <?= e(explode(' ', trim($headerCurrentUser['full_name']))[0]) ?></span>
                 <a href="<?= SITE_URL ?>/account.php" class="site-nav-link">My Account</a>
@@ -84,15 +88,18 @@ $headerGoldRates = $headerTickerEnabled ? getCurrentGoldRates() : [];
         </nav>
 
         <div class="site-header-icons">
-            <button type="button" class="site-icon-btn" data-search-toggle aria-label="Search">
+            <button type="button" class="site-icon-btn" data-search-toggle aria-label="Search" aria-expanded="false" aria-controls="site-search-panel">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             </button>
-            <a href="<?= SITE_URL ?>/cart.php" class="site-icon-btn" aria-label="Cart">
+            <a href="<?= SITE_URL ?>/wishlist.php" class="site-icon-btn" aria-label="Wishlist">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 21s-7.5-4.9-10-9.3C.5 8.1 2.3 4.5 5.8 4c2-.3 3.9.7 5 2.4C11.9 4.7 13.8 3.7 15.8 4c3.5.5 5.3 4.1 3.8 7.7C19.5 16.1 12 21 12 21z"/></svg>
+            </a>
+            <a href="<?= SITE_URL ?>/cart.php" class="site-icon-btn" aria-label="Cart, <?= $headerCartCount ?> item<?= $headerCartCount === 1 ? '' : 's' ?>">
                 <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>
                 <span class="site-icon-badge"><?= $headerCartCount > 9 ? '9+' : $headerCartCount ?></span>
             </a>
-            <button type="button" class="site-account-icon" data-account-menu-toggle aria-label="Account menu">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+            <button type="button" class="site-account-icon" data-account-menu-toggle aria-label="Open menu" aria-expanded="false" aria-controls="site-account-menu">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="icon-menu"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
             </button>
         </div>
     </div>
@@ -104,12 +111,18 @@ $headerGoldRates = $headerTickerEnabled ? getCurrentGoldRates() : [];
         </form>
     </div>
 
-    <div class="site-account-menu" id="site-account-menu">
+    <div class="site-account-menu-overlay" data-account-menu-close></div>
+    <div class="site-account-menu" id="site-account-menu" role="dialog" aria-modal="true" aria-label="Menu">
+        <button type="button" class="site-account-menu-close" data-account-menu-close aria-label="Close menu">&times;</button>
+        <a href="<?= SITE_URL ?>/">Home</a>
         <a href="<?= SITE_URL ?>/shop.php">Shop</a>
         <a href="<?= SITE_URL ?>/collections.php">Collections</a>
+        <a href="<?= SITE_URL ?>/about.php">About Us</a>
+        <a href="<?= SITE_URL ?>/contact.php">Contact</a>
         <a href="<?= SITE_URL ?>/cart.php">Cart (<?= $headerCartCount ?>)</a>
         <?php if ($headerCurrentUser): ?>
             <a href="<?= SITE_URL ?>/account.php">My Account</a>
+            <a href="<?= SITE_URL ?>/orders.php">My Orders</a>
             <a href="<?= SITE_URL ?>/wishlist.php">Wishlist</a>
             <a href="<?= SITE_URL ?>/logout.php">Logout</a>
         <?php else: ?>
@@ -119,7 +132,7 @@ $headerGoldRates = $headerTickerEnabled ? getCurrentGoldRates() : [];
     </div>
 </header>
 
-<main class="site-main">
+<main class="site-main" id="main-content">
     <?php foreach ((flash() ?: []) as $f): ?>
         <?php $hasAction = !empty($f['action_url']); ?>
         <div class="container">
