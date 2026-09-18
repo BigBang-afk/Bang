@@ -374,8 +374,11 @@ function getCategoryProductCount(int $categoryId): int
  * Core product listing engine with filtering + pagination.
  *
  * $filters supports: category_id, collection_id, purity, featured (bool),
- * best_seller (bool), new_arrival (bool), search (string, matches name or
- * SKU), sort (one of 'newest', 'price_asc', 'price_desc', 'name_asc').
+ * best_seller (bool), new_arrival (bool), price_min/price_max (float),
+ * weight_min/weight_max (float, matches net_weight), stock_status
+ * (array of 'in_stock'/'out_of_stock'/'made_to_order'), search (string,
+ * matches name, SKU, category name, or collection name), sort (one of
+ * 'featured', 'newest', 'price_asc', 'price_desc', 'name_asc', 'name_desc').
  *
  * Returns ['items' => [...], 'total' => int, 'page' => int,
  * 'per_page' => int, 'total_pages' => int].
@@ -406,9 +409,42 @@ function getProducts(array $filters = [], int $page = 1, int $perPage = 0): arra
     if (!empty($filters['new_arrival'])) {
         $where[] = 'new_arrival = 1';
     }
+    if (isset($filters['price_min']) && $filters['price_min'] !== '') {
+        $where[] = 'price >= ?';
+        $params[] = (float) $filters['price_min'];
+    }
+    if (isset($filters['price_max']) && $filters['price_max'] !== '') {
+        $where[] = 'price <= ?';
+        $params[] = (float) $filters['price_max'];
+    }
+    if (isset($filters['weight_min']) && $filters['weight_min'] !== '') {
+        $where[] = 'net_weight >= ?';
+        $params[] = (float) $filters['weight_min'];
+    }
+    if (isset($filters['weight_max']) && $filters['weight_max'] !== '') {
+        $where[] = 'net_weight <= ?';
+        $params[] = (float) $filters['weight_max'];
+    }
+    if (!empty($filters['stock_status']) && is_array($filters['stock_status'])) {
+        $allowedStock = ['in_stock', 'out_of_stock', 'made_to_order'];
+        $stockValues = array_values(array_intersect($filters['stock_status'], $allowedStock));
+        if ($stockValues) {
+            $placeholders = implode(',', array_fill(0, count($stockValues), '?'));
+            $where[] = "stock_status IN ($placeholders)";
+            foreach ($stockValues as $stockValue) {
+                $params[] = $stockValue;
+            }
+        }
+    }
     if (!empty($filters['search'])) {
-        $where[] = '(name LIKE ? OR sku LIKE ?)';
+        // Matches product name/SKU directly, or the name of the product's
+        // own category/collection - all via prepared placeholders.
+        $where[] = '(name LIKE ? OR sku LIKE ?
+            OR EXISTS (SELECT 1 FROM categories c WHERE c.id = products.category_id AND c.name LIKE ?)
+            OR EXISTS (SELECT 1 FROM collections co WHERE co.id = products.collection_id AND co.name LIKE ?))';
         $like = '%' . $filters['search'] . '%';
+        $params[] = $like;
+        $params[] = $like;
         $params[] = $like;
         $params[] = $like;
     }
@@ -418,12 +454,14 @@ function getProducts(array $filters = [], int $page = 1, int $perPage = 0): arra
     // Whitelisted, never built from raw user input - ORDER BY can't be
     // parameterized via PDO placeholders, so this is the injection-safe way.
     $sortOptions = [
+        'featured' => 'featured DESC, created_at DESC',
         'newest' => 'created_at DESC',
         'price_asc' => 'price ASC',
         'price_desc' => 'price DESC',
         'name_asc' => 'name ASC',
+        'name_desc' => 'name DESC',
     ];
-    $orderBySql = $sortOptions[$filters['sort'] ?? 'newest'] ?? $sortOptions['newest'];
+    $orderBySql = $sortOptions[$filters['sort'] ?? 'featured'] ?? $sortOptions['featured'];
 
     $total = (int) dbFetchColumn("SELECT COUNT(*) FROM products $whereSql", $params);
 
@@ -678,4 +716,328 @@ function deleteUploadedImage(?string $filename, string $directory): void
     if (is_file($path)) {
         @unlink($path);
     }
+}
+
+// ---------------------------------------------------------------
+// Public collection data (Phase 5)
+// Mirrors the public category functions above - always scoped to
+// status = "active" so an inactive collection never leaks onto the
+// public site. Admin pages continue to query the collections table
+// directly (see admin/collections.php).
+// ---------------------------------------------------------------
+
+function getActiveCollections(): array
+{
+    return dbFetchAll('SELECT * FROM collections WHERE status = "active" ORDER BY name ASC');
+}
+
+function getCollectionBySlug(string $slug): ?array
+{
+    return dbFetchOne('SELECT * FROM collections WHERE slug = ? AND status = "active" LIMIT 1', [$slug]);
+}
+
+function getCollectionProductCount(int $collectionId): int
+{
+    return (int) dbFetchColumn(
+        'SELECT COUNT(*) FROM products WHERE collection_id = ? AND status = "active"',
+        [$collectionId]
+    );
+}
+
+// ---------------------------------------------------------------
+// Shop filter parsing (Phase 5)
+// ---------------------------------------------------------------
+
+/**
+ * Turns a raw query-string array (normally $_GET) into a clean,
+ * validated $filters array ready to pass to getProducts(). Every value
+ * is checked before use: category/collection slugs are resolved
+ * through the *BySlug() lookups above (so a bogus slug just matches
+ * nothing rather than reaching SQL), purity is checked against the
+ * fixed purity list, numeric ranges are validated with filter_var(),
+ * and stock statuses are intersected against the real enum values -
+ * this is what keeps shop.php/category.php/collections.php from ever
+ * building a query out of unsanitized user input.
+ *
+ * $overrides can force category_slug/collection_slug regardless of
+ * what $get contains, which is how category.php/collections.php lock
+ * their own filter to the page's own category/collection.
+ */
+function buildShopFilters(array $get, array $overrides = []): array
+{
+    $filters = ['search' => trim((string) ($get['search'] ?? ''))];
+
+    $categorySlug = $overrides['category_slug'] ?? ($get['category'] ?? '');
+    if ($categorySlug !== '') {
+        $cat = getCategoryBySlug((string) $categorySlug);
+        if ($cat) {
+            $filters['category_id'] = (int) $cat['id'];
+        }
+    }
+
+    $collectionSlug = $overrides['collection_slug'] ?? ($get['collection'] ?? '');
+    if ($collectionSlug !== '') {
+        $col = getCollectionBySlug((string) $collectionSlug);
+        if ($col) {
+            $filters['collection_id'] = (int) $col['id'];
+        }
+    }
+
+    $purity = $get['purity'] ?? '';
+    if (in_array($purity, ['24K', '22K', '21K', '18K'], true)) {
+        $filters['purity'] = $purity;
+    }
+
+    foreach (['price_min', 'price_max', 'weight_min', 'weight_max'] as $rangeKey) {
+        if (isset($get[$rangeKey]) && $get[$rangeKey] !== '') {
+            $value = filter_var($get[$rangeKey], FILTER_VALIDATE_FLOAT);
+            if ($value !== false && $value >= 0) {
+                $filters[$rangeKey] = $value;
+            }
+        }
+    }
+
+    $stock = $get['stock'] ?? [];
+    if (is_array($stock)) {
+        $stock = array_values(array_intersect($stock, ['in_stock', 'made_to_order']));
+        if ($stock) {
+            $filters['stock_status'] = $stock;
+        }
+    }
+
+    $filters['sort'] = is_string($get['sort'] ?? null) ? $get['sort'] : '';
+
+    return $filters;
+}
+
+/**
+ * Products related to $product by shared category and/or collection,
+ * excluding the product itself, for a "You May Also Like" section.
+ * When the product has both a category and a collection, matches on
+ * both are ranked first.
+ */
+function getRelatedProducts(array $product, int $limit = 4): array
+{
+    $categoryId = $product['category_id'] ? (int) $product['category_id'] : null;
+    $collectionId = $product['collection_id'] ? (int) $product['collection_id'] : null;
+
+    if (!$categoryId && !$collectionId) {
+        return [];
+    }
+
+    $where = ['status = "active"', 'id != ?'];
+    $params = [(int) $product['id']];
+
+    $matchClauses = [];
+    if ($categoryId) {
+        $matchClauses[] = 'category_id = ?';
+        $params[] = $categoryId;
+    }
+    if ($collectionId) {
+        $matchClauses[] = 'collection_id = ?';
+        $params[] = $collectionId;
+    }
+    $where[] = '(' . implode(' OR ', $matchClauses) . ')';
+
+    $whereSql = 'WHERE ' . implode(' AND ', $where);
+    $orderBy = ($categoryId && $collectionId)
+        ? '(category_id = ' . $categoryId . ' AND collection_id = ' . $collectionId . ') DESC, created_at DESC'
+        : 'created_at DESC';
+
+    return dbFetchAll("SELECT * FROM products $whereSql ORDER BY $orderBy LIMIT $limit", $params);
+}
+
+/**
+ * Product ids currently in $userId's wishlist, for quickly checking
+ * "is this product already saved?" while rendering a grid of cards.
+ */
+function getUserWishlistProductIds(int $userId): array
+{
+    return array_map('intval', array_column(
+        dbFetchAll('SELECT product_id FROM wishlists WHERE user_id = ?', [$userId]),
+        'product_id'
+    ));
+}
+
+/**
+ * Adds or removes $productId from $userId's wishlist, whichever the
+ * current state calls for, and returns the new state: true if the
+ * product is now saved, false if it was just removed. INSERT IGNORE
+ * plus the wishlists table's own unique key is a second line of
+ * defense against duplicate rows from a double-submitted click.
+ */
+function toggleWishlistItem(int $userId, int $productId): bool
+{
+    if (userHasWishlistItem($userId, $productId)) {
+        dbExecute('DELETE FROM wishlists WHERE user_id = ? AND product_id = ?', [$userId, $productId]);
+        return false;
+    }
+    dbExecute('INSERT IGNORE INTO wishlists (user_id, product_id) VALUES (?, ?)', [$userId, $productId]);
+    return true;
+}
+
+// ---------------------------------------------------------------
+// Recently viewed products (Phase 5)
+// Stored as a small cookie of product ids (most-recent-first, capped
+// at RECENTLY_VIEWED_LIMIT) rather than a database table: this is a
+// low-value, non-critical convenience for guests and logged-in
+// customers alike, and the cookie holds nothing but public product
+// ids - no personal information.
+// ---------------------------------------------------------------
+
+define('RECENTLY_VIEWED_COOKIE', 'zj_recently_viewed');
+define('RECENTLY_VIEWED_LIMIT', 8);
+
+/**
+ * True when the current request is over HTTPS, used so cookies set
+ * outside config.php's initial session bootstrap (recently-viewed) get
+ * the same Secure-flag treatment as the session cookie itself.
+ */
+function isHttpsRequest(): bool
+{
+    return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+}
+
+function getRecentlyViewedIds(): array
+{
+    $raw = $_COOKIE[RECENTLY_VIEWED_COOKIE] ?? '';
+    $ids = array_filter(array_map('intval', explode(',', $raw)), fn ($id) => $id > 0);
+    return array_slice(array_values($ids), 0, RECENTLY_VIEWED_LIMIT);
+}
+
+function recordRecentlyViewed(int $productId): void
+{
+    $ids = array_values(array_diff(getRecentlyViewedIds(), [$productId]));
+    array_unshift($ids, $productId);
+    $ids = array_slice($ids, 0, RECENTLY_VIEWED_LIMIT);
+
+    $value = implode(',', $ids);
+    setcookie(RECENTLY_VIEWED_COOKIE, $value, [
+        'expires' => time() + 60 * 60 * 24 * 30,
+        'path' => '/',
+        'httponly' => true,
+        'samesite' => 'Lax',
+        'secure' => isHttpsRequest(),
+    ]);
+    $_COOKIE[RECENTLY_VIEWED_COOKIE] = $value; // available immediately within this same request
+}
+
+function getRecentlyViewedProducts(int $excludeId = 0): array
+{
+    $ids = array_values(array_diff(getRecentlyViewedIds(), [$excludeId]));
+    if (!$ids) {
+        return [];
+    }
+
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    $rows = dbFetchAll("SELECT * FROM products WHERE id IN ($placeholders) AND status = \"active\"", $ids);
+
+    $byId = [];
+    foreach ($rows as $row) {
+        $byId[(int) $row['id']] = $row;
+    }
+
+    $ordered = [];
+    foreach ($ids as $id) {
+        if (isset($byId[$id])) {
+            $ordered[] = $byId[$id];
+        }
+    }
+    return $ordered;
+}
+
+// ---------------------------------------------------------------
+// Guest/customer cart (Phase 5)
+// The cart is a session array of [product_id => quantity] only - never
+// a price. Every page that displays the cart calls getCartDetails(),
+// which re-fetches each product from the database and recalculates its
+// price via calculateProductPrice() fresh on every load, so nothing
+// the browser might have cached or tampered with is ever trusted.
+// Works identically for guests and logged-in customers (both use the
+// PHP session), matching the phase's "logged-in users may use the same
+// cart" instruction without needing a separate database table.
+// ---------------------------------------------------------------
+
+function getCart(): array
+{
+    return $_SESSION['cart'] ?? [];
+}
+
+function getCartItemCount(): int
+{
+    $count = 0;
+    foreach (getCart() as $quantity) {
+        $count += (int) $quantity;
+    }
+    return $count;
+}
+
+function addToCart(int $productId, int $quantity = 1): void
+{
+    $quantity = max(1, $quantity);
+    $current = (int) ($_SESSION['cart'][$productId] ?? 0);
+    $_SESSION['cart'][$productId] = min(CART_MAX_QUANTITY_PER_ITEM, $current + $quantity);
+}
+
+function updateCartQuantity(int $productId, int $quantity): void
+{
+    if ($quantity <= 0) {
+        removeFromCart($productId);
+        return;
+    }
+    $_SESSION['cart'][$productId] = min(CART_MAX_QUANTITY_PER_ITEM, $quantity);
+}
+
+function removeFromCart(int $productId): void
+{
+    unset($_SESSION['cart'][$productId]);
+}
+
+/**
+ * Returns cart line items built entirely from LIVE, authoritative
+ * database data - product name/image/stock/pricing are all re-read
+ * here, never taken from the session. Any cart entry whose product no
+ * longer exists or has been deactivated is silently dropped from both
+ * the return value and the session itself.
+ */
+function getCartDetails(): array
+{
+    $cart = getCart();
+    if (!$cart) {
+        return ['items' => [], 'subtotal' => 0.0];
+    }
+
+    $ids = array_map('intval', array_keys($cart));
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    $products = dbFetchAll("SELECT * FROM products WHERE id IN ($placeholders) AND status = 'active'", $ids);
+
+    $items = [];
+    $subtotal = 0.0;
+    $validIds = [];
+
+    foreach ($products as $product) {
+        $quantity = (int) ($cart[$product['id']] ?? 0);
+        if ($quantity < 1) {
+            continue;
+        }
+        $unitPrice = getProductPrice($product);
+        $lineTotal = $unitPrice * $quantity;
+        $subtotal += $lineTotal;
+        $validIds[] = (int) $product['id'];
+        $items[] = [
+            'product' => $product,
+            'quantity' => $quantity,
+            'unit_price' => $unitPrice,
+            'line_total' => $lineTotal,
+        ];
+    }
+
+    foreach (array_keys($cart) as $id) {
+        if (!in_array((int) $id, $validIds, true)) {
+            unset($_SESSION['cart'][$id]);
+        }
+    }
+
+    return ['items' => $items, 'subtotal' => $subtotal];
 }

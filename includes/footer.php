@@ -15,6 +15,8 @@
         </div>
         <div class="site-footer-links">
             <a href="<?= SITE_URL ?>/">Home</a>
+            <a href="<?= SITE_URL ?>/shop.php">Shop</a>
+            <a href="<?= SITE_URL ?>/collections.php">Collections</a>
             <?php if (isLoggedIn()): ?>
                 <a href="<?= SITE_URL ?>/account.php">My Account</a>
                 <a href="<?= SITE_URL ?>/logout.php">Logout</a>
@@ -30,5 +32,6 @@
 </footer>
 
 <script src="<?= SITE_URL ?>/assets/js/main.js"></script>
+<script src="<?= SITE_URL ?>/assets/js/shop.js"></script>
 </body>
 </html>

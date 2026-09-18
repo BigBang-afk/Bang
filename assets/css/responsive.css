@@ -14,6 +14,23 @@
     .section {
         padding: 56px 0;
     }
+
+    .product-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .shop-layout {
+        grid-template-columns: 220px 1fr;
+    }
+
+    .product-detail-layout {
+        grid-template-columns: 1fr 1fr;
+        gap: 28px;
+    }
+
+    .collections-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
 
 @media (max-width: 768px) {
@@ -33,16 +50,74 @@
         padding: 12px 24px;
         font-size: 0.76rem;
     }
+
+    .product-detail-layout {
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+
+    .category-hero-inner {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .cart-row {
+        grid-template-columns: 60px 1fr;
+        row-gap: 10px;
+    }
+
+    .cart-row-qty,
+    .cart-row-total,
+    .cart-row-remove {
+        grid-column: 1 / -1;
+    }
+
+    .cart-row-total {
+        text-align: left;
+    }
+}
+
+@media (max-width: 700px) {
+    .product-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 14px;
+    }
+
+    .collections-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 @media (max-width: 480px) {
     .container {
         padding: 0 16px;
     }
+
+    .shop-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .shop-toolbar-right {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .shop-search-form {
+        max-width: none;
+    }
+
+    .shop-sort-select {
+        width: 100%;
+    }
+
+    .product-cart-form {
+        flex-direction: column;
+    }
 }
 
 /* ---------------------------------------------------------------------
-   Public header / account pages (Phase 4)
+   Public header / account / shop pages (Phase 4-5)
    --------------------------------------------------------------------- */
 @media (max-width: 860px) {
     .site-nav {
@@ -64,6 +139,49 @@
 
     .account-cards {
         grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 900px) {
+    .shop-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .shop-filters {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        width: 300px;
+        max-width: 86vw;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        z-index: 900;
+        overflow-y: auto;
+        border-radius: 0;
+    }
+
+    .shop-filters.open {
+        transform: translateX(0);
+    }
+
+    .shop-filters-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 14px;
+    }
+
+    .shop-filters-overlay.open {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background-color: rgba(17, 17, 17, 0.5);
+        z-index: 850;
+    }
+
+    .shop-filters-toggle {
+        display: inline-flex;
     }
 }
 

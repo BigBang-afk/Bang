@@ -577,3 +577,729 @@ p {
     gap: 12px;
     flex-wrap: wrap;
 }
+
+/* ---------------------------------------------------------------------
+   Header icons: search / cart / account (Phase 5)
+   --------------------------------------------------------------------- */
+.site-header-icons {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.site-icon-btn {
+    position: relative;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--black);
+    padding: 8px;
+    display: inline-flex;
+}
+
+.site-icon-badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background-color: var(--gold);
+    color: var(--white);
+    font-size: 0.6rem;
+    line-height: 1;
+    min-width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 3px;
+}
+
+.site-search-panel {
+    display: none;
+    background-color: var(--white);
+    border-top: 1px solid var(--border-soft);
+    padding: 16px 0;
+}
+
+.site-search-panel.open {
+    display: block;
+}
+
+.site-search-panel form {
+    display: flex;
+    gap: 10px;
+}
+
+.site-search-panel input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.85rem;
+}
+
+body.no-scroll {
+    overflow: hidden;
+}
+
+/* ---------------------------------------------------------------------
+   Breadcrumbs (Phase 5)
+   --------------------------------------------------------------------- */
+.breadcrumbs {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    font-size: 0.8rem;
+    color: #6b6864;
+    padding: 18px 0 0;
+}
+
+.breadcrumbs a:hover {
+    color: var(--gold-dark);
+}
+
+.breadcrumb-current {
+    color: var(--text);
+}
+
+/* ---------------------------------------------------------------------
+   Category / collection landing pages (Phase 5)
+   --------------------------------------------------------------------- */
+.category-hero-inner {
+    display: flex;
+    gap: 28px;
+    align-items: center;
+    padding-top: 20px;
+    flex-wrap: wrap;
+}
+
+.category-hero-image {
+    width: 180px;
+    height: 180px;
+    object-fit: cover;
+    border-radius: var(--radius-md);
+    flex-shrink: 0;
+}
+
+.category-count {
+    color: var(--gold-dark);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 8px;
+}
+
+.collections-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+}
+
+.collection-card {
+    display: block;
+    background-color: var(--white);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    transition: box-shadow 0.25s ease;
+}
+
+.collection-card:hover {
+    box-shadow: var(--shadow-soft);
+}
+
+.collection-card img {
+    width: 100%;
+    height: 220px;
+    object-fit: cover;
+}
+
+.collection-card-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 220px;
+    background-color: var(--card);
+    color: var(--gold);
+}
+
+.collection-card-body {
+    padding: 18px 20px;
+    text-align: center;
+}
+
+.collection-card-count {
+    font-size: 0.78rem;
+    color: var(--gold-dark);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 8px 0 14px;
+}
+
+/* ---------------------------------------------------------------------
+   Shop toolbar / filters / results (Phase 5)
+   --------------------------------------------------------------------- */
+.shop-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.shop-search-form {
+    display: flex;
+    gap: 10px;
+    flex: 1;
+    max-width: 420px;
+}
+
+.shop-search-input {
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.8rem;
+}
+
+.shop-toolbar-right {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.shop-filters-toggle {
+    display: none;
+}
+
+.shop-sort-select {
+    min-width: 210px;
+}
+
+.shop-search-status {
+    margin-bottom: 18px;
+    font-size: 0.92rem;
+}
+
+.shop-clear-search {
+    margin-left: 10px;
+    color: var(--gold-dark);
+    font-weight: 500;
+    text-transform: uppercase;
+    font-size: 0.76rem;
+    letter-spacing: 0.04em;
+}
+
+.shop-result-count {
+    font-size: 0.85rem;
+    color: #6b6864;
+    margin-bottom: 16px;
+}
+
+.shop-layout {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 32px;
+    align-items: start;
+}
+
+.shop-filters {
+    background-color: var(--white);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    padding: 20px;
+}
+
+.shop-filters-head {
+    display: none;
+}
+
+.shop-filters-overlay {
+    display: none;
+}
+
+.filter-group {
+    margin-bottom: 20px;
+}
+
+.filter-group > label {
+    display: block;
+    font-size: 0.76rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+    color: var(--text);
+}
+
+.filter-range {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.filter-range .form-control {
+    padding: 10px 12px;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 56px 20px;
+    color: #6b6864;
+}
+
+.empty-state .icon {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 16px;
+    border-radius: 50%;
+    background-color: var(--card);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gold);
+}
+
+/* ---------------------------------------------------------------------
+   Product grid + card (Phase 5)
+   --------------------------------------------------------------------- */
+.product-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+    /* Without align-content/align-items: start, a grid with only one
+       (short) row - e.g. a "You May Also Like" section with a single
+       related product - stretches that lone row to fill the section's
+       full height by default grid alignment, blowing up the card's
+       aspect-ratio media box. Sizing to content keeps every card the
+       same natural height regardless of how many rows/items exist. */
+    align-content: start;
+    align-items: start;
+}
+
+.product-card {
+    background-color: var(--white);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.product-card:hover {
+    box-shadow: var(--shadow-soft);
+    transform: translateY(-2px);
+}
+
+.product-card-media {
+    position: relative;
+    aspect-ratio: 4 / 5;
+    overflow: hidden;
+    background-color: var(--card);
+}
+
+.product-card-image-link {
+    /* Absolutely positioned (not display:block + height:100%) so this
+       link never participates in normal-flow sizing of its parent -
+       .product-card-media's height comes ONLY from aspect-ratio against
+       its grid-track width. A normal-flow child with a percentage
+       height here created a sizing ambiguity that blew up the card's
+       height whenever it was the only item in its grid row. */
+    position: absolute;
+    inset: 0;
+}
+
+.product-card-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: opacity 0.4s ease, transform 0.5s ease;
+}
+
+.product-card-image.is-secondary {
+    opacity: 0;
+}
+
+.product-card-media:hover .product-card-image.is-primary {
+    opacity: 0;
+}
+
+.product-card-media:hover .product-card-image.is-secondary {
+    opacity: 1;
+}
+
+.product-card-media:hover .product-card-image {
+    transform: scale(1.05);
+}
+
+.product-card-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gold);
+}
+
+.product-card-badges {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    z-index: 2;
+}
+
+.badge {
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 20px;
+    color: var(--white);
+}
+
+.badge-new {
+    background-color: var(--gold);
+}
+
+.badge-bestseller {
+    background-color: var(--black);
+}
+
+.badge-featured {
+    background-color: var(--gold-dark);
+}
+
+.product-card-wishlist {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 2;
+}
+
+.wishlist-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.9);
+    border: 1px solid var(--border-soft);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--black);
+}
+
+.wishlist-btn.is-active {
+    color: #c0392b;
+}
+
+.wishlist-btn:hover {
+    background-color: var(--white);
+}
+
+.product-card-body {
+    padding: 16px 18px 20px;
+    text-align: center;
+}
+
+.product-card-name {
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    margin-bottom: 6px;
+}
+
+.product-card-name a:hover {
+    color: var(--gold-dark);
+}
+
+.product-card-meta {
+    font-size: 0.78rem;
+    color: #6b6864;
+    margin-bottom: 8px;
+}
+
+.product-card-price {
+    font-family: var(--font-serif);
+    font-size: 1.15rem;
+    color: var(--black);
+    margin-bottom: 10px;
+}
+
+.stock-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.68rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+}
+
+.stock-in_stock {
+    background-color: #e6f4ea;
+    color: #256b30;
+}
+
+.stock-out_of_stock {
+    background-color: #fbe9e7;
+    color: #a13324;
+}
+
+.stock-made_to_order {
+    background-color: #e7effa;
+    color: #24487a;
+}
+
+/* ---------------------------------------------------------------------
+   Product detail page (Phase 5)
+   --------------------------------------------------------------------- */
+.product-detail-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+    padding-top: 24px;
+}
+
+.product-gallery-main {
+    aspect-ratio: 4 / 5;
+    background-color: var(--card);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    cursor: zoom-in;
+}
+
+.product-gallery-main img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.product-gallery-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gold);
+}
+
+.product-gallery-thumbs {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+}
+
+.product-gallery-thumbs img {
+    width: 72px;
+    height: 72px;
+    object-fit: cover;
+    border-radius: 6px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    opacity: 0.7;
+    transition: opacity 0.2s ease, border-color 0.2s ease;
+}
+
+.product-gallery-thumbs img.active,
+.product-gallery-thumbs img:hover {
+    opacity: 1;
+    border-color: var(--gold);
+}
+
+.lightbox-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(17, 17, 17, 0.92);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    cursor: zoom-out;
+}
+
+.lightbox-overlay img {
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 6px;
+}
+
+.product-info-badges {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.product-sku {
+    color: #6b6864;
+    font-size: 0.85rem;
+    margin-bottom: 20px;
+}
+
+.product-facts {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px 24px;
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-soft);
+}
+
+.product-facts span {
+    display: block;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #8a8579;
+    margin-bottom: 4px;
+}
+
+.product-gold-rate {
+    font-size: 0.88rem;
+    color: #6b6864;
+    margin-bottom: 14px;
+}
+
+.product-price-breakdown {
+    background-color: var(--card);
+    border-radius: var(--radius-sm);
+    padding: 14px 18px;
+    margin-bottom: 16px;
+    font-size: 0.86rem;
+}
+
+.product-price-breakdown div {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+}
+
+.product-price {
+    font-family: var(--font-serif);
+    font-size: 2rem;
+    color: var(--black);
+    margin-bottom: 8px;
+}
+
+.product-price-disclaimer {
+    font-size: 0.76rem;
+    color: #8a8579;
+    margin-bottom: 18px;
+}
+
+.product-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.product-cart-form {
+    display: flex;
+    gap: 10px;
+}
+
+.product-qty-input {
+    max-width: 90px;
+}
+
+.product-actions .btn.is-active {
+    border-color: #c0392b;
+    color: #c0392b;
+}
+
+.product-description {
+    padding: 40px 0;
+    border-top: 1px solid var(--border-soft);
+    margin-top: 40px;
+}
+
+.section-heading {
+    text-align: center;
+    margin-bottom: 28px;
+}
+
+/* ---------------------------------------------------------------------
+   Cart page (Phase 5)
+   --------------------------------------------------------------------- */
+.cart-table {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 28px;
+}
+
+.cart-row {
+    display: grid;
+    grid-template-columns: 80px 1fr 170px 120px auto;
+    gap: 16px;
+    align-items: center;
+    background-color: var(--white);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    padding: 14px 18px;
+}
+
+.cart-row-image img,
+.cart-row-image .product-card-placeholder {
+    width: 70px;
+    height: 70px;
+    object-fit: cover;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--card);
+    color: var(--gold);
+}
+
+.cart-row-info a {
+    font-weight: 500;
+}
+
+.cart-row-qty {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.cart-row-qty input {
+    width: 70px;
+    padding: 8px 10px;
+}
+
+.cart-row-total {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    text-align: right;
+}
+
+.cart-summary {
+    max-width: 380px;
+    margin-left: auto;
+    background-color: var(--card);
+    border-radius: var(--radius-md);
+    padding: 24px;
+}
+
+.cart-summary-total {
+    display: flex;
+    justify-content: space-between;
+    font-size: 1.1rem;
+    margin-bottom: 14px;
+}
+
+.cart-summary .btn {
+    margin-bottom: 10px;
+}
+
+.btn:disabled,
+.btn[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

@@ -81,8 +81,16 @@ define('MAX_IMAGE_DIMENSION', 4000); // px, guards against decompression-bomb st
 // ---------------------------------------------------------------
 // Pagination
 // ---------------------------------------------------------------
-define('ITEMS_PER_PAGE', 12);        // storefront product grids
+define('ITEMS_PER_PAGE', 20);        // storefront product grids (Phase 5 spec: 20 per page)
 define('ADMIN_ITEMS_PER_PAGE', 20);  // admin panel tables
+
+// ---------------------------------------------------------------
+// Shop / cart (Phase 5)
+// ---------------------------------------------------------------
+// Upper bound on how many of one product a single cart line can hold -
+// a sanity cap, not a real stock-quantity system (products only track
+// in_stock/out_of_stock/made_to_order, not numeric stock counts).
+define('CART_MAX_QUANTITY_PER_ITEM', 20);
 
 // ---------------------------------------------------------------
 // Admin security (Phase 2)

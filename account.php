@@ -18,7 +18,7 @@ require __DIR__ . '/includes/header.php';
             <aside class="account-nav">
                 <a href="<?= SITE_URL ?>/account.php" class="account-nav-link active">Profile</a>
                 <span class="account-nav-link is-disabled" title="Coming soon">Orders</span>
-                <span class="account-nav-link is-disabled" title="Coming soon">Wishlist</span>
+                <a href="<?= SITE_URL ?>/wishlist.php" class="account-nav-link">Wishlist</a>
                 <a href="<?= SITE_URL ?>/account-edit.php" class="account-nav-link">Settings</a>
             </aside>
 
@@ -34,10 +34,10 @@ require __DIR__ . '/includes/header.php';
                         <p class="text-muted">Order history is coming in a later phase.</p>
                         <span class="tag-coming-soon">Coming Soon</span>
                     </div>
-                    <div class="account-card is-disabled" id="wishlist">
+                    <div class="account-card">
                         <h3>My Wishlist</h3>
-                        <p class="text-muted">Saved items will appear here once the shop is live.</p>
-                        <span class="tag-coming-soon">Coming Soon</span>
+                        <p class="text-muted">View the pieces you've saved for later.</p>
+                        <a href="<?= SITE_URL ?>/wishlist.php" class="btn btn-outline btn-sm">View Wishlist</a>
                     </div>
                     <div class="account-card is-disabled">
                         <h3>My Enquiries</h3>
