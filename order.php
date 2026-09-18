@@ -1,15 +1,15 @@
 <?php
 require_once __DIR__ . '/includes/functions.php';
-requireLogin();
 
 $id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
-$user = getCurrentUser();
 
-// getCustomerOrder() scopes the query to `id = ? AND user_id = ?` - a
-// non-owned or non-existent order id both simply return null here, so
-// there is no way to distinguish "not yours" from "doesn't exist"
-// (this is what makes it IDOR-safe).
-$order = $id ? getCustomerOrder($id, (int) $user['id']) : null;
+// getViewableOrder() scopes access to either the logged-in owner
+// (id = ? AND user_id = ?) or, for a guest, an order this exact browser
+// session placed AND that the database confirms has no owner - a
+// non-owned, non-guest, or non-existent order id all simply return
+// null here, indistinguishable from one another (this is what makes it
+// IDOR-safe for both registered customers and guests).
+$order = $id ? getViewableOrder($id) : null;
 
 if (!$order) {
     http_response_code(404);
@@ -19,6 +19,11 @@ if (!$order) {
 
 $items = getOrderItems($order['id']);
 $statusLabels = getOrderStatusOptions();
+$paymentLabels = getPaymentMethodOptions();
+
+$whatsappNumber = getSetting('whatsapp_number', '');
+$whatsappConfigured = $whatsappNumber !== '' && $whatsappNumber !== 'CHANGE_ME';
+$whatsappLink = $whatsappConfigured ? buildOrderWhatsAppLink($order) : null;
 
 $pageTitle = 'Order ' . $order['order_number'];
 require __DIR__ . '/includes/header.php';
@@ -34,7 +39,7 @@ require __DIR__ . '/includes/header.php';
             <div class="admin-panel">
                 <h3>Order Status</h3>
                 <p><span class="stock-badge stock-<?= $order['order_status'] === 'cancelled' ? 'out_of_stock' : ($order['order_status'] === 'completed' ? 'in_stock' : 'made_to_order') ?>"><?= e($statusLabels[$order['order_status']] ?? $order['order_status']) ?></span></p>
-                <p><strong>Payment Method:</strong> <?= e(ucwords(str_replace('_', ' ', $order['payment_method']))) ?></p>
+                <p><strong>Payment Method:</strong> <?= e($paymentLabels[$order['payment_method']] ?? ucwords(str_replace('_', ' ', $order['payment_method']))) ?></p>
             </div>
             <div class="admin-panel">
                 <h3>Delivery Information</h3>
@@ -74,7 +79,17 @@ require __DIR__ . '/includes/header.php';
             </div>
         </div>
 
-        <a href="<?= SITE_URL ?>/orders.php" class="btn btn-outline">&larr; Back to My Orders</a>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <a href="<?= SITE_URL ?>/order-print.php?id=<?= (int) $order['id'] ?>" target="_blank" class="btn btn-outline">Print Order</a>
+            <?php if ($whatsappConfigured): ?>
+                <a href="<?= e($whatsappLink) ?>" target="_blank" rel="noopener" class="btn btn-gold">Contact Zarghoon</a>
+            <?php endif; ?>
+            <?php if (isLoggedIn()): ?>
+                <a href="<?= SITE_URL ?>/orders.php" class="btn btn-outline">&larr; Back to My Orders</a>
+            <?php else: ?>
+                <a href="<?= SITE_URL ?>/shop.php" class="btn btn-outline">&larr; Continue Shopping</a>
+            <?php endif; ?>
+        </div>
     </div>
 </section>
 <?php require __DIR__ . '/includes/footer.php'; ?>

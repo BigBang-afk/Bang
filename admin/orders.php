@@ -3,10 +3,12 @@ require_once __DIR__ . '/../includes/functions.php';
 requireAdmin();
 
 $statusLabels = getOrderStatusOptions();
+$paymentLabels = getPaymentMethodOptions();
 
 $search = trim($_GET['q'] ?? '');
 $status = $_GET['status'] ?? '';
 $date = $_GET['date'] ?? '';
+$payment = $_GET['payment'] ?? '';
 
 $where = [];
 $params = [];
@@ -26,8 +28,26 @@ if ($date !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
     $where[] = 'DATE(created_at) = ?';
     $params[] = $date;
 }
+if ($payment !== '' && isset($paymentLabels[$payment])) {
+    $where[] = 'payment_method = ?';
+    $params[] = $payment;
+}
 
 $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+
+// Whitelisted sort options - never built from raw user input, since ORDER
+// BY can't be parameterized via PDO placeholders.
+$sortOptions = [
+    'newest' => 'created_at DESC',
+    'oldest' => 'created_at ASC',
+    'total_desc' => 'total DESC',
+    'total_asc' => 'total ASC',
+];
+$sort = $_GET['sort'] ?? 'newest';
+if (!isset($sortOptions[$sort])) {
+    $sort = 'newest';
+}
+$orderBySql = $sortOptions[$sort];
 
 $page = max(1, (int) ($_GET['page'] ?? 1));
 $perPage = ADMIN_ITEMS_PER_PAGE;
@@ -37,7 +57,7 @@ $page = min($page, $totalPages);
 $offset = ($page - 1) * $perPage;
 
 $orders = dbFetchAll(
-    "SELECT * FROM orders $whereSql ORDER BY created_at DESC LIMIT $perPage OFFSET $offset",
+    "SELECT * FROM orders $whereSql ORDER BY $orderBySql LIMIT $perPage OFFSET $offset",
     $params
 );
 
@@ -65,6 +85,18 @@ require __DIR__ . '/../includes/admin-header.php';
             <?php endforeach; ?>
         </select>
         <input type="date" name="date" class="form-control" value="<?= e($date) ?>">
+        <select name="payment" class="form-control">
+            <option value="">All Payment Methods</option>
+            <?php foreach ($paymentLabels as $val => $label): ?>
+                <option value="<?= $val ?>" <?= $payment === $val ? 'selected' : '' ?>><?= e($label) ?></option>
+            <?php endforeach; ?>
+        </select>
+        <select name="sort" class="form-control">
+            <option value="newest" <?= $sort === 'newest' ? 'selected' : '' ?>>Newest First</option>
+            <option value="oldest" <?= $sort === 'oldest' ? 'selected' : '' ?>>Oldest First</option>
+            <option value="total_desc" <?= $sort === 'total_desc' ? 'selected' : '' ?>>Highest Total</option>
+            <option value="total_asc" <?= $sort === 'total_asc' ? 'selected' : '' ?>>Lowest Total</option>
+        </select>
         <button type="submit" class="btn btn-outline btn-sm">Filter</button>
         <a href="<?= SITE_URL ?>/admin/orders.php" class="btn btn-outline btn-sm">Reset</a>
     </form>
@@ -72,21 +104,22 @@ require __DIR__ . '/../includes/admin-header.php';
     <?php if (!$orders): ?>
         <div class="empty-state">
             <div class="icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 2h9l3 3v17H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></div>
-            <p><?= ($search !== '' || $status !== '' || $date !== '') ? 'No orders match your filters.' : 'No orders have been placed yet.' ?></p>
+            <p><?= ($search !== '' || $status !== '' || $date !== '' || $payment !== '') ? 'No orders match your filters.' : 'No orders have been placed yet.' ?></p>
         </div>
     <?php else: ?>
         <div class="table-responsive">
             <table class="data-table">
-                <thead><tr><th>Order #</th><th>Customer</th><th>Mobile</th><th>Date</th><th>Total</th><th>Payment</th><th>Status</th><th>Actions</th></tr></thead>
+                <thead><tr><th>Order #</th><th>Customer</th><th>Type</th><th>Mobile</th><th>Date</th><th>Total</th><th>Payment</th><th>Status</th><th>Actions</th></tr></thead>
                 <tbody>
                 <?php foreach ($orders as $o): ?>
                     <tr>
                         <td><?= e($o['order_number']) ?></td>
                         <td><?= e($o['customer_name']) ?></td>
+                        <td><span class="tag-coming-soon"><?= $o['user_id'] ? 'Registered' : 'Guest' ?></span></td>
                         <td><?= e($o['mobile']) ?></td>
                         <td><?= date('d M Y', strtotime($o['created_at'])) ?></td>
                         <td><?= formatPrice((float) $o['total']) ?></td>
-                        <td><?= e(ucwords(str_replace('_', ' ', $o['payment_method']))) ?></td>
+                        <td><?= e($paymentLabels[$o['payment_method']] ?? ucwords(str_replace('_', ' ', $o['payment_method']))) ?></td>
                         <td><span class="status-pill status-<?= e($o['order_status']) ?>"><?= e($statusLabels[$o['order_status']] ?? $o['order_status']) ?></span></td>
                         <td style="white-space:nowrap;">
                             <a href="<?= SITE_URL ?>/admin/order-view.php?id=<?= (int) $o['id'] ?>" class="btn btn-outline btn-sm">View</a>

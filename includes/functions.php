@@ -1101,6 +1101,22 @@ function getOrderStatusOptions(): array
 }
 
 /**
+ * The whitelisted set of payment methods (matches the orders.payment_method
+ * ENUM exactly). No online gateway is integrated this phase - these are all
+ * "pay outside the checkout flow" options, and nothing here ever claims a
+ * payment has actually been completed.
+ */
+function getPaymentMethodOptions(): array
+{
+    return [
+        'cash_on_delivery' => 'Cash on Delivery',
+        'bank_transfer' => 'Bank Transfer',
+        'store_pickup' => 'Store Pickup',
+        'pay_at_store' => 'Pay at Store',
+    ];
+}
+
+/**
  * Generates an order number via the existing Phase 1 generateOrderNumber()
  * (date + random suffix - never relies on the timestamp alone), retrying
  * on the rare chance of a collision until it is confirmed unique against
@@ -1142,4 +1158,48 @@ function getCustomerOrderCounts(int $userId): array
         'pending' => (int) dbFetchColumn('SELECT COUNT(*) FROM orders WHERE user_id = ? AND order_status = "pending"', [$userId]),
         'completed' => (int) dbFetchColumn('SELECT COUNT(*) FROM orders WHERE user_id = ? AND order_status = "completed"', [$userId]),
     ];
+}
+
+// ---------------------------------------------------------------
+// Guest order access (Phase 6)
+// Guest checkout creates an order with user_id = NULL. Rather than
+// exposing guest orders by a guessable/leakable URL token, access is
+// granted only to the browser session that actually placed the order:
+// checkout.php records the new order id in $_SESSION['guest_orders'],
+// and every guest-facing order page below requires BOTH that session
+// marker AND a fresh database check that the order truly has no owner -
+// so a tampered session value can never expose a registered customer's
+// order.
+// ---------------------------------------------------------------
+
+function rememberGuestOrder(int $orderId): void
+{
+    $_SESSION['guest_orders'][] = $orderId;
+}
+
+function canGuestAccessOrder(int $orderId): bool
+{
+    $guestOrders = array_map('intval', $_SESSION['guest_orders'] ?? []);
+    return in_array($orderId, $guestOrders, true);
+}
+
+/**
+ * The single access-controlled lookup every customer-facing order page
+ * (order.php, order-success.php, order-print.php) should use: returns
+ * the order if the CURRENT VISITOR - logged-in customer or the guest who
+ * placed it in this browser session - is allowed to see it, or null
+ * otherwise (never distinguishable from "doesn't exist").
+ */
+function getViewableOrder(int $orderId): ?array
+{
+    if (isLoggedIn()) {
+        $user = getCurrentUser();
+        return getCustomerOrder($orderId, (int) $user['id']);
+    }
+
+    if (!canGuestAccessOrder($orderId)) {
+        return null;
+    }
+
+    return dbFetchOne('SELECT * FROM orders WHERE id = ? AND user_id IS NULL LIMIT 1', [$orderId]);
 }

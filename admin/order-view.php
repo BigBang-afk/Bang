@@ -15,6 +15,7 @@ if (!$order) {
 }
 
 $statusOptions = getOrderStatusOptions();
+$paymentLabels = getPaymentMethodOptions();
 $admin = getCurrentAdmin();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -95,6 +96,7 @@ require __DIR__ . '/../includes/admin-header.php';
     <div class="admin-panel">
         <div class="admin-panel-head"><h2>Customer</h2></div>
         <p><strong>Name:</strong> <?= e($order['customer_name']) ?></p>
+        <p><strong>Account Type:</strong> <?= $order['user_id'] ? 'Registered Customer' : 'Guest Order' ?></p>
         <p><strong>Mobile:</strong> <?= e($order['mobile']) ?></p>
         <p><strong>Email:</strong> <?= e($order['email'] ?: '-') ?></p>
         <p><strong>Address:</strong> <?= e($order['address']) ?>, <?= e($order['city']) ?></p>
@@ -103,7 +105,7 @@ require __DIR__ . '/../includes/admin-header.php';
     <div class="admin-panel">
         <div class="admin-panel-head"><h2>Order Summary</h2></div>
         <p><strong>Status:</strong> <span class="status-pill status-<?= e($order['order_status']) ?>"><?= e($statusOptions[$order['order_status']] ?? $order['order_status']) ?></span></p>
-        <p><strong>Payment Method:</strong> <?= e(ucwords(str_replace('_', ' ', $order['payment_method']))) ?></p>
+        <p><strong>Payment Method:</strong> <?= e($paymentLabels[$order['payment_method']] ?? ucwords(str_replace('_', ' ', $order['payment_method']))) ?></p>
         <p><strong>Placed:</strong> <?= date('d M Y, H:i', strtotime($order['created_at'])) ?></p>
         <p><strong>Subtotal:</strong> <?= formatPrice((float) $order['subtotal']) ?></p>
         <p><strong>Discount:</strong> <?= formatPrice((float) $order['discount']) ?></p>

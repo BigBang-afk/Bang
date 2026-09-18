@@ -8,51 +8,45 @@ if (!$cart['items']) {
     redirect(SITE_URL . '/cart.php');
 }
 
-if (!isLoggedIn()) {
-    // Preserve exactly where the customer was headed, the same way
-    // requireLogin() does, so they land back on checkout right after
-    // logging in (or registering, which itself redirects through login.php).
-    $_SESSION['redirect_after_login'] = '/checkout.php';
-
-    $pageTitle = 'Checkout';
-    require __DIR__ . '/includes/header.php';
-    ?>
-    <section class="section auth-section">
-        <div class="container auth-container">
-            <div class="auth-card" style="text-align:center;">
-                <span class="eyebrow">Checkout</span>
-                <h1>Almost There</h1>
-                <p class="text-muted">Please login or create an account to continue.</p>
-                <div style="display:flex;gap:12px;justify-content:center;margin-top:20px;flex-wrap:wrap;">
-                    <a href="<?= SITE_URL ?>/login.php" class="btn btn-primary">Login</a>
-                    <a href="<?= SITE_URL ?>/register.php" class="btn btn-outline">Create Account</a>
-                </div>
-            </div>
-        </div>
-    </section>
-    <?php require __DIR__ . '/includes/footer.php'; ?>
-    <?php
-    exit;
-}
-
-$user = getCurrentUser();
+// Guest checkout is supported (see Part 3 of the spec): a visitor is never
+// forced to log in to place an order. Logged-in customers still get their
+// saved details pre-filled below; guests simply see blank fields. No
+// customer account is ever created as a side effect of a guest order.
+$currentUser = getCurrentUser();
 $errors = [];
 
-$fullName = $user['full_name'];
-$mobile = $user['mobile'];
-$email = $user['email'] ?? '';
+$fullName = $currentUser['full_name'] ?? '';
+$mobile = $currentUser['mobile'] ?? '';
+$email = $currentUser['email'] ?? '';
 $address = '';
 $city = '';
 $notes = '';
 $paymentMethod = 'cash_on_delivery';
 
-// Only one payment option exists this phase - kept as a whitelist array
-// (rather than a hard-coded single value) so a future phase can add
-// bank_transfer/online payment options without restructuring this check.
-$allowedPaymentMethods = ['cash_on_delivery' => 'Cash / Pay on Confirmation'];
+$paymentMethods = getPaymentMethodOptions();
+
+// A one-time token, separate from the CSRF token, that guards against a
+// double-click on "Place Order" or a browser "resend form data" replay
+// creating two orders from a single checkout: it is generated once per
+// GET render of this page and consumed (unset) the instant a POST is
+// accepted for processing, so a second submission with the same token
+// is rejected outright rather than placing a second order.
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    $_SESSION['checkout_token'] = bin2hex(random_bytes(16));
+}
+$checkoutToken = $_SESSION['checkout_token'] ?? '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     requireCsrf();
+
+    $submittedToken = $_POST['checkout_token'] ?? '';
+    $expectedToken = $_SESSION['checkout_token'] ?? null;
+
+    if ($expectedToken === null || !hash_equals($expectedToken, $submittedToken)) {
+        flash('info', 'This checkout may have already been submitted. Please check My Orders, or review your bag and try again.');
+        redirect(SITE_URL . '/cart.php');
+    }
+    unset($_SESSION['checkout_token']); // one-time use, consumed immediately
 
     $fullName = trim($_POST['full_name'] ?? '');
     $mobileInput = trim($_POST['mobile'] ?? '');
@@ -96,7 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Order notes must be 1000 characters or fewer.';
     }
 
-    if (!array_key_exists($paymentMethod, $allowedPaymentMethods)) {
+    if (!array_key_exists($paymentMethod, $paymentMethods)) {
         $errors[] = 'Please select a valid payment method.';
     }
 
@@ -104,20 +98,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // changed (or emptied) since the page was first loaded.
     $cart = getCartDetails();
     if (!$cart['items']) {
-        flash('error', 'Your bag is empty.');
+        flash('error', 'Your cart is empty.');
         redirect(SITE_URL . '/cart.php');
     }
 
     if (!$errors) {
+        $userId = $currentUser['id'] ?? null;
+
         try {
-            $orderId = dbTransaction(function () use ($user, $fullName, $normalizedMobile, $email, $address, $city, $notes, $paymentMethod) {
+            $orderId = dbTransaction(function () use ($userId, $fullName, $normalizedMobile, $email, $address, $city, $notes, $paymentMethod) {
                 // Re-read the cart from the session and lock each product
                 // row for the duration of this transaction, so a
                 // concurrent admin edit (e.g. marking something out of
                 // stock) can't race with this checkout.
                 $sessionCart = getCart();
                 if (!$sessionCart) {
-                    throw new RuntimeException('Your bag is empty.');
+                    throw new RuntimeException('Your cart is empty.');
                 }
 
                 $subtotal = 0.0;
@@ -133,10 +129,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     $product = dbFetchOne('SELECT * FROM products WHERE id = ? FOR UPDATE', [(int) $productId]);
                     if (!$product || $product['status'] !== 'active') {
-                        throw new RuntimeException('One of the items in your bag is no longer available. Please review your bag and try again.');
+                        throw new RuntimeException('One or more items are no longer available. Please review your cart.');
                     }
                     if ($product['stock_status'] !== 'in_stock') {
-                        throw new RuntimeException('"' . $product['name'] . '" is no longer available for purchase. Please remove it from your bag and try again.');
+                        throw new RuntimeException('One or more items are no longer available. Please review your cart.');
                     }
 
                     $breakdown = calculateProductPrice($product);
@@ -161,7 +157,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 if (!$orderItemRows) {
-                    throw new RuntimeException('Your bag is empty.');
+                    throw new RuntimeException('Your cart is empty.');
                 }
 
                 $orderNumber = generateUniqueOrderNumber();
@@ -171,7 +167,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         subtotal, discount, total, payment_method, order_status)
                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "pending")',
                     [
-                        $user['id'], $orderNumber, $fullName, $normalizedMobile, $email !== '' ? $email : null,
+                        $userId, $orderNumber, $fullName, $normalizedMobile, $email !== '' ? $email : null,
                         $address, $city, $notes !== '' ? $notes : null,
                         round($subtotal, 2), round($discountTotal, 2), round($grandTotal, 2), $paymentMethod,
                     ]
@@ -201,6 +197,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Only clear the bag once the order has actually committed.
             $_SESSION['cart'] = [];
 
+            if (!$userId) {
+                rememberGuestOrder($orderId);
+            }
+
             flash('success', 'Your order has been placed successfully.');
             redirect(SITE_URL . '/order-success.php?id=' . $orderId);
         } catch (Throwable $e) {
@@ -208,6 +208,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = ($e instanceof RuntimeException) ? $e->getMessage() : 'Something went wrong while placing your order. Please try again.';
         }
     }
+
+    // A fresh token is needed to redisplay the form after a validation
+    // failure, since the one that was submitted has already been consumed.
+    $_SESSION['checkout_token'] = bin2hex(random_bytes(16));
+    $checkoutToken = $_SESSION['checkout_token'];
 
     // Re-fetch the bag for display alongside the validation errors below.
     $cart = getCartDetails();
@@ -225,6 +230,12 @@ require __DIR__ . '/includes/header.php';
     <div class="container">
         <div class="account-heading"><h1>Checkout</h1></div>
 
+        <?php if (!$currentUser): ?>
+            <div class="alert alert-info">
+                Checking out as a guest. Already have an account? <a href="<?= SITE_URL ?>/login.php" style="text-decoration:underline;">Login</a> for faster checkout and to track your orders.
+            </div>
+        <?php endif; ?>
+
         <?php foreach ($errors as $err): ?><div class="alert alert-error"><?= e($err) ?></div><?php endforeach; ?>
 
         <div class="checkout-layout">
@@ -232,6 +243,7 @@ require __DIR__ . '/includes/header.php';
                 <h3>Delivery Information</h3>
                 <form method="post" action="">
                     <?= csrfField() ?>
+                    <input type="hidden" name="checkout_token" value="<?= e($checkoutToken) ?>">
                     <div class="form-row">
                         <div class="form-group">
                             <label for="full_name">Full Name</label>
@@ -261,11 +273,11 @@ require __DIR__ . '/includes/header.php';
 
                     <div class="form-section-title">Payment Method</div>
                     <div class="checkbox-group">
-                        <?php foreach ($allowedPaymentMethods as $value => $label): ?>
+                        <?php foreach ($paymentMethods as $value => $label): ?>
                             <label class="checkbox-row"><input type="radio" name="payment_method" value="<?= e($value) ?>" <?= $paymentMethod === $value ? 'checked' : '' ?>> <?= e($label) ?></label>
                         <?php endforeach; ?>
                     </div>
-                    <p class="form-help">Online payment is not available yet - more payment methods will be added in a future update.</p>
+                    <p class="form-help">Online payment is not available yet. Select the option that best describes how you'll settle this order - our team will confirm details with you directly.</p>
 
                     <button type="submit" class="btn btn-primary btn-block" style="margin-top:16px;">Place Order</button>
                 </form>
@@ -287,7 +299,7 @@ require __DIR__ . '/includes/header.php';
                     </div>
                     <div class="cart-summary-line"><span>Subtotal</span><span><?= formatPrice($cart['subtotal']) ?></span></div>
                     <div class="cart-summary-line"><span>Discount</span><span>&minus; <?= formatPrice($cart['discount']) ?></span></div>
-                    <div class="cart-summary-total"><span>Grand Total</span><strong><?= formatPrice($cart['total']) ?></strong></div>
+                    <div class="cart-summary-total"><span>Total</span><strong><?= formatPrice($cart['total']) ?></strong></div>
                     <p class="product-price-disclaimer"><?= e($goldPriceNotice) ?></p>
                 </div>
             </div>

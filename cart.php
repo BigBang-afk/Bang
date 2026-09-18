@@ -17,6 +17,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($action === 'remove') {
             removeFromCart($productId);
         }
+    } elseif ($action === 'clear') {
+        $_SESSION['cart'] = [];
     }
 
     redirect(SITE_URL . '/cart.php');
@@ -37,10 +39,18 @@ require __DIR__ . '/includes/header.php';
 
         <?php if (!$cart['items']): ?>
             <div class="empty-state">
-                <p class="empty-state-title">Your Bag Is Empty</p>
-                <a href="<?= SITE_URL ?>/shop.php" class="btn btn-primary" style="margin-top:14px;">Explore Jewellery</a>
+                <p class="empty-state-title">Your Cart Is Empty</p>
+                <p class="text-muted">Discover our latest jewellery collections.</p>
+                <a href="<?= SITE_URL ?>/shop.php" class="btn btn-primary" style="margin-top:14px;">Shop Jewellery</a>
             </div>
         <?php else: ?>
+            <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+                <form method="post" onsubmit="return confirm('Remove all items from your bag?');">
+                    <?= csrfField() ?>
+                    <input type="hidden" name="action" value="clear">
+                    <button type="submit" class="btn btn-outline btn-sm">Clear Cart</button>
+                </form>
+            </div>
             <div class="cart-table">
                 <?php foreach ($cart['items'] as $item): $p = $item['product']; ?>
                     <?php $lineImage = dbFetchColumn('SELECT image FROM product_images WHERE product_id = ? ORDER BY is_primary DESC, sort_order ASC LIMIT 1', [$p['id']]); ?>

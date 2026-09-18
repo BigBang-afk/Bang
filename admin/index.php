@@ -12,7 +12,9 @@ $totalOrders = (int) dbFetchColumn('SELECT COUNT(*) FROM orders');
 
 $pendingOrders = (int) dbFetchColumn('SELECT COUNT(*) FROM orders WHERE order_status = "pending"');
 $confirmedOrders = (int) dbFetchColumn('SELECT COUNT(*) FROM orders WHERE order_status = "confirmed"');
+$processingOrders = (int) dbFetchColumn('SELECT COUNT(*) FROM orders WHERE order_status = "processing"');
 $completedOrders = (int) dbFetchColumn('SELECT COUNT(*) FROM orders WHERE order_status = "completed"');
+$cancelledOrders = (int) dbFetchColumn('SELECT COUNT(*) FROM orders WHERE order_status = "cancelled"');
 $todaysOrders = (int) dbFetchColumn('SELECT COUNT(*) FROM orders WHERE DATE(created_at) = CURDATE()');
 
 // Today's revenue counts orders that are past "pending" and not cancelled:
@@ -71,12 +73,14 @@ require __DIR__ . '/../includes/admin-header.php';
 <div class="admin-cards">
     <div class="admin-card"><div class="label">Pending Orders</div><div class="value gold"><?= $pendingOrders ?></div></div>
     <div class="admin-card"><div class="label">Confirmed Orders</div><div class="value gold"><?= $confirmedOrders ?></div></div>
+    <div class="admin-card"><div class="label">Processing Orders</div><div class="value gold"><?= $processingOrders ?></div></div>
     <div class="admin-card"><div class="label">Completed Orders</div><div class="value gold"><?= $completedOrders ?></div></div>
-    <div class="admin-card"><div class="label">Today's Revenue</div><div class="value gold"><?= formatPrice($todaysRevenue) ?></div></div>
 </div>
 
 <div class="admin-cards">
+    <div class="admin-card"><div class="label">Cancelled Orders</div><div class="value"><?= $cancelledOrders ?></div></div>
     <div class="admin-card"><div class="label">Today's Orders</div><div class="value"><?= $todaysOrders ?></div></div>
+    <div class="admin-card"><div class="label">Today's Revenue</div><div class="value gold"><?= formatPrice($todaysRevenue) ?></div></div>
     <div class="admin-card"><div class="label">Total Enquiries</div><div class="value"><?= $totalEnquiries ?></div></div>
 </div>
 

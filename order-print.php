@@ -1,25 +1,23 @@
 <?php
 /**
- * A4-friendly printable invoice. Standalone page - no admin header/
- * sidebar/nav, so nothing but the invoice itself ever reaches the
- * printed page.
+ * Customer-facing A4-friendly printable order/invoice. Standalone page -
+ * no site header/nav/footer, so nothing but the invoice itself ever
+ * reaches the printed page. Access uses the same getViewableOrder()
+ * check as order.php (logged-in owner, or the guest session that placed
+ * the order), so a customer can never print another customer's order.
  */
-require_once __DIR__ . '/../includes/functions.php';
-requireAdmin();
+require_once __DIR__ . '/includes/functions.php';
 
 $id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
-if (!$id) {
-    flash('error', 'Invalid order ID.');
-    redirect(SITE_URL . '/admin/orders.php');
-}
+$order = $id ? getViewableOrder($id) : null;
 
-$order = dbFetchOne('SELECT * FROM orders WHERE id = ?', [$id]);
 if (!$order) {
-    flash('error', 'Order not found.');
-    redirect(SITE_URL . '/admin/orders.php');
+    http_response_code(404);
+    require __DIR__ . '/404.php';
+    exit;
 }
 
-$items = dbFetchAll('SELECT * FROM order_items WHERE order_id = ?', [$id]);
+$items = getOrderItems($order['id']);
 $statusLabels = getOrderStatusOptions();
 $paymentLabels = getPaymentMethodOptions();
 $shopAddress = getSetting('address', 'Liaquat Bazar, Sarafa Market, Quetta, Pakistan');
@@ -28,7 +26,7 @@ $shopAddress = getSetting('address', 'Liaquat Bazar, Sarafa Market, Quetta, Paki
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Invoice <?= e($order['order_number']) ?> | <?= e(SITE_NAME) ?></title>
+<title>Order <?= e($order['order_number']) ?> | <?= e(SITE_NAME) ?></title>
 <meta name="robots" content="noindex, nofollow">
 <style>
     * { box-sizing: border-box; }
@@ -60,8 +58,8 @@ $shopAddress = getSetting('address', 'Liaquat Bazar, Sarafa Market, Quetta, Paki
 </head>
 <body>
     <div class="no-print">
-        <button type="button" onclick="window.print()">Print Invoice</button>
-        <a href="<?= SITE_URL ?>/admin/order-view.php?id=<?= (int) $order['id'] ?>">&larr; Back to Order</a>
+        <button type="button" onclick="window.print()">Print Order</button>
+        <a href="<?= SITE_URL ?>/order.php?id=<?= (int) $order['id'] ?>">&larr; Back to Order</a>
     </div>
 
     <div class="invoice-header">
@@ -117,7 +115,7 @@ $shopAddress = getSetting('address', 'Liaquat Bazar, Sarafa Market, Quetta, Paki
 
     <?php if ($order['notes']): ?>
     <div class="invoice-section">
-        <h3>Customer Notes</h3>
+        <h3>Notes</h3>
         <p style="margin:0;"><?= nl2br(e($order['notes'])) ?></p>
     </div>
     <?php endif; ?>
