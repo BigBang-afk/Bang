@@ -98,6 +98,26 @@ define('ADMIN_LOGIN_MAX_ATTEMPTS', 5);
 define('ADMIN_LOGIN_LOCKOUT_SECONDS', 60);
 
 // ---------------------------------------------------------------
+// Customer account security (Phase 4)
+// ---------------------------------------------------------------
+// Minimum password length for customer accounts. Length is enforced
+// server-side; uppercase/lowercase/number is recommended in the
+// registration form's copy but not force-rejected, per the spec's
+// "do not make password requirements unnecessarily difficult".
+define('PASSWORD_MIN_LENGTH', 8);
+
+// Basic brute-force throttling for login.php (customer login). Session-
+// scoped, same pattern as the admin throttle above but tracked under
+// separate session keys so a customer and an admin failing to log in
+// in the same browser never affect each other's lockout state.
+define('LOGIN_MAX_ATTEMPTS', 5);
+define('LOGIN_LOCKOUT_SECONDS', 60);
+
+// How long a password reset token (see forgot-password.php /
+// reset-password.php) stays valid after being issued.
+define('PASSWORD_RESET_EXPIRY', 3600); // 1 hour
+
+// ---------------------------------------------------------------
 // Secure session bootstrap
 // ---------------------------------------------------------------
 if (session_status() === PHP_SESSION_NONE) {

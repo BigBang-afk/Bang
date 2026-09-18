@@ -265,3 +265,315 @@ p {
     color: var(--text);
     border: 1px solid var(--light-gold);
 }
+
+.form-help {
+    font-size: 0.78rem;
+    color: #6b6864;
+    margin-top: 6px;
+}
+
+.form-error {
+    font-size: 0.78rem;
+    color: #c0392b;
+    margin-top: 6px;
+}
+
+.btn-sm {
+    padding: 9px 20px;
+    font-size: 0.72rem;
+}
+
+.btn-block {
+    width: 100%;
+}
+
+/* ---------------------------------------------------------------------
+   Public site header (Phase 4)
+   --------------------------------------------------------------------- */
+.site-header {
+    background-color: var(--white);
+    border-bottom: 1px solid var(--border-soft);
+    position: sticky;
+    top: 0;
+    z-index: 500;
+}
+
+.site-header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 18px 0;
+}
+
+.site-logo {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+}
+
+.site-logo-name {
+    font-family: var(--font-serif);
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--black);
+}
+
+.site-logo-tag {
+    font-size: 0.62rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-top: 2px;
+}
+
+.site-nav {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.site-nav-link {
+    font-size: 0.86rem;
+    letter-spacing: 0.03em;
+}
+
+.site-nav-link:hover {
+    color: var(--gold-dark);
+}
+
+.site-nav-hi {
+    font-size: 0.86rem;
+    color: var(--text);
+}
+
+.site-account-icon {
+    display: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--black);
+    padding: 6px;
+}
+
+.site-account-menu {
+    display: none;
+    flex-direction: column;
+    background-color: var(--white);
+    border-top: 1px solid var(--border-soft);
+    padding: 8px 24px 16px;
+}
+
+.site-account-menu.open {
+    display: flex;
+}
+
+.site-account-menu a {
+    padding: 10px 0;
+    font-size: 0.9rem;
+    border-bottom: 1px solid var(--border-soft);
+}
+
+.site-account-menu a:last-child {
+    border-bottom: none;
+}
+
+/* ---------------------------------------------------------------------
+   Public site footer (Phase 4)
+   --------------------------------------------------------------------- */
+.site-footer {
+    background-color: var(--black);
+    color: #cfcbc3;
+    margin-top: 48px;
+}
+
+.site-footer-inner {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 24px;
+    padding: 48px 0;
+}
+
+.site-footer-inner .site-logo-name {
+    color: var(--white);
+}
+
+.site-footer-inner .text-muted {
+    color: #a8a39a;
+}
+
+.site-footer-links {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.site-footer-links a:hover {
+    color: var(--gold);
+}
+
+.site-footer-bottom {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 18px 0;
+    font-size: 0.78rem;
+    text-align: center;
+    color: #8a857c;
+}
+
+/* ---------------------------------------------------------------------
+   Auth pages: register / login / forgot / reset password (Phase 4)
+   --------------------------------------------------------------------- */
+.auth-section {
+    padding: 56px 0;
+}
+
+.auth-container {
+    display: flex;
+    justify-content: center;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 440px;
+    background-color: var(--white);
+    border: 1px solid var(--light-gold);
+    border-radius: var(--radius-md);
+    padding: 40px 36px;
+    box-shadow: var(--shadow-soft);
+}
+
+.auth-switch {
+    text-align: center;
+    margin-top: 18px;
+    font-size: 0.9rem;
+}
+
+.auth-switch a {
+    color: var(--gold-dark);
+    font-weight: 500;
+}
+
+/* ---------------------------------------------------------------------
+   Account pages (Phase 4)
+   --------------------------------------------------------------------- */
+.account-section {
+    padding: 48px 0 72px;
+}
+
+.account-heading {
+    margin-bottom: 28px;
+}
+
+.account-layout {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 32px;
+    align-items: start;
+}
+
+.account-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background-color: var(--card);
+    border-radius: var(--radius-md);
+    padding: 12px;
+}
+
+.account-nav-link {
+    padding: 12px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 0.86rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--text);
+}
+
+.account-nav-link:hover {
+    background-color: var(--white);
+}
+
+.account-nav-link.active {
+    background-color: var(--black);
+    color: var(--white);
+}
+
+.account-nav-link.is-disabled {
+    color: #a39d90;
+    cursor: default;
+}
+
+.account-nav-link.is-disabled:hover {
+    background-color: transparent;
+}
+
+.account-cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+}
+
+.account-card {
+    background-color: var(--white);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    padding: 20px;
+    box-shadow: var(--shadow-soft);
+}
+
+.account-card.is-disabled {
+    opacity: 0.7;
+}
+
+.account-card h3 {
+    margin-bottom: 6px;
+    font-size: 1.05rem;
+}
+
+.tag-coming-soon {
+    display: inline-block;
+    margin-top: 6px;
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background-color: var(--card);
+    color: var(--gold-dark);
+    padding: 3px 10px;
+    border-radius: 20px;
+}
+
+.account-panel {
+    background-color: var(--white);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-md);
+    padding: 28px;
+    box-shadow: var(--shadow-soft);
+}
+
+.account-info {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px 24px;
+    margin: 0 0 24px;
+}
+
+.account-info dt {
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #8a8579;
+    margin-bottom: 4px;
+}
+
+.account-info dd {
+    margin: 0;
+    font-size: 0.98rem;
+}
+
+.account-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
