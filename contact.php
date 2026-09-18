@@ -17,6 +17,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $subject = trim($_POST['subject'] ?? '');
     $messageText = trim($_POST['message'] ?? '');
 
+    // Honeypot anti-spam (Phase 9): a field real visitors never see or
+    // fill in (hidden via CSS, not "type=hidden", so it still trips up
+    // form-filling bots that ignore CSS). Any bot that fills it in gets a
+    // fake success response - never a hint that it was caught - while
+    // nothing is written to the database.
+    if (trim($_POST['website'] ?? '') !== '') {
+        flash('success', 'Thank you - your message has been sent. We will get back to you soon.');
+        redirect(SITE_URL . '/contact.php');
+    }
+
     if ($name === '') {
         $errors[] = 'Please enter your name.';
     } elseif (mb_strlen($name) > 100) {
@@ -103,6 +113,10 @@ require __DIR__ . '/includes/header.php';
 
             <form method="post">
                 <?= csrfField() ?>
+                <div class="visually-hidden" aria-hidden="true">
+                    <label for="website">Leave this field empty</label>
+                    <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
+                </div>
                 <div class="form-row">
                     <div class="form-group">
                         <label for="name">Name</label>

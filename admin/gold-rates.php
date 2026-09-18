@@ -36,6 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'INSERT INTO gold_rates (purity, rate, effective_date) VALUES (?, ?, ?)',
             [$purity, round($rate, 2), $effectiveDate]
         );
+        logAdminActivity('create', 'gold_rate', (int) dbInsertId(), "Set $purity gold rate to " . formatPrice(round($rate, 2)) . "/g, effective $effectiveDate.");
         flash('success', "Gold rate for $purity updated to " . formatPrice(round($rate, 2)) . "/g.");
         redirect(SITE_URL . '/admin/gold-rates.php');
     }

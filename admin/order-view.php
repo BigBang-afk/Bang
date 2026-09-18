@@ -38,6 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     [$order['id'], $order['order_status'], $newStatus, $admin['id'], $note !== '' ? $note : null]
                 );
             });
+            logAdminActivity('update_status', 'order', $order['id'], "Changed order {$order['order_number']} status from \"{$order['order_status']}\" to \"$newStatus\".");
             flash('success', 'Order status updated to "' . $statusOptions[$newStatus] . '".');
         }
     } elseif ($action === 'add_note') {

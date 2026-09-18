@@ -1,6 +1,8 @@
 Options -Indexes
 DirectoryIndex index.php
 ErrorDocument 404 /404.php
+ErrorDocument 403 /403.php
+ErrorDocument 500 /500.php
 
 <IfModule mod_headers.c>
     Header set X-Content-Type-Options "nosniff"
@@ -16,8 +18,23 @@ ErrorDocument 404 /404.php
     Require all denied
 </Files>
 
+# Deny direct access to dotfiles (.git, .env, .gitignore, etc.) - a leaked
+# .git directory on a live server lets anyone reconstruct the full source
+# history, so this is blocked outright rather than relying on it simply
+# not being uploaded.
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
+
+    # Block direct browser requests into folders that are only ever meant
+    # to be reached via PHP's own require/require_once (never via a URL).
+    # This does not affect require()/require_once() calls, which are
+    # filesystem operations Apache never sees - only direct HTTP requests
+    # like GET /config/config.php are blocked.
+    RewriteRule ^(config|includes|database)/ - [F,L]
 
     # Dynamic robots.txt / sitemap.xml (always reflect current BASE_URL and live products)
     RewriteRule ^robots\.txt$ robots.php [L]

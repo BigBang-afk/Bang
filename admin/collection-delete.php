@@ -33,5 +33,6 @@ if ($productCount > 0) {
 dbExecute('DELETE FROM collections WHERE id = ?', [$id]);
 deleteUploadedImage($collection['image'], COLLECTIONS_UPLOAD_PATH);
 
+logAdminActivity('delete', 'collection', $id, "Deleted collection \"{$collection['name']}\".");
 flash('success', "Collection \"{$collection['name']}\" deleted.");
 redirect(SITE_URL . '/admin/collections.php');

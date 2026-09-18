@@ -61,13 +61,33 @@ $jsonLd = [
 if ($productImageUrls) {
     $jsonLd['image'] = array_values($productImageUrls);
 }
-// Defensively break up "</" so a product name/description could never
-// close the <script> tag early even in a pathological edge case.
-$pageJsonLd = str_replace('</', '<\/', json_encode($jsonLd, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+
+// BreadcrumbList (Phase 9): mirrors the breadcrumb nav actually rendered
+// on this page below - Home > Category (if any) > Product.
+$breadcrumbItems = [['@type' => 'ListItem', 'position' => 1, 'name' => 'Home', 'item' => SITE_URL . '/']];
+if ($category) {
+    $breadcrumbItems[] = [
+        '@type' => 'ListItem', 'position' => 2, 'name' => $category['name'],
+        'item' => SITE_URL . '/category.php?slug=' . $category['slug'],
+    ];
+}
+$breadcrumbItems[] = [
+    '@type' => 'ListItem', 'position' => count($breadcrumbItems) + 1, 'name' => $product['name'],
+    'item' => SITE_URL . '/product.php?slug=' . $product['slug'],
+];
+$breadcrumbJsonLd = ['@type' => 'BreadcrumbList', 'itemListElement' => $breadcrumbItems];
+
+// Both structured-data blocks are valid schema.org types, combined into
+// one array so they render as a single JSON-LD graph rather than needing
+// a second <script> slot from includes/header.php. The child items don't
+// repeat "@context" - it's declared once at the graph's top level.
+unset($jsonLd['@context']);
+$pageJsonLd = jsonLdScript(['@context' => 'https://schema.org', '@graph' => [$jsonLd, $breadcrumbJsonLd]]);
 
 $pageTitle = $product['name'];
 $pageMetaDescription = $product['short_description'] ?: ('Shop ' . $product['name'] . ' - ' . $product['purity'] . ' gold jewellery from ' . SITE_NAME . '.');
 $pageOgImage = $productImageUrls[0] ?? null;
+$pageCanonical = SITE_URL . '/product.php?slug=' . $product['slug'];
 require __DIR__ . '/includes/header.php';
 ?>
 <nav class="breadcrumbs container">

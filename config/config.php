@@ -148,3 +148,40 @@ if (session_status() === PHP_SESSION_NONE) {
     session_name('zj_session');
     session_start();
 }
+
+// ---------------------------------------------------------------
+// Security headers (Phase 9)
+// ---------------------------------------------------------------
+// A fresh random value per request, used to allow only this request's own
+// server-generated inline <script> tags (the JSON-LD blocks and the admin
+// product form's gold-rate array) under the Content-Security-Policy below,
+// without falling back to the much weaker 'unsafe-inline'.
+define('CSP_NONCE', bin2hex(random_bytes(16)));
+
+// Sent from PHP (rather than only via .htaccess) so every entry point gets
+// them consistently regardless of web server (Apache/nginx/php -S), and so
+// the nonce above can be embedded. X-Content-Type-Options/X-Frame-Options/
+// Referrer-Policy are ALSO set in .htaccess, which additionally covers
+// static assets (CSS/JS/images) that never run through PHP.
+//
+// CSP limitation (documented, not silently ignored): style-src allows
+// 'unsafe-inline' because numerous existing pages use inline style="..."
+// attributes for one-off layout tweaks (e.g. 404.php, product.php's
+// disabled-WhatsApp notice). Locking that down would mean auditing and
+// rewriting every inline style into a CSS class, which is a larger change
+// than this hardening pass warrants - it is called out in the Phase 9
+// report as a known follow-up, not silently dropped.
+if (!headers_sent()) {
+    header("Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=()");
+    header(
+        "Content-Security-Policy: default-src 'self'; "
+        . "script-src 'self' 'nonce-" . CSP_NONCE . "'; "
+        . "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        . "font-src 'self' https://fonts.gstatic.com; "
+        . "img-src 'self' data:; "
+        . "connect-src 'self'; "
+        . "frame-ancestors 'self'; "
+        . "base-uri 'self'; "
+        . "form-action 'self';"
+    );
+}

@@ -41,6 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             [$name, $slug, $description ?: null, $imageFilename, $status, $sortOrder]
         );
 
+        logAdminActivity('create', 'category', (int) dbInsertId(), "Created category \"$name\".");
         flash('success', "Category \"$name\" created successfully.");
         redirect(SITE_URL . '/admin/categories.php');
     }

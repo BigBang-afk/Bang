@@ -43,6 +43,7 @@ $orderCount = (int) dbFetchColumn('SELECT COUNT(*) FROM order_items WHERE produc
 
 if ($orderCount > 0) {
     dbExecute('UPDATE products SET status = "inactive" WHERE id = ?', [$id]);
+    logAdminActivity('deactivate', 'product', $id, "Deactivated product \"{$product['name']}\" (had order history).");
     flash('success', "\"{$product['name']}\" has order history, so it was deactivated (hidden from the shop) instead of permanently deleted, to preserve past order records.");
 } else {
     $images = dbFetchAll('SELECT image FROM product_images WHERE product_id = ?', [$id]);
@@ -50,6 +51,7 @@ if ($orderCount > 0) {
     foreach ($images as $img) {
         deleteUploadedImage($img['image'], PRODUCTS_UPLOAD_PATH);
     }
+    logAdminActivity('delete', 'product', $id, "Permanently deleted product \"{$product['name']}\".");
     flash('success', "\"{$product['name']}\" was permanently deleted.");
 }
 

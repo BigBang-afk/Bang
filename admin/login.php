@@ -31,9 +31,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($admin && password_verify($password, $admin['password'])) {
                 resetAdminLoginAttempts();
                 loginAdmin($admin);
+                logAdminActivity('login', 'admin', (int) $admin['id'], 'Admin "' . $admin['username'] . '" logged in.');
                 redirect(SITE_URL . '/admin/index.php');
             } else {
                 recordFailedAdminLogin();
+                // Never log the attempted password - only that a login
+                // attempt failed and which username/email was tried.
+                logAdminActivity('login_failed', 'admin', null, 'Failed admin login attempt for "' . $loginId . '".');
                 $error = 'Invalid username or password.';
             }
         }

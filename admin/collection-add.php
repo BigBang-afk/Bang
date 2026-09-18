@@ -35,6 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'INSERT INTO collections (name, slug, description, image, status) VALUES (?, ?, ?, ?, ?)',
             [$name, $slug, $description ?: null, $imageFilename, $status]
         );
+        logAdminActivity('create', 'collection', (int) dbInsertId(), "Created collection \"$name\".");
         flash('success', "Collection \"$name\" created successfully.");
         redirect(SITE_URL . '/admin/collections.php');
     }

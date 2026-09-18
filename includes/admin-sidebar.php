@@ -22,6 +22,7 @@ $icon = function (string $name): string {
         'about' => '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v5h1"/></svg>',
         'instagram' => '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.6" fill="currentColor" stroke="none"/></svg>',
         'newsletter' => '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m3 6 9 7 9-7"/></svg>',
+        'activity-logs' => '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>',
         'logout' => '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg>',
     ];
     return $icons[$name] ?? '';
@@ -89,6 +90,13 @@ $icon = function (string $name): string {
         </a>
         <a class="admin-nav-link <?= $activeNav === 'settings' ? 'active' : '' ?>" href="<?= SITE_URL ?>/admin/settings.php">
             <?= $icon('settings') ?> Settings
+        </a>
+    </div>
+
+    <div class="admin-nav-group">
+        <div class="admin-nav-label">System</div>
+        <a class="admin-nav-link <?= $activeNav === 'activity-logs' ? 'active' : '' ?>" href="<?= SITE_URL ?>/admin/activity-logs.php">
+            <?= $icon('activity-logs') ?> Activity Logs
         </a>
     </div>
 

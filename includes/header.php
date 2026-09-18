@@ -21,6 +21,14 @@ $pageMetaDescription = $pageMetaDescription ?? ('Fine gold jewellery crafted wit
 $pageOgImage = $pageOgImage ?? null;
 $pageJsonLd = $pageJsonLd ?? null;
 
+// Canonical URL (Phase 9): defaults to this page's own path with the query
+// string stripped, which is correct for every static/listing page. A page
+// keyed by a query parameter that IS its identity (product.php?slug=...,
+// category.php?slug=..., collections.php?slug=...) sets $pageCanonical
+// itself, before requiring this file, to include that parameter.
+$pageCanonical = $pageCanonical ?? (SITE_URL . strtok($_SERVER['REQUEST_URI'] ?? '/', '?'));
+$pageOrganizationJsonLd = jsonLdScript(getOrganizationJsonLd());
+
 $headerCurrentUser = getCurrentUser();
 $headerCartCount = getCartItemCount();
 $headerLogo = getSetting('logo', '');
@@ -40,8 +48,10 @@ $headerGoldRates = $headerTickerEnabled ? getCurrentGoldRates() : [];
 <meta property="og:description" content="<?= e($pageMetaDescription) ?>">
 <meta property="og:type" content="website">
 <?php if ($pageOgImage): ?><meta property="og:image" content="<?= e($pageOgImage) ?>"><?php endif; ?>
+<link rel="canonical" href="<?= e($pageCanonical) ?>">
 <?php if ($headerFavicon): ?><link rel="icon" href="<?= e(FAVICON_UPLOAD_URL . $headerFavicon) ?>"><?php endif; ?>
-<?php if ($pageJsonLd): ?><script type="application/ld+json"><?= $pageJsonLd ?></script><?php endif; ?>
+<script type="application/ld+json" nonce="<?= e(CSP_NONCE) ?>"><?= $pageOrganizationJsonLd ?></script>
+<?php if ($pageJsonLd): ?><script type="application/ld+json" nonce="<?= e(CSP_NONCE) ?>"><?= $pageJsonLd ?></script><?php endif; ?>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="<?= SITE_URL ?>/assets/css/style.css">

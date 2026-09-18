@@ -14,6 +14,7 @@ $productCount = getCategoryProductCount((int) $category['id']);
 
 $pageTitle = $category['name'];
 $pageMetaDescription = $category['description'] ?: ('Shop ' . $category['name'] . ' at ' . SITE_NAME . '.');
+$pageCanonical = SITE_URL . '/category.php?slug=' . $category['slug'];
 require __DIR__ . '/includes/header.php';
 ?>
 <section class="section-tight category-hero">

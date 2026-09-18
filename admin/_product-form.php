@@ -22,7 +22,7 @@ foreach ($goldRates as $karat => $row) {
     $ratesForJs[$karat] = (float) $row['rate'];
 }
 ?>
-<script>window.ZJ_GOLD_RATES = <?= json_encode($ratesForJs) ?>;</script>
+<script nonce="<?= e(CSP_NONCE) ?>">window.ZJ_GOLD_RATES = <?= json_encode($ratesForJs) ?>;</script>
 
 <div class="admin-panel-head">
     <h2><?= $isEdit ? 'Edit Product' : 'Add Product' ?></h2>

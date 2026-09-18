@@ -53,6 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             [$name, $slug, $description ?: null, $imageFilename, $status, $id]
         );
 
+        logAdminActivity('update', 'collection', $id, "Updated collection \"$name\".");
         flash('success', "Collection \"$name\" updated successfully.");
         redirect(SITE_URL . '/admin/collections.php');
     }

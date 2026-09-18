@@ -56,6 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             [$name, $slug, $description ?: null, $imageFilename, $status, $sortOrder, $id]
         );
 
+        logAdminActivity('update', 'category', $id, "Updated category \"$name\".");
         flash('success', "Category \"$name\" updated successfully.");
         redirect(SITE_URL . '/admin/categories.php');
     }

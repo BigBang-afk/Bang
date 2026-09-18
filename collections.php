@@ -18,6 +18,7 @@ if ($slug !== '') {
 
     $pageTitle = $collection['name'];
     $pageMetaDescription = $collection['description'] ?: ('Shop the ' . $collection['name'] . ' collection at ' . SITE_NAME . '.');
+    $pageCanonical = SITE_URL . '/collections.php?slug=' . $collection['slug'];
     require __DIR__ . '/includes/header.php';
     ?>
     <section class="section-tight category-hero">

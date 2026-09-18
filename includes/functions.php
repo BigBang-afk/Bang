@@ -1316,3 +1316,150 @@ function subscribeToNewsletter(string $email): array
     dbExecute('INSERT INTO newsletter_subscribers (email, status) VALUES (?, "subscribed")', [$email]);
     return ['success' => true, 'message' => 'Thank you for subscribing to Zarghoon Jewellers.'];
 }
+
+// ---------------------------------------------------------------
+// Admin activity logging (Phase 9)
+// Append-only audit trail of admin actions. Never pass a password, CSRF
+// token, session id, or any other sensitive auth value into $description -
+// this table exists to answer "who changed what, and when", not to store
+// auth secrets.
+// ---------------------------------------------------------------
+
+/**
+ * Records one admin activity log entry. $entityId may be null for actions
+ * with no single associated row (e.g. a failed login attempt). Reads the
+ * current admin from the session itself, so callers never pass an admin
+ * id directly - this also means a failed-login attempt (logged before
+ * loginAdmin() runs) is correctly recorded with admin_id = NULL.
+ */
+function logAdminActivity(string $action, string $entityType, ?int $entityId, string $description): void
+{
+    $admin = getCurrentAdmin();
+    dbExecute(
+        'INSERT INTO admin_activity_logs (admin_id, action, entity_type, entity_id, description, ip_address) VALUES (?, ?, ?, ?, ?, ?)',
+        [$admin['id'] ?? null, $action, $entityType, $entityId, $description, $_SERVER['REMOTE_ADDR'] ?? null]
+    );
+}
+
+/**
+ * Paginated, filterable activity log listing for admin/activity-logs.php.
+ * Filters: admin_id, action, entity_type, date (Y-m-d) - all optional.
+ */
+function getActivityLogs(array $filters, int $page, int $perPage): array
+{
+    $where = [];
+    $params = [];
+
+    if (!empty($filters['admin_id'])) {
+        $where[] = 'l.admin_id = ?';
+        $params[] = $filters['admin_id'];
+    }
+    if (!empty($filters['action'])) {
+        $where[] = 'l.action = ?';
+        $params[] = $filters['action'];
+    }
+    if (!empty($filters['entity_type'])) {
+        $where[] = 'l.entity_type = ?';
+        $params[] = $filters['entity_type'];
+    }
+    if (!empty($filters['date']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $filters['date'])) {
+        $where[] = 'DATE(l.created_at) = ?';
+        $params[] = $filters['date'];
+    }
+
+    $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+
+    $total = (int) dbFetchColumn("SELECT COUNT(*) FROM admin_activity_logs l $whereSql", $params);
+    $totalPages = max(1, (int) ceil($total / $perPage));
+    $page = min(max(1, $page), $totalPages);
+    $offset = ($page - 1) * $perPage;
+
+    $items = dbFetchAll(
+        "SELECT l.*, a.full_name AS admin_name, a.username AS admin_username
+         FROM admin_activity_logs l
+         LEFT JOIN admins a ON a.id = l.admin_id
+         $whereSql
+         ORDER BY l.created_at DESC
+         LIMIT $perPage OFFSET $offset",
+        $params
+    );
+
+    return [
+        'items' => $items,
+        'pagination' => ['page' => $page, 'total_pages' => $totalPages, 'total' => $total, 'per_page' => $perPage],
+    ];
+}
+
+function getDistinctActivityActions(): array
+{
+    return array_column(dbFetchAll('SELECT DISTINCT action FROM admin_activity_logs ORDER BY action ASC'), 'action');
+}
+
+function getDistinctActivityEntityTypes(): array
+{
+    return array_column(dbFetchAll('SELECT DISTINCT entity_type FROM admin_activity_logs ORDER BY entity_type ASC'), 'entity_type');
+}
+
+// ---------------------------------------------------------------
+// SEO helpers (Phase 9)
+// ---------------------------------------------------------------
+
+/**
+ * Sitewide Organization/JewelryStore structured data, built only from real
+ * settings already configured in admin/settings.php - never invents a
+ * rating, review count, or founding date that isn't actually in the
+ * database. Rendered on every public page by includes/header.php.
+ */
+function getOrganizationJsonLd(): array
+{
+    $data = [
+        '@context' => 'https://schema.org',
+        '@type' => 'JewelryStore',
+        'name' => getSetting('shop_name', SITE_NAME),
+        'url' => SITE_URL . '/',
+    ];
+
+    $address = getSetting('address', '');
+    if ($address !== '') {
+        $data['address'] = ['@type' => 'PostalAddress', 'streetAddress' => $address];
+    }
+
+    $phone = getSetting('phone', '');
+    if ($phone !== '' && $phone !== 'CHANGE_ME') {
+        $data['telephone'] = $phone;
+    }
+
+    $logo = getSetting('logo', '');
+    if ($logo !== '') {
+        $data['logo'] = LOGO_UPLOAD_URL . $logo;
+        $data['image'] = LOGO_UPLOAD_URL . $logo;
+    }
+
+    $sameAs = [];
+    $instagram = getSetting('instagram', '');
+    if ($instagram !== '') {
+        $sameAs[] = 'https://instagram.com/' . $instagram;
+    }
+    foreach (['facebook', 'youtube', 'tiktok'] as $key) {
+        $value = getSetting($key, '');
+        if ($value !== '') {
+            $sameAs[] = $value;
+        }
+    }
+    if ($sameAs) {
+        $data['sameAs'] = $sameAs;
+    }
+
+    return $data;
+}
+
+/**
+ * JSON-encodes structured data for embedding in a <script type="application/
+ * ld+json"> tag, defensively escaping "</" so a database value could never
+ * close the script tag early (same defense product.php already applied by
+ * hand - centralized here so every caller gets it automatically).
+ */
+function jsonLdScript(array $data): string
+{
+    return str_replace('</', '<\/', json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+}

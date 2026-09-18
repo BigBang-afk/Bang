@@ -69,6 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         updateSetting('logo', $logoFilename);
         updateSetting('favicon', $faviconFilename);
+        logAdminActivity('update', 'settings', null, 'Updated site settings.');
         flash('success', 'Settings saved successfully.');
     }
 

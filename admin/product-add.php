@@ -24,8 +24,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $name = trim($_POST['name'] ?? '');
     $sku = trim($_POST['sku'] ?? '');
-    $categoryId = $_POST['category_id'] !== '' ? filter_var($_POST['category_id'], FILTER_VALIDATE_INT) : null;
-    $collectionId = $_POST['collection_id'] !== '' ? filter_var($_POST['collection_id'], FILTER_VALIDATE_INT) : null;
+    $categoryId = ($_POST['category_id'] ?? '') !== '' ? filter_var($_POST['category_id'], FILTER_VALIDATE_INT) : null;
+    $collectionId = ($_POST['collection_id'] ?? '') !== '' ? filter_var($_POST['collection_id'], FILTER_VALIDATE_INT) : null;
     $shortDescription = trim($_POST['short_description'] ?? '');
     $description = trim($_POST['description'] ?? '');
     $purity = in_array($_POST['purity'] ?? '', ['24K', '22K', '21K', '18K'], true) ? $_POST['purity'] : '21K';
@@ -163,6 +163,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 return $newId;
             });
 
+            logAdminActivity('create', 'product', $productId, "Created product \"$name\" (SKU: $sku).");
             flash('success', "Product \"$name\" created successfully.");
             redirect(SITE_URL . '/admin/product-edit.php?id=' . $productId);
         } catch (Throwable $e) {
