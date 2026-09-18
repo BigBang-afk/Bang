@@ -65,12 +65,16 @@ define('CATEGORIES_UPLOAD_PATH', UPLOAD_PATH . 'categories/');
 define('COLLECTIONS_UPLOAD_PATH', UPLOAD_PATH . 'collections/'); // added Phase 3 for collection images
 define('BANNERS_UPLOAD_PATH', UPLOAD_PATH . 'banners/');
 define('LOGO_UPLOAD_PATH', UPLOAD_PATH . 'logo/');
+define('FAVICON_UPLOAD_PATH', UPLOAD_PATH . 'favicon/'); // added Phase 7
+define('GALLERY_UPLOAD_PATH', UPLOAD_PATH . 'gallery/'); // added Phase 7 (Instagram-style tiles)
 
 define('PRODUCTS_UPLOAD_URL', UPLOAD_URL . 'products/');
 define('CATEGORIES_UPLOAD_URL', UPLOAD_URL . 'categories/');
 define('COLLECTIONS_UPLOAD_URL', UPLOAD_URL . 'collections/');
 define('BANNERS_UPLOAD_URL', UPLOAD_URL . 'banners/');
 define('LOGO_UPLOAD_URL', UPLOAD_URL . 'logo/');
+define('FAVICON_UPLOAD_URL', UPLOAD_URL . 'favicon/'); // added Phase 7
+define('GALLERY_UPLOAD_URL', UPLOAD_URL . 'gallery/'); // added Phase 7
 
 // Upload constraints (used by the secure image upload helper in functions.php)
 define('MAX_UPLOAD_SIZE', 4 * 1024 * 1024); // 4MB

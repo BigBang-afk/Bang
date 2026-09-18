@@ -17,6 +17,11 @@ $icon = function (string $name): string {
         'banners' => '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="12" rx="1"/><path d="M3 19h18"/></svg>',
         'settings' => '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
         'messages' => '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+        'homepage' => '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>',
+        'features' => '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l8 4v5c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg>',
+        'about' => '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v5h1"/></svg>',
+        'instagram' => '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.6" fill="currentColor" stroke="none"/></svg>',
+        'newsletter' => '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m3 6 9 7 9-7"/></svg>',
         'logout' => '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg>',
     ];
     return $icons[$name] ?? '';
@@ -61,8 +66,26 @@ $icon = function (string $name): string {
 
     <div class="admin-nav-group">
         <div class="admin-nav-label">Content</div>
+        <a class="admin-nav-link <?= $activeNav === 'homepage' ? 'active' : '' ?>" href="<?= SITE_URL ?>/admin/homepage.php">
+            <?= $icon('homepage') ?> Homepage
+        </a>
         <a class="admin-nav-link <?= $activeNav === 'banners' ? 'active' : '' ?>" href="<?= SITE_URL ?>/admin/banners.php">
-            <?= $icon('banners') ?> Homepage Banners
+            <?= $icon('banners') ?> Banners
+        </a>
+        <a class="admin-nav-link <?= $activeNav === 'features' ? 'active' : '' ?>" href="<?= SITE_URL ?>/admin/features.php">
+            <?= $icon('features') ?> Features
+        </a>
+        <a class="admin-nav-link <?= $activeNav === 'about' ? 'active' : '' ?>" href="<?= SITE_URL ?>/admin/content.php">
+            <?= $icon('about') ?> About
+        </a>
+        <a class="admin-nav-link <?= $activeNav === 'instagram' ? 'active' : '' ?>" href="<?= SITE_URL ?>/admin/instagram.php">
+            <?= $icon('instagram') ?> Instagram
+        </a>
+        <a class="admin-nav-link <?= $activeNav === 'newsletter' ? 'active' : '' ?>" href="<?= SITE_URL ?>/admin/newsletter.php">
+            <?= $icon('newsletter') ?> Newsletter
+        </a>
+        <a class="admin-nav-link <?= $activeNav === 'messages' ? 'active' : '' ?>" href="<?= SITE_URL ?>/admin/messages.php">
+            <?= $icon('messages') ?> Messages
         </a>
         <a class="admin-nav-link <?= $activeNav === 'settings' ? 'active' : '' ?>" href="<?= SITE_URL ?>/admin/settings.php">
             <?= $icon('settings') ?> Settings
@@ -70,9 +93,6 @@ $icon = function (string $name): string {
     </div>
 
     <div class="admin-nav-group">
-        <a class="admin-nav-link <?= $activeNav === 'messages' ? 'active' : '' ?>" href="<?= SITE_URL ?>/admin/messages.php">
-            <?= $icon('messages') ?> Messages
-        </a>
         <a class="admin-nav-link" href="<?= SITE_URL ?>/admin/logout.php">
             <?= $icon('logout') ?> Logout
         </a>

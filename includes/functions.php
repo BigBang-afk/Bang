@@ -1203,3 +1203,116 @@ function getViewableOrder(int $orderId): ?array
 
     return dbFetchOne('SELECT * FROM orders WHERE id = ? AND user_id IS NULL LIMIT 1', [$orderId]);
 }
+
+// ---------------------------------------------------------------
+// Homepage CMS (Phase 7)
+// ---------------------------------------------------------------
+
+/**
+ * The single reusable "current gold rate" lookup named in the Phase 7
+ * spec. Deliberately just an alias for the existing Phase 3
+ * getGoldRate() - that function already orders by effective_date/
+ * created_at (never a naive ORDER BY id, which a manipulated id
+ * sequence could get wrong), so there is no logic to duplicate here.
+ */
+function getCurrentGoldRate(string $purity): ?float
+{
+    return getGoldRate($purity);
+}
+
+function getActiveHeroSlides(): array
+{
+    return dbFetchAll('SELECT * FROM homepage_hero_slides WHERE status = "active" ORDER BY sort_order ASC, id ASC');
+}
+
+function getActiveHomepageFeatures(): array
+{
+    return dbFetchAll('SELECT * FROM homepage_features WHERE status = "active" ORDER BY sort_order ASC, id ASC');
+}
+
+function getActiveGalleryTiles(): array
+{
+    return dbFetchAll('SELECT * FROM homepage_gallery WHERE status = "active" ORDER BY sort_order ASC, id ASC');
+}
+
+/**
+ * The whitelisted set of icons a "Why Zarghoon" feature can use, mapped
+ * to a small inline SVG. The admin form only ever offers this fixed
+ * list via a <select> - CMS input for icons is a keyword, never raw
+ * HTML/SVG markup (Part 31: no arbitrary HTML in CMS fields).
+ */
+function getHomepageFeatureIconOptions(): array
+{
+    return [
+        'gem' => 'Gem (Authentic Gold)',
+        'craft' => 'Craftsmanship',
+        'shield' => 'Secure Shopping',
+        'support' => 'Dedicated Support',
+        'truck' => 'Delivery',
+        'star' => 'Star / Quality',
+    ];
+}
+
+function renderHomepageFeatureIcon(string $icon): string
+{
+    $icons = [
+        'gem' => '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M6 3h12l3 6-9 12L3 9z"/><path d="M3 9h18M9 3l3 6 3-6M12 9l-3 12M12 9l3 12"/></svg>',
+        'craft' => '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L2 19l3 3 7.3-7.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2-2z"/></svg>',
+        'shield' => '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M12 3l8 4v5c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg>',
+        'support' => '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1v-6h3zM3 19a2 2 0 0 0 2 2h1v-6H3z"/></svg>',
+        'truck' => '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1" y="6" width="14" height="11"/><path d="M15 10h4l3 3v4h-7z"/><circle cx="6" cy="19" r="2"/><circle cx="17" cy="19" r="2"/></svg>',
+        'star' => '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M12 2l3 7 7 .6-5.5 4.6 1.8 7.1L12 17.7 5.7 21.3l1.8-7.1L2 9.6 9 9z"/></svg>',
+    ];
+    return $icons[$icon] ?? $icons['gem'];
+}
+
+/**
+ * All 11 homepage sections in display order, request-cached (Part 29 -
+ * avoid re-querying the same small table repeatedly while rendering a
+ * single homepage request).
+ */
+function getHomepageSections(): array
+{
+    static $sections = null;
+    if ($sections === null) {
+        $sections = dbFetchAll('SELECT * FROM homepage_sections ORDER BY sort_order ASC');
+    }
+    return $sections;
+}
+
+function isHomepageSectionActive(string $key): bool
+{
+    foreach (getHomepageSections() as $section) {
+        if ($section['section_key'] === $key) {
+            return $section['status'] === 'active';
+        }
+    }
+    return false;
+}
+
+/**
+ * Validates and stores a newsletter signup. Returns a
+ * ['success' => bool, 'message' => string] pair the caller can turn
+ * straight into a flash message - never claims an email was actually
+ * sent (Part 12), since no email service is configured in this phase.
+ */
+function subscribeToNewsletter(string $email): array
+{
+    $email = trim($email);
+
+    if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        return ['success' => false, 'message' => 'Please enter a valid email address.'];
+    }
+
+    $existing = dbFetchOne('SELECT * FROM newsletter_subscribers WHERE email = ? LIMIT 1', [$email]);
+    if ($existing) {
+        if ($existing['status'] === 'unsubscribed') {
+            dbExecute('UPDATE newsletter_subscribers SET status = "subscribed" WHERE id = ?', [$existing['id']]);
+            return ['success' => true, 'message' => 'Welcome back! You have been resubscribed.'];
+        }
+        return ['success' => false, 'message' => 'This email is already subscribed.'];
+    }
+
+    dbExecute('INSERT INTO newsletter_subscribers (email, status) VALUES (?, "subscribed")', [$email]);
+    return ['success' => true, 'message' => 'Thank you for subscribing to Zarghoon Jewellers.'];
+}

@@ -23,6 +23,10 @@ $pageJsonLd = $pageJsonLd ?? null;
 
 $headerCurrentUser = getCurrentUser();
 $headerCartCount = getCartItemCount();
+$headerLogo = getSetting('logo', '');
+$headerFavicon = getSetting('favicon', '');
+$headerTickerEnabled = getSetting('gold_rate_ticker_enabled', '0') === '1';
+$headerGoldRates = $headerTickerEnabled ? getCurrentGoldRates() : [];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -36,6 +40,7 @@ $headerCartCount = getCartItemCount();
 <meta property="og:description" content="<?= e($pageMetaDescription) ?>">
 <meta property="og:type" content="website">
 <?php if ($pageOgImage): ?><meta property="og:image" content="<?= e($pageOgImage) ?>"><?php endif; ?>
+<?php if ($headerFavicon): ?><link rel="icon" href="<?= e(FAVICON_UPLOAD_URL . $headerFavicon) ?>"><?php endif; ?>
 <?php if ($pageJsonLd): ?><script type="application/ld+json"><?= $pageJsonLd ?></script><?php endif; ?>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -43,11 +48,26 @@ $headerCartCount = getCartItemCount();
 <link rel="stylesheet" href="<?= SITE_URL ?>/assets/css/responsive.css">
 </head>
 <body>
+<?php if ($headerTickerEnabled && $headerGoldRates): ?>
+<div class="site-gold-ticker">
+    <div class="container site-gold-ticker-inner">
+        <?php foreach (['24K', '21K', '18K'] as $karat): ?>
+            <?php if (isset($headerGoldRates[$karat])): ?>
+                <span><?= $karat ?> <?= formatPrice((float) $headerGoldRates[$karat]['rate']) ?>/g</span>
+            <?php endif; ?>
+        <?php endforeach; ?>
+    </div>
+</div>
+<?php endif; ?>
 <header class="site-header">
     <div class="container site-header-inner">
         <a href="<?= SITE_URL ?>/" class="site-logo">
-            <span class="site-logo-name"><?= e(SITE_NAME) ?></span>
-            <span class="site-logo-tag"><?= e(SITE_TAGLINE) ?></span>
+            <?php if ($headerLogo): ?>
+                <img src="<?= e(LOGO_UPLOAD_URL . $headerLogo) ?>" alt="<?= e(SITE_NAME) ?>" class="site-logo-image">
+            <?php else: ?>
+                <span class="site-logo-name"><?= e(SITE_NAME) ?></span>
+                <span class="site-logo-tag"><?= e(SITE_TAGLINE) ?></span>
+            <?php endif; ?>
         </a>
 
         <nav class="site-nav">

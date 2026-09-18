@@ -935,6 +935,7 @@ table.data-table img.thumb {
 .status-pending, .status-new { background-color: #fff6e0; color: #8a6d00; }
 .status-processing, .status-read, .status-made_to_order { background-color: #e7effa; color: #24487a; }
 .status-ready, .status-replied { background-color: #ece3fa; color: #5b3a9c; }
+.status-archived { background-color: #ece9e4; color: #6b6864; }
 
 /* ---------------------------------------------------------------------
    Pagination

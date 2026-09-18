@@ -83,6 +83,55 @@
     .checkout-summary-panel {
         position: static;
     }
+
+    .hero-slider {
+        height: 460px;
+    }
+
+    .hero-slide-content h1 {
+        font-size: 1.8rem;
+    }
+
+    .features-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .about-layout {
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+
+    .instagram-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .contact-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .homepage-category-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .hero-slider {
+        height: 400px;
+    }
+
+    .hero-nav {
+        width: 36px;
+        height: 36px;
+        font-size: 1.3rem;
+    }
+
+    .features-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .instagram-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
 
 @media (max-width: 700px) {
