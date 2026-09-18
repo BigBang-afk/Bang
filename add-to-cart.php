@@ -28,5 +28,5 @@ if ($product['stock_status'] !== 'in_stock') {
 }
 
 addToCart((int) $product['id'], max(1, min(CART_MAX_QUANTITY_PER_ITEM, $quantity)));
-flash('success', 'Added to your cart.');
+flash('success', 'Added to your bag.', 'View Cart', '/cart.php');
 redirect(SITE_URL . $redirectTo);

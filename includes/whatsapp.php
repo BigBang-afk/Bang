@@ -37,3 +37,21 @@ function buildProductWhatsAppLink(array $product): string
     );
     return buildWhatsAppLink($message);
 }
+
+/**
+ * Builds a wa.me link an admin can use to confirm an order with the
+ * customer (Phase 6). Deliberately includes only the order number,
+ * customer name, and total - never a password, internal admin note, or
+ * any other unnecessary personal data.
+ */
+function buildOrderWhatsAppLink(array $order): string
+{
+    $message = sprintf(
+        "%s\nOrder Number: %s\nCustomer: %s\nTotal: %s",
+        getSetting('shop_name', SITE_NAME),
+        $order['order_number'],
+        $order['customer_name'],
+        formatPrice((float) $order['total'])
+    );
+    return buildWhatsAppLink($message);
+}

@@ -69,7 +69,7 @@ $headerCartCount = getCartItemCount();
             </button>
             <a href="<?= SITE_URL ?>/cart.php" class="site-icon-btn" aria-label="Cart">
                 <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>
-                <?php if ($headerCartCount > 0): ?><span class="site-icon-badge"><?= $headerCartCount > 9 ? '9+' : $headerCartCount ?></span><?php endif; ?>
+                <span class="site-icon-badge"><?= $headerCartCount > 9 ? '9+' : $headerCartCount ?></span>
             </a>
             <button type="button" class="site-account-icon" data-account-menu-toggle aria-label="Account menu">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
@@ -87,7 +87,7 @@ $headerCartCount = getCartItemCount();
     <div class="site-account-menu" id="site-account-menu">
         <a href="<?= SITE_URL ?>/shop.php">Shop</a>
         <a href="<?= SITE_URL ?>/collections.php">Collections</a>
-        <a href="<?= SITE_URL ?>/cart.php">Cart<?= $headerCartCount > 0 ? ' (' . $headerCartCount . ')' : '' ?></a>
+        <a href="<?= SITE_URL ?>/cart.php">Cart (<?= $headerCartCount ?>)</a>
         <?php if ($headerCurrentUser): ?>
             <a href="<?= SITE_URL ?>/account.php">My Account</a>
             <a href="<?= SITE_URL ?>/wishlist.php">Wishlist</a>
@@ -101,5 +101,11 @@ $headerCartCount = getCartItemCount();
 
 <main class="site-main">
     <?php foreach ((flash() ?: []) as $f): ?>
-        <div class="container"><div class="alert alert-<?= e($f['type']) ?>" data-autohide><?= e($f['message']) ?></div></div>
+        <?php $hasAction = !empty($f['action_url']); ?>
+        <div class="container">
+            <div class="alert alert-<?= e($f['type']) ?>" <?= $hasAction ? '' : 'data-autohide' ?>>
+                <?= e($f['message']) ?>
+                <?php if ($hasAction): ?> <a href="<?= e(SITE_URL . $f['action_url']) ?>" class="alert-action"><?= e($f['action_label'] ?? 'View') ?></a><?php endif; ?>
+            </div>
+        </div>
     <?php endforeach; ?>

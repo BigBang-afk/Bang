@@ -6,6 +6,7 @@
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/csrf.php';
 require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/whatsapp.php';
 
 // ---------------------------------------------------------------
 // Input / output safety
@@ -78,12 +79,20 @@ function clearOldInput(): void
 /**
  * Dual-purpose flash message helper.
  * - flash('success', 'Saved!')  -> queues a message (call before redirect()).
+ * - flash('success', 'Added to your bag.', 'View Cart', '/cart.php') -> queues
+ *   a message with an optional action link (Phase 6), e.g. the "beautiful
+ *   notification" shown after adding a product to the cart.
  * - flash()                      -> returns and clears all queued messages.
  */
-function flash(?string $type = null, ?string $message = null)
+function flash(?string $type = null, ?string $message = null, ?string $actionLabel = null, ?string $actionUrl = null)
 {
     if ($type !== null && $message !== null) {
-        $_SESSION['flash_messages'][] = ['type' => $type, 'message' => $message];
+        $_SESSION['flash_messages'][] = [
+            'type' => $type,
+            'message' => $message,
+            'action_label' => $actionLabel,
+            'action_url' => $actionUrl,
+        ];
         return null;
     }
 
@@ -1000,12 +1009,22 @@ function removeFromCart(int $productId): void
  * here, never taken from the session. Any cart entry whose product no
  * longer exists or has been deactivated is silently dropped from both
  * the return value and the session itself.
+ *
+ * Each item's price is broken down via the same calculateProductPrice()
+ * used everywhere else (Phase 3), so:
+ *   - 'unit_price'    = the final per-unit price (post-discount)
+ *   - 'unit_discount' = that unit's own discount component
+ * and the cart-level totals below are genuine sums of real per-product
+ * figures - never an invented coupon/promo system:
+ *   - 'subtotal' = pre-discount value (gold value + charges) summed
+ *   - 'discount' = each item's own discount, summed
+ *   - 'total'    = subtotal - discount (== sum of unit_price * qty)
  */
 function getCartDetails(): array
 {
     $cart = getCart();
     if (!$cart) {
-        return ['items' => [], 'subtotal' => 0.0];
+        return ['items' => [], 'subtotal' => 0.0, 'discount' => 0.0, 'total' => 0.0];
     }
 
     $ids = array_map('intval', array_keys($cart));
@@ -1014,6 +1033,8 @@ function getCartDetails(): array
 
     $items = [];
     $subtotal = 0.0;
+    $discountTotal = 0.0;
+    $grandTotal = 0.0;
     $validIds = [];
 
     foreach ($products as $product) {
@@ -1021,14 +1042,23 @@ function getCartDetails(): array
         if ($quantity < 1) {
             continue;
         }
-        $unitPrice = getProductPrice($product);
+
+        $breakdown = calculateProductPrice($product);
+        $unitPrice = $breakdown['final_price'];
+        $unitDiscount = $breakdown['discount'];
+        $unitPreDiscount = $breakdown['gold_value'] + $breakdown['making_charges'] + $breakdown['stone_charges'] + $breakdown['other_charges'];
+
         $lineTotal = $unitPrice * $quantity;
-        $subtotal += $lineTotal;
+        $subtotal += $unitPreDiscount * $quantity;
+        $discountTotal += $unitDiscount * $quantity;
+        $grandTotal += $lineTotal;
+
         $validIds[] = (int) $product['id'];
         $items[] = [
             'product' => $product,
             'quantity' => $quantity,
             'unit_price' => $unitPrice,
+            'unit_discount' => $unitDiscount,
             'line_total' => $lineTotal,
         ];
     }
@@ -1039,5 +1069,77 @@ function getCartDetails(): array
         }
     }
 
-    return ['items' => $items, 'subtotal' => $subtotal];
+    return [
+        'items' => $items,
+        'subtotal' => round($subtotal, 2),
+        'discount' => round($discountTotal, 2),
+        'total' => round($grandTotal, 2),
+    ];
+}
+
+// ---------------------------------------------------------------
+// Orders (Phase 6)
+// ---------------------------------------------------------------
+
+/**
+ * The whitelisted set of order statuses (matches the orders.order_status
+ * ENUM exactly) mapped to their display labels. Every place that
+ * validates or renders a status - checkout, admin status changes,
+ * customer order pages - goes through this single list, so a status
+ * string from user input can never reach SQL unchecked.
+ */
+function getOrderStatusOptions(): array
+{
+    return [
+        'pending' => 'Pending',
+        'confirmed' => 'Confirmed',
+        'processing' => 'Processing',
+        'ready' => 'Ready',
+        'completed' => 'Completed',
+        'cancelled' => 'Cancelled',
+    ];
+}
+
+/**
+ * Generates an order number via the existing Phase 1 generateOrderNumber()
+ * (date + random suffix - never relies on the timestamp alone), retrying
+ * on the rare chance of a collision until it is confirmed unique against
+ * the orders table.
+ */
+function generateUniqueOrderNumber(): string
+{
+    do {
+        $orderNumber = generateOrderNumber();
+    } while ((int) dbFetchColumn('SELECT COUNT(*) FROM orders WHERE order_number = ?', [$orderNumber]) > 0);
+
+    return $orderNumber;
+}
+
+/**
+ * A single order belonging to $userId, or null if it doesn't exist OR
+ * belongs to someone else. Scoping the WHERE clause to user_id directly
+ * (rather than fetching by id and comparing in PHP) is what makes this
+ * IDOR-safe: a customer requesting another customer's order id simply
+ * gets nothing back, indistinguishable from a non-existent order.
+ */
+function getCustomerOrder(int $orderId, int $userId): ?array
+{
+    return dbFetchOne('SELECT * FROM orders WHERE id = ? AND user_id = ? LIMIT 1', [$orderId, $userId]);
+}
+
+function getOrderItems(int $orderId): array
+{
+    return dbFetchAll('SELECT * FROM order_items WHERE order_id = ? ORDER BY id ASC', [$orderId]);
+}
+
+/**
+ * Order counts for a customer's account dashboard summary.
+ */
+function getCustomerOrderCounts(int $userId): array
+{
+    return [
+        'total' => (int) dbFetchColumn('SELECT COUNT(*) FROM orders WHERE user_id = ?', [$userId]),
+        'pending' => (int) dbFetchColumn('SELECT COUNT(*) FROM orders WHERE user_id = ? AND order_status = "pending"', [$userId]),
+        'completed' => (int) dbFetchColumn('SELECT COUNT(*) FROM orders WHERE user_id = ? AND order_status = "completed"', [$userId]),
+    ];
 }

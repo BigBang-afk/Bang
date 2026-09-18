@@ -3,6 +3,9 @@ require_once __DIR__ . '/includes/functions.php';
 requireLogin();
 
 $user = getCurrentUser();
+$orderCounts = getCustomerOrderCounts((int) $user['id']);
+$recentOrders = dbFetchAll('SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT 5', [$user['id']]);
+$statusLabels = getOrderStatusOptions();
 
 $pageTitle = 'My Account';
 require __DIR__ . '/includes/header.php';
@@ -17,7 +20,7 @@ require __DIR__ . '/includes/header.php';
         <div class="account-layout">
             <aside class="account-nav">
                 <a href="<?= SITE_URL ?>/account.php" class="account-nav-link active">Profile</a>
-                <span class="account-nav-link is-disabled" title="Coming soon">Orders</span>
+                <a href="<?= SITE_URL ?>/orders.php" class="account-nav-link">Orders</a>
                 <a href="<?= SITE_URL ?>/wishlist.php" class="account-nav-link">Wishlist</a>
                 <a href="<?= SITE_URL ?>/account-edit.php" class="account-nav-link">Settings</a>
             </aside>
@@ -29,10 +32,10 @@ require __DIR__ . '/includes/header.php';
                         <p class="text-muted">View and edit your personal details.</p>
                         <a href="<?= SITE_URL ?>/account-edit.php" class="btn btn-outline btn-sm">Edit Profile</a>
                     </div>
-                    <div class="account-card is-disabled" id="orders">
+                    <div class="account-card" id="orders">
                         <h3>My Orders</h3>
-                        <p class="text-muted">Order history is coming in a later phase.</p>
-                        <span class="tag-coming-soon">Coming Soon</span>
+                        <p class="text-muted"><?= $orderCounts['total'] ?> total &bull; <?= $orderCounts['pending'] ?> pending &bull; <?= $orderCounts['completed'] ?> completed</p>
+                        <a href="<?= SITE_URL ?>/orders.php" class="btn btn-outline btn-sm">View Orders</a>
                     </div>
                     <div class="account-card">
                         <h3>My Wishlist</h3>
@@ -61,6 +64,33 @@ require __DIR__ . '/includes/header.php';
                         <a href="<?= SITE_URL ?>/account-password.php" class="btn btn-outline">Change Password</a>
                         <a href="<?= SITE_URL ?>/logout.php" class="btn btn-outline">Logout</a>
                     </div>
+                </div>
+
+                <div class="account-panel" style="margin-top:24px;">
+                    <div class="admin-panel-head">
+                        <h3>Recent Orders</h3>
+                        <a href="<?= SITE_URL ?>/orders.php" class="btn btn-outline btn-sm">View All</a>
+                    </div>
+                    <?php if (!$recentOrders): ?>
+                        <p class="text-muted">You haven't placed any orders yet.</p>
+                    <?php else: ?>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead><tr><th>Order Number</th><th>Date</th><th>Total</th><th>Status</th><th></th></tr></thead>
+                                <tbody>
+                                <?php foreach ($recentOrders as $o): ?>
+                                    <tr>
+                                        <td><?= e($o['order_number']) ?></td>
+                                        <td><?= date('d M Y', strtotime($o['created_at'])) ?></td>
+                                        <td><?= formatPrice((float) $o['total']) ?></td>
+                                        <td><span class="stock-badge stock-<?= $o['order_status'] === 'cancelled' ? 'out_of_stock' : ($o['order_status'] === 'completed' ? 'in_stock' : 'made_to_order') ?>"><?= e($statusLabels[$o['order_status']] ?? $o['order_status']) ?></span></td>
+                                        <td><a href="<?= SITE_URL ?>/order.php?id=<?= (int) $o['id'] ?>" class="btn btn-outline btn-sm">View</a></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

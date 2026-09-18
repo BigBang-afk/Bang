@@ -85,12 +85,13 @@ define('ITEMS_PER_PAGE', 20);        // storefront product grids (Phase 5 spec: 
 define('ADMIN_ITEMS_PER_PAGE', 20);  // admin panel tables
 
 // ---------------------------------------------------------------
-// Shop / cart (Phase 5)
+// Shop / cart (Phase 5-6)
 // ---------------------------------------------------------------
 // Upper bound on how many of one product a single cart line can hold -
 // a sanity cap, not a real stock-quantity system (products only track
 // in_stock/out_of_stock/made_to_order, not numeric stock counts).
-define('CART_MAX_QUANTITY_PER_ITEM', 20);
+// (This is the project's MAX_CART_QUANTITY.)
+define('CART_MAX_QUANTITY_PER_ITEM', 10);
 
 // ---------------------------------------------------------------
 // Admin security (Phase 2)
