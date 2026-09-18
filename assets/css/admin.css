@@ -684,6 +684,187 @@ button, input, select, textarea {
     border-color: var(--admin-gold);
 }
 
+textarea.form-control {
+    resize: vertical;
+    min-height: 90px;
+}
+
+.form-control[readonly] {
+    background-color: var(--admin-bg);
+    color: var(--admin-muted);
+}
+
+.form-help {
+    font-size: 0.78rem;
+    color: var(--admin-muted);
+    margin-top: 6px;
+}
+
+.form-error {
+    font-size: 0.78rem;
+    color: #c0392b;
+    margin-top: 6px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+}
+
+.form-row-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+}
+
+.checkbox-group {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+}
+
+.checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.88rem;
+    cursor: pointer;
+}
+
+.checkbox-row input[type="checkbox"],
+.checkbox-row input[type="radio"] {
+    width: 17px;
+    height: 17px;
+    accent-color: var(--admin-gold);
+    cursor: pointer;
+}
+
+.form-section-title {
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--admin-gold-dark);
+    border-bottom: 1px solid var(--admin-border);
+    padding-bottom: 8px;
+    margin: 28px 0 18px;
+}
+
+.form-section-title:first-child {
+    margin-top: 0;
+}
+
+/* ---------------------------------------------------------------------
+   Filters bar (admin list pages: search + dropdown filters)
+   --------------------------------------------------------------------- */
+.filters-bar {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.filters-bar .form-control {
+    width: auto;
+}
+
+/* ---------------------------------------------------------------------
+   Gold rate info banner (shown inside the product form)
+   --------------------------------------------------------------------- */
+.gold-rate-banner {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    background-color: var(--admin-bg);
+    border: 1px solid var(--admin-border);
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 18px;
+    font-size: 0.85rem;
+}
+
+.gold-rate-banner strong {
+    color: var(--admin-gold-dark);
+}
+
+.price-preview-box {
+    background-color: #fff;
+    border: 1px dashed var(--admin-gold);
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin: 14px 0;
+}
+
+.price-preview-box .price-line {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.86rem;
+    padding: 4px 0;
+    color: var(--admin-muted);
+}
+
+.price-preview-box .price-line.total {
+    color: var(--admin-text);
+    font-weight: 600;
+    font-size: 1.05rem;
+    border-top: 1px solid var(--admin-border);
+    margin-top: 8px;
+    padding-top: 10px;
+}
+
+/* ---------------------------------------------------------------------
+   Product image manager (add/edit forms)
+   --------------------------------------------------------------------- */
+.image-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 12px;
+}
+
+.image-grid .img-item {
+    position: relative;
+    width: 130px;
+}
+
+.image-grid .img-item img {
+    width: 130px;
+    height: 130px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 2px solid transparent;
+}
+
+.image-grid .img-item.is-primary img {
+    border-color: var(--admin-gold);
+}
+
+.image-grid .img-item .tag {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    background-color: var(--admin-gold);
+    color: #fff;
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 2px 7px;
+    border-radius: 4px;
+}
+
+.image-grid .img-item .img-actions {
+    display: flex;
+    gap: 4px;
+    margin-top: 6px;
+    flex-wrap: wrap;
+}
+
+.image-grid .img-item .img-actions form {
+    display: inline;
+}
+
 /* ---------------------------------------------------------------------
    Tables
    --------------------------------------------------------------------- */
@@ -843,6 +1024,13 @@ table.data-table img.thumb {
     .admin-grid-2 { grid-template-columns: 1fr; }
     .quick-actions-grid { grid-template-columns: repeat(2, 1fr); }
     .gold-rate-grid { grid-template-columns: repeat(3, 1fr); }
+    .form-row-3 { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 640px) {
+    .form-row, .form-row-3 { grid-template-columns: 1fr; }
+    .filters-bar { flex-direction: column; align-items: stretch; }
+    .filters-bar .form-control { width: 100%; }
 }
 
 @media (max-width: 860px) {

@@ -62,11 +62,13 @@ define('UPLOAD_URL', SITE_URL . '/uploads/');
 
 define('PRODUCTS_UPLOAD_PATH', UPLOAD_PATH . 'products/');
 define('CATEGORIES_UPLOAD_PATH', UPLOAD_PATH . 'categories/');
+define('COLLECTIONS_UPLOAD_PATH', UPLOAD_PATH . 'collections/'); // added Phase 3 for collection images
 define('BANNERS_UPLOAD_PATH', UPLOAD_PATH . 'banners/');
 define('LOGO_UPLOAD_PATH', UPLOAD_PATH . 'logo/');
 
 define('PRODUCTS_UPLOAD_URL', UPLOAD_URL . 'products/');
 define('CATEGORIES_UPLOAD_URL', UPLOAD_URL . 'categories/');
+define('COLLECTIONS_UPLOAD_URL', UPLOAD_URL . 'collections/');
 define('BANNERS_UPLOAD_URL', UPLOAD_URL . 'banners/');
 define('LOGO_UPLOAD_URL', UPLOAD_URL . 'logo/');
 

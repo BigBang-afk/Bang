@@ -3,6 +3,8 @@
 !/uploads/products/.gitkeep
 /uploads/categories/*
 !/uploads/categories/.gitkeep
+/uploads/collections/*
+!/uploads/collections/.gitkeep
 /uploads/banners/*
 !/uploads/banners/.gitkeep
 /uploads/logo/*
