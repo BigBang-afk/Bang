@@ -23,6 +23,7 @@ $icon = function (string $name): string {
         'instagram' => '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.6" fill="currentColor" stroke="none"/></svg>',
         'newsletter' => '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m3 6 9 7 9-7"/></svg>',
         'activity-logs' => '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>',
+        'system-health' => '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>',
         'logout' => '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg>',
     ];
     return $icons[$name] ?? '';
@@ -97,6 +98,9 @@ $icon = function (string $name): string {
         <div class="admin-nav-label">System</div>
         <a class="admin-nav-link <?= $activeNav === 'activity-logs' ? 'active' : '' ?>" href="<?= SITE_URL ?>/admin/activity-logs.php">
             <?= $icon('activity-logs') ?> Activity Logs
+        </a>
+        <a class="admin-nav-link <?= $activeNav === 'system-health' ? 'active' : '' ?>" href="<?= SITE_URL ?>/admin/system-health.php">
+            <?= $icon('system-health') ?> System Health
         </a>
     </div>
 

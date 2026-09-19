@@ -13,12 +13,23 @@ require_once __DIR__ . '/config.php';
 // ---------------------------------------------------------------
 // Database credentials
 // ---------------------------------------------------------------
-// Prefer environment variables when the host provides them (common on
-// managed hosting), falling back to these defaults for local/cPanel use.
-define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
-define('DB_NAME', getenv('DB_NAME') ?: 'zarghoon_jewellers');
-define('DB_USER', getenv('DB_USER') ?: 'root');
-define('DB_PASS', getenv('DB_PASS') ?: '');
+// Real credentials belong in config/env.php (see config/config.php) on
+// production - never in this file. The guards below let env.php define
+// any of these directly; anything env.php doesn't set falls back to a
+// real environment variable (some hosts provide these instead), and
+// finally to these local-development defaults.
+if (!defined('DB_HOST')) {
+    define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
+}
+if (!defined('DB_NAME')) {
+    define('DB_NAME', getenv('DB_NAME') ?: 'zarghoon_jewellers');
+}
+if (!defined('DB_USER')) {
+    define('DB_USER', getenv('DB_USER') ?: 'root');
+}
+if (!defined('DB_PASS')) {
+    define('DB_PASS', getenv('DB_PASS') ?: '');
+}
 define('DB_CHARSET', 'utf8mb4');
 
 /**

@@ -7,6 +7,7 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/csrf.php';
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/whatsapp.php';
+require_once __DIR__ . '/mailer.php';
 
 // ---------------------------------------------------------------
 // Input / output safety
@@ -1462,4 +1463,116 @@ function getOrganizationJsonLd(): array
 function jsonLdScript(array $data): string
 {
     return str_replace('</', '<\/', json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+}
+
+// ---------------------------------------------------------------
+// Email notifications (Phase 10)
+// All of these are best-effort: a failed send is logged via error_log
+// inside sendEmail() and NEVER thrown back at the caller, because a mail
+// server hiccup must never fail an order, a registration, or a contact
+// form submission. None of these ever include a password, CSRF token,
+// or full payment/card detail (this project never collects card details
+// at all - payment_method is only ever a label like "Cash on Delivery").
+// ---------------------------------------------------------------
+
+/**
+ * Sends the customer's order confirmation (if they gave an email) and the
+ * shop's new-order notification (if Admin > Settings has a real email
+ * configured) after a successful checkout. Called from checkout.php right
+ * after the order commits - never inside the same transaction, since
+ * email delivery must never be able to roll back a real order.
+ */
+function sendOrderConfirmationEmails(int $orderId): void
+{
+    $order = dbFetchOne('SELECT * FROM orders WHERE id = ?', [$orderId]);
+    if (!$order) {
+        return;
+    }
+    $items = dbFetchAll('SELECT * FROM order_items WHERE order_id = ?', [$orderId]);
+
+    $lines = [];
+    foreach ($items as $item) {
+        $lines[] = '  - ' . $item['product_name'] . ' x' . $item['quantity'] . ' - ' . formatPrice((float) $item['total_price']);
+    }
+    $itemsBlock = implode("\n", $lines);
+
+    if (!empty($order['email'])) {
+        $body = "Hello {$order['customer_name']},\n\n"
+            . "Thank you for your order from " . getSetting('shop_name', SITE_NAME) . ".\n\n"
+            . "Order Number: {$order['order_number']}\n"
+            . "Items:\n{$itemsBlock}\n\n"
+            . 'Total: ' . formatPrice((float) $order['total']) . "\n"
+            . 'Status: ' . (getOrderStatusOptions()[$order['order_status']] ?? $order['order_status']) . "\n\n"
+            . "We will contact you at {$order['mobile']} to confirm your order.\n\n"
+            . 'Thank you for shopping with ' . getSetting('shop_name', SITE_NAME) . '.';
+
+        sendEmail($order['email'], $order['customer_name'], 'Order Confirmation - ' . $order['order_number'], $body);
+    }
+
+    $adminEmail = getSetting('email', '');
+    if ($adminEmail !== '' && $adminEmail !== 'CHANGE_ME' && filter_var($adminEmail, FILTER_VALIDATE_EMAIL)) {
+        $body = "A new order has been placed.\n\n"
+            . "Order Number: {$order['order_number']}\n"
+            . "Customer: {$order['customer_name']}\n"
+            . "Mobile: {$order['mobile']}\n"
+            . "Items:\n{$itemsBlock}\n\n"
+            . 'Total: ' . formatPrice((float) $order['total']);
+
+        sendEmail($adminEmail, getSetting('shop_name', SITE_NAME), 'New Order - ' . $order['order_number'], $body);
+    }
+}
+
+/**
+ * Notifies the shop's admin email (if configured) that a new customer
+ * registered. Never includes the customer's password (registerUser()
+ * never returns it as plaintext past the point of hashing anyway).
+ */
+function sendNewCustomerAdminNotification(array $user): void
+{
+    $adminEmail = getSetting('email', '');
+    if ($adminEmail === '' || $adminEmail === 'CHANGE_ME' || !filter_var($adminEmail, FILTER_VALIDATE_EMAIL)) {
+        return;
+    }
+    $body = "A new customer registered on " . getSetting('shop_name', SITE_NAME) . ".\n\n"
+        . "Name: {$user['full_name']}\n"
+        . "Username: {$user['username']}\n"
+        . "Mobile: {$user['mobile']}";
+    sendEmail($adminEmail, getSetting('shop_name', SITE_NAME), 'New Customer Registration', $body);
+}
+
+/**
+ * Notifies the shop's admin email (if configured) of a new contact form
+ * submission, mirroring what's already stored in the messages table.
+ */
+function sendContactMessageAdminNotification(array $message): void
+{
+    $adminEmail = getSetting('email', '');
+    if ($adminEmail === '' || $adminEmail === 'CHANGE_ME' || !filter_var($adminEmail, FILTER_VALIDATE_EMAIL)) {
+        return;
+    }
+    $body = "New contact form message on " . getSetting('shop_name', SITE_NAME) . ".\n\n"
+        . "Name: {$message['name']}\n"
+        . 'Mobile: ' . ($message['mobile'] ?: '-') . "\n"
+        . 'Email: ' . ($message['email'] ?: '-') . "\n"
+        . 'Subject: ' . ($message['subject'] ?: '(none)') . "\n\n"
+        . $message['message'];
+    sendEmail($adminEmail, getSetting('shop_name', SITE_NAME), 'New Contact Message', $body);
+}
+
+/**
+ * Notifies the customer by email that their order's status changed, if
+ * they gave an email address when ordering. Called from
+ * admin/order-view.php right after a status change is saved.
+ */
+function sendOrderStatusChangeEmail(int $orderId, string $newStatus): void
+{
+    $order = dbFetchOne('SELECT * FROM orders WHERE id = ?', [$orderId]);
+    if (!$order || empty($order['email'])) {
+        return;
+    }
+    $statusLabel = getOrderStatusOptions()[$newStatus] ?? $newStatus;
+    $body = "Hello {$order['customer_name']},\n\n"
+        . "Your order {$order['order_number']} status has been updated to: $statusLabel\n\n"
+        . 'Thank you for shopping with ' . getSetting('shop_name', SITE_NAME) . '.';
+    sendEmail($order['email'], $order['customer_name'], 'Order Update - ' . $order['order_number'], $body);
 }

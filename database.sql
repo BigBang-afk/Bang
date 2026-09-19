@@ -309,10 +309,13 @@ INSERT INTO categories (name, slug, description, status, sort_order) VALUES
 ('Kids Collection', 'kids-collection', 'Delicate, safe designs for children.', 'active', 10);
 
 -- ============================================================
--- DEMO ADMIN ACCOUNT (see Phase 1 notes: "17. DEMO ADMIN" below
--- the code listing for why this seed approach was chosen)
--- Username: admin
--- Password: Admin@12345   <-- CHANGE THIS IMMEDIATELY AFTER FIRST LOGIN
+-- NO DEFAULT ADMIN ACCOUNT (Phase 10)
+-- Earlier phases shipped a seeded admin account with a fixed, documented
+-- password. That is a real security risk on any production install that
+-- imports this file as-is - the plaintext password sat in a committed
+-- file - so it has been removed rather than "fixed" with a new fixed
+-- password (which would only recreate the same problem). This file now
+-- creates ZERO admin accounts. Run setup-admin.php once, immediately
+-- after importing this schema, to create the first real administrator
+-- account - then delete setup-admin.php. See DEPLOYMENT.md.
 -- ============================================================
-INSERT INTO admins (username, email, password, full_name, role, status) VALUES
-('admin', 'admin@zarghoonjewellers.com', '$2y$12$YSMQdBa8fFz2fwTb48VsBeaOIjJoNGhBV5/esmBgdHRS.MoSRnaaq', 'Store Administrator', 'super_admin', 'active');

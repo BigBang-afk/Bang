@@ -10,8 +10,10 @@ ErrorDocument 500 /500.php
     Header set Referrer-Policy "strict-origin-when-cross-origin"
 </IfModule>
 
-# Deny access to sensitive files
-<FilesMatch "\.(sql|log|env|md)$">
+# Deny access to sensitive files, including common backup-file patterns
+# left behind by editors, manual "just in case" copies, or a downloaded
+# database export that was accidentally saved into the web root.
+<FilesMatch "\.(sql|log|env|md|bak|backup|old|orig|zip|tar|gz|tar\.gz|sql\.gz)$">
     Require all denied
 </FilesMatch>
 <Files "database.sql">
@@ -34,7 +36,19 @@ ErrorDocument 500 /500.php
     # This does not affect require()/require_once() calls, which are
     # filesystem operations Apache never sees - only direct HTTP requests
     # like GET /config/config.php are blocked.
-    RewriteRule ^(config|includes|database)/ - [F,L]
+    RewriteRule ^(config|includes|database|cron)/ - [F,L]
+
+    # HTTPS redirect - commented out by default. Uncomment ONLY after you
+    # have confirmed SSL is installed and working (see DEPLOYMENT.md),
+    # and only ever redirect to ONE canonical host (with or without
+    # "www.", pick one) to avoid a redirect loop. HTTP_X_FORWARDED_PROTO
+    # is checked too because many hosts terminate SSL at a load balancer
+    # in front of Apache, where %{HTTPS} alone would never show "on" even
+    # on a real HTTPS request - forcing the redirect there causes an
+    # infinite redirect loop, which is why this is opt-in, not default.
+    # RewriteCond %{HTTPS} off
+    # RewriteCond %{HTTP:X-Forwarded-Proto} !https
+    # RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
     # Dynamic robots.txt / sitemap.xml (always reflect current BASE_URL and live products)
     RewriteRule ^robots\.txt$ robots.php [L]

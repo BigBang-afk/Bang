@@ -39,6 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 );
             });
             logAdminActivity('update_status', 'order', $order['id'], "Changed order {$order['order_number']} status from \"{$order['order_status']}\" to \"$newStatus\".");
+            sendOrderStatusChangeEmail($order['id'], $newStatus);
             flash('success', 'Order status updated to "' . $statusOptions[$newStatus] . '".');
         }
     } elseif ($action === 'add_note') {

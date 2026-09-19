@@ -18,6 +18,8 @@ Disallow: /admin/
 Disallow: /config/
 Disallow: /includes/
 Disallow: /database/
+Disallow: /cron/
+Disallow: /setup-admin.php
 Disallow: /login.php
 Disallow: /register.php
 Disallow: /logout.php

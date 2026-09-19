@@ -8,11 +8,35 @@
  */
 
 // ---------------------------------------------------------------
-// Environment
+// Environment (Phase 10)
 // ---------------------------------------------------------------
-// Set to false on a live production server so PHP/database errors are
-// never shown to visitors.
-define('APP_DEBUG', true);
+// Production settings (APP_ENV, SITE_URL, DB_*, SMTP_*, ...) belong in
+// config/env.php - a file that is NEVER committed (see .gitignore) and is
+// also blocked from direct HTTP access by the root .htaccess. Copy
+// config/env.example.php to config/env.php on your hosting account and
+// fill in real values there; local development needs no such file at all
+// and keeps working exactly as before with the defaults below.
+if (file_exists(__DIR__ . '/env.php')) {
+    require __DIR__ . '/env.php';
+}
+
+// 'local' unless env.php (or a real hosting environment variable) says
+// otherwise. Everything downstream that needs to know "are we live"
+// checks APP_ENV, not a hosting-specific signal.
+if (!defined('APP_ENV')) {
+    define('APP_ENV', getenv('APP_ENV') ?: 'local');
+}
+
+// Defaults to debug-off in production and debug-on everywhere else, so a
+// freshly cloned local checkout still shows errors during development
+// without anyone having to remember to flip a flag - while a real
+// APP_ENV=production (set in config/env.php) is debug-off unless
+// explicitly overridden. env.php may still `define('APP_DEBUG', ...)`
+// itself if a hosting account needs to override this for a moment of
+// live troubleshooting.
+if (!defined('APP_DEBUG')) {
+    define('APP_DEBUG', APP_ENV !== 'production');
+}
 
 if (APP_DEBUG) {
     error_reporting(E_ALL);
@@ -31,9 +55,11 @@ date_default_timezone_set('Asia/Karachi');
 define('SITE_NAME', 'Zarghoon Jewellers');
 define('SITE_TAGLINE', 'Fine Jewellery');
 
-// IMPORTANT: change this to your real domain before going live, e.g.
-// 'https://zarghoonjewellers.com' (no trailing slash).
-define('SITE_URL', 'http://localhost:8000');
+// Set the real value in config/env.php on production, e.g.
+// define('SITE_URL', 'https://zarghoonjewellers.com'); (no trailing slash).
+if (!defined('SITE_URL')) {
+    define('SITE_URL', getenv('SITE_URL') ?: 'http://localhost:8000');
+}
 
 // ---------------------------------------------------------------
 // Currency

@@ -201,6 +201,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 rememberGuestOrder($orderId);
             }
 
+            // Best-effort only (see sendOrderConfirmationEmails' docblock) -
+            // the order is already safely committed above regardless of
+            // whether email is configured or delivery succeeds.
+            sendOrderConfirmationEmails($orderId);
+
             flash('success', 'Your order has been placed successfully.');
             redirect(SITE_URL . '/order-success.php?id=' . $orderId);
         } catch (Throwable $e) {

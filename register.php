@@ -69,6 +69,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'password' => $password,
         ]);
 
+        sendNewCustomerAdminNotification(['full_name' => $fullName, 'username' => $username, 'mobile' => $normalizedMobile]);
+
         flash('success', 'Account created successfully. You can now log in.');
         redirect(SITE_URL . '/login.php');
     }

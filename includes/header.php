@@ -16,6 +16,18 @@
  */
 require_once __DIR__ . '/functions.php';
 
+// Maintenance mode (Phase 10): checked here, not in config.php, because it
+// needs a database read (getSetting()) and applies only to public pages -
+// every admin/*.php page uses includes/admin-header.php instead, so the
+// admin panel is never affected, and a logged-in admin can still browse
+// the public site normally (e.g. to click through and verify a fix)
+// while maintenance mode is on.
+if (getSetting('maintenance_mode', '0') === '1' && !isAdminLoggedIn()) {
+    http_response_code(503);
+    require __DIR__ . '/../maintenance.php';
+    exit;
+}
+
 $pageTitle = $pageTitle ?? SITE_NAME;
 $pageMetaDescription = $pageMetaDescription ?? ('Fine gold jewellery crafted with trust - ' . SITE_NAME . ', ' . SITE_TAGLINE . '.');
 $pageOgImage = $pageOgImage ?? null;

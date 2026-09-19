@@ -11,6 +11,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'site_title', 'meta_description',
         'currency', 'currency_symbol', 'whatsapp_number',
         'footer_description', 'copyright_text',
+        'smtp_host', 'smtp_port', 'smtp_username', 'smtp_encryption',
+        'smtp_from_email', 'smtp_from_name',
     ];
 
     $errors = [];
@@ -18,6 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     foreach ($textFields as $key) {
         $values[$key] = trim($_POST[$key] ?? '');
     }
+    $maintenanceMode = !empty($_POST['maintenance_mode']) ? '1' : '0';
 
     if ($values['shop_name'] === '') {
         $errors[] = 'Shop Name is required.';
@@ -27,6 +30,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($values['currency_symbol'] === '') {
         $errors[] = 'Currency Symbol is required.';
+    }
+    if ($values['smtp_port'] !== '' && filter_var($values['smtp_port'], FILTER_VALIDATE_INT) === false) {
+        $errors[] = 'SMTP Port must be a number.';
+    }
+    if (!in_array($values['smtp_encryption'], ['', 'tls', 'ssl'], true)) {
+        $values['smtp_encryption'] = 'tls';
+    }
+    if ($values['smtp_from_email'] !== '' && !filter_var($values['smtp_from_email'], FILTER_VALIDATE_EMAIL)) {
+        $errors[] = 'SMTP From Email must be a valid email address.';
+    }
+
+    // The SMTP password is never redisplayed in the form (so it can never
+    // leak via page source or browser autofill history) - a blank
+    // submission keeps whatever password is already stored. Only a
+    // non-blank value overwrites it.
+    $smtpPassword = getSetting('smtp_password', '');
+    if (trim($_POST['smtp_password'] ?? '') !== '') {
+        $smtpPassword = trim($_POST['smtp_password']);
     }
 
     $logoFilename = getSetting('logo', '');
@@ -69,6 +90,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         updateSetting('logo', $logoFilename);
         updateSetting('favicon', $faviconFilename);
+        updateSetting('smtp_password', $smtpPassword);
+        updateSetting('maintenance_mode', $maintenanceMode);
         logAdminActivity('update', 'settings', null, 'Updated site settings.');
         flash('success', 'Settings saved successfully.');
     }
@@ -200,6 +223,55 @@ $favicon = getSetting('favicon', '');
             <label for="copyright_text">Copyright Text</label>
             <input type="text" id="copyright_text" name="copyright_text" class="form-control" value="<?= e(getSetting('copyright_text', '')) ?>">
         </div>
+
+        <div class="form-section-title">Email (SMTP)</div>
+        <p class="form-help" style="margin-top:0;">Optional. Leave SMTP Host empty to keep the site fully functional with order/contact email notifications simply not sent - nothing else depends on this.</p>
+        <div class="form-row-3">
+            <div class="form-group">
+                <label for="smtp_host">SMTP Host</label>
+                <input type="text" id="smtp_host" name="smtp_host" class="form-control" value="<?= e(getSetting('smtp_host', '')) ?>" placeholder="smtp.yourhost.com">
+            </div>
+            <div class="form-group">
+                <label for="smtp_port">SMTP Port</label>
+                <input type="number" id="smtp_port" name="smtp_port" class="form-control" value="<?= e(getSetting('smtp_port', '587')) ?>">
+            </div>
+            <div class="form-group">
+                <label for="smtp_encryption">Encryption</label>
+                <select id="smtp_encryption" name="smtp_encryption" class="form-control">
+                    <?php $smtpEnc = getSetting('smtp_encryption', 'tls'); ?>
+                    <option value="tls" <?= $smtpEnc === 'tls' ? 'selected' : '' ?>>TLS (recommended)</option>
+                    <option value="ssl" <?= $smtpEnc === 'ssl' ? 'selected' : '' ?>>SSL</option>
+                    <option value="" <?= $smtpEnc === '' ? 'selected' : '' ?>>None</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="smtp_username">SMTP Username</label>
+                <input type="text" id="smtp_username" name="smtp_username" class="form-control" value="<?= e(getSetting('smtp_username', '')) ?>" autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label for="smtp_password">SMTP Password</label>
+                <input type="password" id="smtp_password" name="smtp_password" class="form-control" placeholder="<?= getSetting('smtp_password', '') !== '' ? '••••••••  (leave blank to keep current)' : '' ?>" autocomplete="new-password">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="smtp_from_email">From Email</label>
+                <input type="email" id="smtp_from_email" name="smtp_from_email" class="form-control" value="<?= e(getSetting('smtp_from_email', '')) ?>">
+            </div>
+            <div class="form-group">
+                <label for="smtp_from_name">From Name</label>
+                <input type="text" id="smtp_from_name" name="smtp_from_name" class="form-control" value="<?= e(getSetting('smtp_from_name', getSetting('shop_name', SITE_NAME))) ?>">
+            </div>
+        </div>
+
+        <div class="form-section-title">Maintenance</div>
+        <label class="checkbox-row">
+            <input type="checkbox" name="maintenance_mode" value="1" <?= getSetting('maintenance_mode', '0') === '1' ? 'checked' : '' ?>>
+            Put the public website into maintenance mode
+        </label>
+        <p class="form-help">While on, visitors see a "we'll be right back" page. You (logged-in admins) can still browse the full site and admin panel normally.</p>
 
         <button type="submit" class="btn btn-gold">Save Settings</button>
     </form>

@@ -64,6 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'INSERT INTO messages (name, mobile, email, subject, message, status) VALUES (?, ?, ?, ?, ?, "new")',
             [$name, $normalizedMobile, $email !== '' ? $email : null, $subject !== '' ? $subject : null, $messageText]
         );
+        sendContactMessageAdminNotification(['name' => $name, 'mobile' => $normalizedMobile, 'email' => $email, 'subject' => $subject, 'message' => $messageText]);
         flash('success', 'Thank you - your message has been sent. We will get back to you soon.');
         redirect(SITE_URL . '/contact.php');
     }
