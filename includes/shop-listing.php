@@ -46,24 +46,7 @@ $wishlistProductIds = $listingCurrentUser ? getUserWishlistProductIds((int) $lis
 // Bulk-fetch up to two images per listed product in one query, instead
 // of one query per card, so a full page of results costs a handful of
 // queries rather than dozens.
-$imagesByProduct = [];
-$listingProductIds = array_column($result['items'], 'id');
-if ($listingProductIds) {
-    $placeholders = implode(',', array_fill(0, count($listingProductIds), '?'));
-    $imgRows = dbFetchAll(
-        "SELECT product_id, image FROM product_images WHERE product_id IN ($placeholders) ORDER BY product_id, is_primary DESC, sort_order ASC",
-        $listingProductIds
-    );
-    foreach ($imgRows as $row) {
-        $pid = (int) $row['product_id'];
-        if (!isset($imagesByProduct[$pid])) {
-            $imagesByProduct[$pid] = [];
-        }
-        if (count($imagesByProduct[$pid]) < 2) {
-            $imagesByProduct[$pid][] = $row['image'];
-        }
-    }
-}
+$imagesByProduct = bulkFetchProductImages(array_column($result['items'], 'id'));
 
 $queryWithoutPage = $get;
 unset($queryWithoutPage['page']);

@@ -11,8 +11,10 @@ $products = dbFetchAll(
     [$user['id']]
 );
 $wishlistProductIds = array_map('intval', array_column($products, 'id'));
+$imagesByProduct = bulkFetchProductImages($wishlistProductIds);
 
 $pageTitle = 'My Wishlist';
+$pageRobots = 'noindex, nofollow';
 require __DIR__ . '/includes/header.php';
 ?>
 <section class="section account-section">

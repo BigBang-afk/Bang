@@ -30,7 +30,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // ever holds [product_id => quantity], never a price.
 $cart = getCartDetails();
 
+// getCartDetails() already drops a DEACTIVATED product from the cart
+// entirely (its query filters status = 'active'), but deliberately keeps
+// an active, OUT-OF-STOCK product visible here rather than silently
+// removing it - checkout.php's own server-side check would otherwise be
+// the first time the customer learns about it, after filling in their
+// whole address and payment method. Surfacing it here instead means the
+// customer can just click Remove and proceed immediately.
+$cardStockLabels = ['in_stock' => 'In Stock', 'out_of_stock' => 'Out of Stock', 'made_to_order' => 'Coming Soon'];
+$hasUnavailableItem = false;
+foreach ($cart['items'] as $cartItem) {
+    if ($cartItem['product']['stock_status'] !== 'in_stock') {
+        $hasUnavailableItem = true;
+        break;
+    }
+}
+
 $pageTitle = 'My Cart';
+$pageRobots = 'noindex, nofollow';
 require __DIR__ . '/includes/header.php';
 ?>
 <section class="section account-section">
@@ -67,6 +84,9 @@ require __DIR__ . '/includes/header.php';
                             <p class="text-muted">SKU: <?= e($p['sku']) ?></p>
                             <p class="text-muted"><?= e($p['purity']) ?> Gold &bull; <?= rtrim(rtrim(number_format((float) $p['net_weight'], 3), '0'), '.') ?>g</p>
                             <p><?= formatPrice($item['unit_price']) ?> each</p>
+                            <?php if ($p['stock_status'] !== 'in_stock'): ?>
+                                <p><span class="stock-badge stock-<?= e($p['stock_status']) ?>"><?= e($cardStockLabels[$p['stock_status']] ?? $p['stock_status']) ?></span></p>
+                            <?php endif; ?>
                         </div>
                         <div class="cart-row-qty">
                             <form method="post">
@@ -99,7 +119,12 @@ require __DIR__ . '/includes/header.php';
                 <div class="cart-summary-line"><span>Discount</span><span>&minus; <?= formatPrice($cart['discount']) ?></span></div>
                 <div class="cart-summary-total"><span>Total</span><strong><?= formatPrice($cart['total']) ?></strong></div>
                 <p class="form-help">Prices shown are recalculated from current records every time this page loads - nothing here is ever trusted from your browser.</p>
-                <a href="<?= SITE_URL ?>/checkout.php" class="btn btn-primary btn-block">Proceed to Checkout</a>
+                <?php if ($hasUnavailableItem): ?>
+                    <p class="alert alert-error">One or more items in your bag are no longer available. Please remove them before checking out.</p>
+                    <span class="btn btn-outline btn-block" style="opacity:.5;cursor:not-allowed;" aria-disabled="true">Proceed to Checkout</span>
+                <?php else: ?>
+                    <a href="<?= SITE_URL ?>/checkout.php" class="btn btn-primary btn-block">Proceed to Checkout</a>
+                <?php endif; ?>
                 <a href="<?= SITE_URL ?>/shop.php" class="btn btn-outline btn-block">Continue Shopping</a>
             </div>
         <?php endif; ?>

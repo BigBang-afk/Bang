@@ -48,6 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $pageTitle = 'Edit Profile';
+$pageRobots = 'noindex, nofollow';
 require __DIR__ . '/includes/header.php';
 ?>
 <section class="section account-section">

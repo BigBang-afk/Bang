@@ -152,7 +152,7 @@ foreach ($goldRates as $karat => $row) {
                 <label for="stock_status">Stock Status</label>
                 <select id="stock_status" name="stock_status" class="form-control">
                     <?php foreach ($stockStatusLabels as $val => $label): ?>
-                        <option value="<?= $val ?>" <?= $data['stock_status'] === $val ? 'selected' : '' ?>><?= $label ?></option>
+                        <option value="<?= e($val) ?>" <?= $data['stock_status'] === $val ? 'selected' : '' ?>><?= e($label) ?></option>
                     <?php endforeach; ?>
                 </select>
                 <p class="form-help">Out-of-stock and coming-soon products stay visible with a "Enquire on WhatsApp" option, but cannot be purchased directly.</p>

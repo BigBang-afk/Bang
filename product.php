@@ -32,6 +32,7 @@ $whatsappLink = $whatsappConfigured ? buildProductWhatsAppLink($product) : null;
 
 $relatedProducts = getRelatedProducts($product, 4);
 $recentlyViewedProducts = getRecentlyViewedProducts((int) $product['id']);
+$imagesByProduct = bulkFetchProductImages(array_column(array_merge($relatedProducts, $recentlyViewedProducts), 'id'));
 
 $currentUser = getCurrentUser();
 $wishlistProductIds = $currentUser ? getUserWishlistProductIds((int) $currentUser['id']) : [];

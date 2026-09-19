@@ -35,6 +35,7 @@ if ($token === '' || !$resetRow) {
 }
 
 $pageTitle = 'Reset Password';
+$pageRobots = 'noindex, nofollow';
 require __DIR__ . '/includes/header.php';
 ?>
 <section class="section auth-section">

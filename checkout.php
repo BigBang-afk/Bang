@@ -229,6 +229,7 @@ $goldPriceNotice = getSetting(
 );
 
 $pageTitle = 'Checkout';
+$pageRobots = 'noindex, nofollow';
 require __DIR__ . '/includes/header.php';
 ?>
 <section class="section account-section">

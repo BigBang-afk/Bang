@@ -33,6 +33,15 @@ $pageMetaDescription = $pageMetaDescription ?? ('Fine gold jewellery crafted wit
 $pageOgImage = $pageOgImage ?? null;
 $pageJsonLd = $pageJsonLd ?? null;
 
+// Search-engine indexing (Phase 11 QA): defaults to indexable for every
+// normal public page. Account/cart/checkout/order/auth pages set
+// $pageRobots = 'noindex, nofollow' themselves before requiring this
+// file - these are also already disallowed in robots.php, so this is a
+// second, independent layer (a meta tag still applies even to a crawler
+// that doesn't respect robots.txt, or if a page is ever reached via an
+// external link robots.txt can't prevent from being followed).
+$pageRobots = $pageRobots ?? 'index, follow';
+
 // Canonical URL (Phase 9): defaults to this page's own path with the query
 // string stripped, which is correct for every static/listing page. A page
 // keyed by a query parameter that IS its identity (product.php?slug=...,
@@ -55,11 +64,17 @@ $headerGoldRates = $headerTickerEnabled ? getCurrentGoldRates() : [];
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= e($pageTitle) ?> | <?= e(SITE_NAME) ?></title>
 <meta name="description" content="<?= e($pageMetaDescription) ?>">
+<meta name="robots" content="<?= e($pageRobots) ?>">
 <meta name="csrf-token" content="<?= e(generateCsrfToken()) ?>">
 <meta property="og:title" content="<?= e($pageTitle) ?> | <?= e(SITE_NAME) ?>">
 <meta property="og:description" content="<?= e($pageMetaDescription) ?>">
 <meta property="og:type" content="website">
+<meta property="og:url" content="<?= e($pageCanonical) ?>">
 <?php if ($pageOgImage): ?><meta property="og:image" content="<?= e($pageOgImage) ?>"><?php endif; ?>
+<meta name="twitter:card" content="<?= $pageOgImage ? 'summary_large_image' : 'summary' ?>">
+<meta name="twitter:title" content="<?= e($pageTitle) ?> | <?= e(SITE_NAME) ?>">
+<meta name="twitter:description" content="<?= e($pageMetaDescription) ?>">
+<?php if ($pageOgImage): ?><meta name="twitter:image" content="<?= e($pageOgImage) ?>"><?php endif; ?>
 <link rel="canonical" href="<?= e($pageCanonical) ?>">
 <?php if ($headerFavicon): ?><link rel="icon" href="<?= e(FAVICON_UPLOAD_URL . $headerFavicon) ?>"><?php endif; ?>
 <script type="application/ld+json" nonce="<?= e(CSP_NONCE) ?>"><?= $pageOrganizationJsonLd ?></script>

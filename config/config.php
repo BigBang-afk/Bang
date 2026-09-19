@@ -210,4 +210,18 @@ if (!headers_sent()) {
         . "base-uri 'self'; "
         . "form-action 'self';"
     );
+
+    // HSTS (Phase 11 QA): only ever sent on an already-HTTPS request. Sending
+    // it over plain HTTP would do nothing (browsers ignore it unless it
+    // arrives over a secure connection) - and sending it at all before SSL
+    // is confirmed working is a real footgun, since a browser that receives
+    // it will refuse to load the site over HTTP for the max-age duration,
+    // even after this code is reverted. Recomputed independently here
+    // (not reusing the session bootstrap's $isHttps) so this still works
+    // correctly if that block is ever skipped (session already started).
+    $isHttpsRequest = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+    if ($isHttpsRequest) {
+        header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+    }
 }

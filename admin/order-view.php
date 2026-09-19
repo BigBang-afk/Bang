@@ -75,7 +75,7 @@ $adminNotes = dbFetchAll(
 
 $whatsappNumber = getSetting('whatsapp_number', '');
 $whatsappConfigured = $whatsappNumber !== '' && $whatsappNumber !== 'CHANGE_ME';
-$whatsappLink = $whatsappConfigured ? buildOrderWhatsAppLink($order) : null;
+$whatsappLink = $whatsappConfigured ? buildAdminOrderWhatsAppLink($order) : null;
 
 $pageTitle = 'Order ' . $order['order_number'];
 $browserTitle = 'Order ' . $order['order_number'];

@@ -26,6 +26,7 @@ $whatsappConfigured = $whatsappNumber !== '' && $whatsappNumber !== 'CHANGE_ME';
 $whatsappLink = $whatsappConfigured ? buildOrderWhatsAppLink($order) : null;
 
 $pageTitle = 'Order ' . $order['order_number'];
+$pageRobots = 'noindex, nofollow';
 require __DIR__ . '/includes/header.php';
 ?>
 <section class="section account-section">

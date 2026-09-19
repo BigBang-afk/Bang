@@ -34,6 +34,14 @@ $newArrivals = isHomepageSectionActive('new_arrivals') ? getNewArrivals(1, (int)
 $features = isHomepageSectionActive('features') ? getActiveHomepageFeatures() : [];
 $galleryTiles = isHomepageSectionActive('instagram') ? getActiveGalleryTiles() : [];
 $goldRates = isHomepageSectionActive('gold_rates') ? getCurrentGoldRates() : [];
+
+// One bulk image query for every product card on the homepage (featured +
+// best sellers + new arrivals combined), instead of one query per card -
+// see includes/product-card.php's docblock.
+$imagesByProduct = bulkFetchProductImages(array_column(
+    array_merge($featuredProducts, $bestSellers, $newArrivals),
+    'id'
+));
 ?>
 
 <?php if ($heroSlides): ?>

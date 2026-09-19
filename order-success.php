@@ -17,6 +17,7 @@ $whatsappConfigured = $whatsappNumber !== '' && $whatsappNumber !== 'CHANGE_ME';
 $whatsappLink = $whatsappConfigured ? buildOrderWhatsAppLink($order) : null;
 
 $pageTitle = 'Order Confirmed';
+$pageRobots = 'noindex, nofollow';
 require __DIR__ . '/includes/header.php';
 ?>
 <section class="section" style="text-align:center;">

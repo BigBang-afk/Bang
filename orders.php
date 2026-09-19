@@ -20,6 +20,7 @@ $statusLabels = getOrderStatusOptions();
 $pagination = ['page' => $page, 'total_pages' => $totalPages, 'total' => $total, 'per_page' => $perPage];
 
 $pageTitle = 'My Orders';
+$pageRobots = 'noindex, nofollow';
 require __DIR__ . '/includes/header.php';
 ?>
 <section class="section account-section">

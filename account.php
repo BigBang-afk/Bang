@@ -8,6 +8,7 @@ $recentOrders = dbFetchAll('SELECT * FROM orders WHERE user_id = ? ORDER BY crea
 $statusLabels = getOrderStatusOptions();
 
 $pageTitle = 'My Account';
+$pageRobots = 'noindex, nofollow';
 require __DIR__ . '/includes/header.php';
 ?>
 <section class="section account-section">

@@ -858,6 +858,41 @@ function getRelatedProducts(array $product, int $limit = 4): array
 }
 
 /**
+ * Bulk-fetches up to two images per product (primary first) for a whole
+ * list of products in a single query, returning [product_id => [image,
+ * image]]. Pass the result as $imagesByProduct into scope before
+ * `include`-ing includes/product-card.php in a loop, so a grid of N
+ * products costs one extra query total instead of N (product-card.php
+ * falls back to its own one-row-at-a-time query only when this isn't
+ * provided).
+ */
+function bulkFetchProductImages(array $productIds): array
+{
+    $imagesByProduct = [];
+    $productIds = array_values(array_unique(array_map('intval', $productIds)));
+    if (!$productIds) {
+        return $imagesByProduct;
+    }
+
+    $placeholders = implode(',', array_fill(0, count($productIds), '?'));
+    $imgRows = dbFetchAll(
+        "SELECT product_id, image FROM product_images WHERE product_id IN ($placeholders) ORDER BY product_id, is_primary DESC, sort_order ASC",
+        $productIds
+    );
+    foreach ($imgRows as $row) {
+        $pid = (int) $row['product_id'];
+        if (!isset($imagesByProduct[$pid])) {
+            $imagesByProduct[$pid] = [];
+        }
+        if (count($imagesByProduct[$pid]) < 2) {
+            $imagesByProduct[$pid][] = $row['image'];
+        }
+    }
+
+    return $imagesByProduct;
+}
+
+/**
  * Product ids currently in $userId's wishlist, for quickly checking
  * "is this product already saved?" while rendering a grid of cards.
  */

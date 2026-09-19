@@ -97,7 +97,7 @@ require __DIR__ . '/../includes/admin-header.php';
         <select name="stock_status" class="form-control">
             <option value="">All Stock</option>
             <?php foreach ($stockStatusLabels as $val => $label): ?>
-                <option value="<?= $val ?>" <?= $stockStatus === $val ? 'selected' : '' ?>><?= $label ?></option>
+                <option value="<?= e($val) ?>" <?= $stockStatus === $val ? 'selected' : '' ?>><?= e($label) ?></option>
             <?php endforeach; ?>
         </select>
         <select name="status" class="form-control">
