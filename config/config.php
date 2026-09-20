@@ -198,6 +198,15 @@ define('CSP_NONCE', bin2hex(random_bytes(16)));
 // than this hardening pass warrants - it is called out in the Phase 9
 // report as a known follow-up, not silently dropped.
 if (!headers_sent()) {
+    // Also set from PHP, not left to .htaccess's mod_headers block alone
+    // (Phase 12): some hosts (e.g. a hosting account sitting behind its
+    // own CDN/edge layer) don't apply a shared host's .htaccess Header
+    // directives the way a traditional Apache install does, even though
+    // .htaccess's other rules (FilesMatch, RewriteRule) may still work.
+    // Sending these from PHP means they apply regardless of host.
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: SAMEORIGIN');
+    header('Referrer-Policy: strict-origin-when-cross-origin');
     header("Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=()");
     header(
         "Content-Security-Policy: default-src 'self'; "
