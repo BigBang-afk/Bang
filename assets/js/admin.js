@@ -63,7 +63,7 @@
         if (!form || typeof window.ZJ_GOLD_RATES !== 'object') return;
 
         var puritySelect = form.querySelector('[name="purity"]');
-        var netWeightInput = form.querySelector('[name="net_weight"]');
+        var grossWeightInput = form.querySelector('[name="gross_weight"]');
         var makingInput = form.querySelector('[name="making_charges"]');
         var stoneInput = form.querySelector('[name="stone_charges"]');
         var otherInput = form.querySelector('[name="other_charges"]');
@@ -74,7 +74,7 @@
         var goldValueDisplay = document.getElementById('preview-gold-value');
         var finalPriceDisplay = document.getElementById('preview-final-price');
 
-        if (!puritySelect || !netWeightInput || !priceInput) return;
+        if (!puritySelect || !grossWeightInput || !priceInput) return;
 
         function currentPricingType() {
             var checked = form.querySelector('[name="pricing_type"]:checked');
@@ -88,14 +88,14 @@
         function recalc() {
             var purity = puritySelect.value;
             var rate = parseFloat(window.ZJ_GOLD_RATES[purity]) || 0;
-            var netWeight = parseFloat(netWeightInput.value) || 0;
+            var grossWeight = parseFloat(grossWeightInput.value) || 0;
             var making = parseFloat(makingInput.value) || 0;
             var stone = parseFloat(stoneInput.value) || 0;
             var other = parseFloat(otherInput.value) || 0;
             var discount = parseFloat(discountInput.value) || 0;
             var isAuto = currentPricingType() === 'auto';
 
-            var goldValue = netWeight * rate;
+            var goldValue = grossWeight * rate;
             var finalPrice = Math.max(0, goldValue + making + stone + other - discount);
 
             if (goldRateDisplay) {
@@ -114,7 +114,7 @@
             }
         }
 
-        [puritySelect, netWeightInput, makingInput, stoneInput, otherInput, discountInput].forEach(function (el) {
+        [puritySelect, grossWeightInput, makingInput, stoneInput, otherInput, discountInput].forEach(function (el) {
             if (el) el.addEventListener('input', recalc);
         });
         pricingTypeRadios.forEach(function (radio) {

@@ -240,7 +240,12 @@ function formatPrice(float $amount): string
  */
 function calculateProductPrice(array $product): array
 {
-    $netWeight = (float) ($product['net_weight'] ?? 0);
+    // Gold value is based on GROSS weight (Phase 12 business decision -
+    // the shop's actual pricing practice charges gold rate against the
+    // piece's full weight, not just its net gold content). Making/Stone/
+    // Other charges and Discount are unaffected and still apply on top
+    // exactly as before.
+    $grossWeight = (float) ($product['gross_weight'] ?? 0);
     $making = (float) ($product['making_charges'] ?? 0);
     $stone = (float) ($product['stone_charges'] ?? 0);
     $other = (float) ($product['other_charges'] ?? 0);
@@ -249,11 +254,11 @@ function calculateProductPrice(array $product): array
 
     if ($pricingType === 'manual') {
         $goldRate = (float) ($product['gold_rate'] ?? 0);
-        $goldValue = round($netWeight * $goldRate, 2);
+        $goldValue = round($grossWeight * $goldRate, 2);
         $finalPrice = max(0, (float) ($product['price'] ?? 0));
     } else {
         $goldRate = getGoldRate($product['purity'] ?? '21K') ?? (float) ($product['gold_rate'] ?? 0);
-        $goldValue = round($netWeight * $goldRate, 2);
+        $goldValue = round($grossWeight * $goldRate, 2);
         $finalPrice = max(0, round($goldValue + $making + $stone + $other - $discount, 2));
     }
 
