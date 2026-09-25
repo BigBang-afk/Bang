@@ -1,0 +1,17 @@
+node_modules/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# Local database (contains lead data - never commit)
+data/*.db
+data/*.db-*
+
+# Secrets
+.env
+.env.local
+.env.*.local
+
+.DS_Store
+npm-debug.log*
