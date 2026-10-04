@@ -7,6 +7,10 @@ $orderCounts = getCustomerOrderCounts((int) $user['id']);
 $recentOrders = dbFetchAll('SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT 5', [$user['id']]);
 $statusLabels = getOrderStatusOptions();
 
+$loyaltyShown = isLoyaltyEnabled();
+$loyaltyPoints = $loyaltyShown ? getUserLoyaltyPoints((int) $user['id']) : 0;
+$loyaltyPointValue = (float) getSetting('loyalty_point_value', '10');
+
 $pageTitle = 'My Account';
 $pageRobots = 'noindex, nofollow';
 require __DIR__ . '/includes/header.php';
@@ -48,6 +52,13 @@ require __DIR__ . '/includes/header.php';
                         <p class="text-muted">Your messages to us will appear here.</p>
                         <span class="tag-coming-soon">Coming Soon</span>
                     </div>
+                    <?php if ($loyaltyShown): ?>
+                    <div class="account-card">
+                        <h3>Loyalty Points</h3>
+                        <p class="text-muted"><?= $loyaltyPoints ?> points &bull; worth <?= formatPrice($loyaltyPoints * $loyaltyPointValue) ?></p>
+                        <p class="text-muted" style="font-size:.8rem;">Earned automatically when an order is completed. Redeem them at checkout on your next order.</p>
+                    </div>
+                    <?php endif; ?>
                 </div>
 
                 <div class="account-panel">

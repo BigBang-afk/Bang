@@ -37,6 +37,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'INSERT INTO order_status_history (order_id, old_status, new_status, changed_by, note) VALUES (?, ?, ?, ?, ?)',
                     [$order['id'], $order['order_status'], $newStatus, $admin['id'], $note !== '' ? $note : null]
                 );
+
+                // Loyalty points (Phase 13): earned only once an order is
+                // actually completed (never for a merely placed/pending
+                // order), and reversed if a completed order is later
+                // cancelled. Both helpers are safe to call repeatedly -
+                // they check the ledger for an existing entry first.
+                if ($order['user_id']) {
+                    if ($newStatus === 'completed') {
+                        awardLoyaltyPoints((int) $order['user_id'], $order['id'], (float) $order['total']);
+                    } elseif ($order['order_status'] === 'completed' && $newStatus === 'cancelled') {
+                        reverseLoyaltyPoints($order['id']);
+                    }
+                }
             });
             logAdminActivity('update_status', 'order', $order['id'], "Changed order {$order['order_number']} status from \"{$order['order_status']}\" to \"$newStatus\".");
             sendOrderStatusChangeEmail($order['id'], $newStatus);

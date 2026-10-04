@@ -13,6 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'footer_description', 'copyright_text',
         'smtp_host', 'smtp_port', 'smtp_username', 'smtp_encryption',
         'smtp_from_email', 'smtp_from_name',
+        'loyalty_points_per_rupees', 'loyalty_point_value', 'gold_exchange_deduction_percent',
     ];
 
     $errors = [];
@@ -21,6 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $values[$key] = trim($_POST[$key] ?? '');
     }
     $maintenanceMode = !empty($_POST['maintenance_mode']) ? '1' : '0';
+    $loyaltyEnabled = !empty($_POST['loyalty_enabled']) ? '1' : '0';
 
     if ($values['shop_name'] === '') {
         $errors[] = 'Shop Name is required.';
@@ -39,6 +41,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($values['smtp_from_email'] !== '' && !filter_var($values['smtp_from_email'], FILTER_VALIDATE_EMAIL)) {
         $errors[] = 'SMTP From Email must be a valid email address.';
+    }
+    foreach (['loyalty_points_per_rupees', 'loyalty_point_value'] as $numericKey) {
+        if (filter_var($values[$numericKey], FILTER_VALIDATE_FLOAT) === false || (float) $values[$numericKey] <= 0) {
+            $errors[] = str_replace('_', ' ', ucfirst($numericKey)) . ' must be a number greater than 0.';
+        }
+    }
+    if ($values['gold_exchange_deduction_percent'] === '') {
+        $values['gold_exchange_deduction_percent'] = '0';
+    } elseif (filter_var($values['gold_exchange_deduction_percent'], FILTER_VALIDATE_FLOAT) === false
+        || (float) $values['gold_exchange_deduction_percent'] < 0 || (float) $values['gold_exchange_deduction_percent'] > 100) {
+        $errors[] = 'Gold Exchange Deduction % must be a number between 0 and 100.';
     }
 
     // The SMTP password is never redisplayed in the form (so it can never
@@ -92,6 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         updateSetting('favicon', $faviconFilename);
         updateSetting('smtp_password', $smtpPassword);
         updateSetting('maintenance_mode', $maintenanceMode);
+        updateSetting('loyalty_enabled', $loyaltyEnabled);
         logAdminActivity('update', 'settings', null, 'Updated site settings.');
         flash('success', 'Settings saved successfully.');
     }
@@ -264,6 +278,32 @@ $favicon = getSetting('favicon', '');
                 <label for="smtp_from_name">From Name</label>
                 <input type="text" id="smtp_from_name" name="smtp_from_name" class="form-control" value="<?= e(getSetting('smtp_from_name', getSetting('shop_name', SITE_NAME))) ?>">
             </div>
+        </div>
+
+        <div class="form-section-title">Loyalty Program</div>
+        <label class="checkbox-row">
+            <input type="checkbox" name="loyalty_enabled" value="1" <?= isLoyaltyEnabled() ? 'checked' : '' ?>>
+            Enable loyalty points for customers
+        </label>
+        <div class="form-row" style="margin-top:10px;">
+            <div class="form-group">
+                <label for="loyalty_points_per_rupees">1 Point Earned Per (Rs.)</label>
+                <input type="number" id="loyalty_points_per_rupees" name="loyalty_points_per_rupees" class="form-control" step="1" min="1" value="<?= e(getSetting('loyalty_points_per_rupees', '1000')) ?>">
+                <p class="form-help">E.g. 1000 means a customer earns 1 point per Rs. 1,000 spent on a completed order.</p>
+            </div>
+            <div class="form-group">
+                <label for="loyalty_point_value">1 Point Worth (Rs.)</label>
+                <input type="number" id="loyalty_point_value" name="loyalty_point_value" class="form-control" step="0.01" min="0.01" value="<?= e(getSetting('loyalty_point_value', '10')) ?>">
+                <p class="form-help">How much discount one point is worth when redeemed at checkout.</p>
+            </div>
+        </div>
+        <p class="form-help">Points are earned automatically when you mark an order "Completed," and reversed if a completed order is later cancelled.</p>
+
+        <div class="form-section-title">Old Gold Exchange</div>
+        <div class="form-group" style="max-width:320px;">
+            <label for="gold_exchange_deduction_percent">Exchange Deduction (%)</label>
+            <input type="number" id="gold_exchange_deduction_percent" name="gold_exchange_deduction_percent" class="form-control" step="0.1" min="0" max="100" value="<?= e(getSetting('gold_exchange_deduction_percent', '0')) ?>">
+            <p class="form-help">Used by the public Gold Calculator page's old-gold exchange estimate - deducted from the current market rate to account for refining/wastage, matching your actual exchange policy. Leave at 0 to show the raw market-rate value with no deduction.</p>
         </div>
 
         <div class="form-section-title">Maintenance</div>

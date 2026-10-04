@@ -25,6 +25,12 @@ $paymentMethod = 'cash_on_delivery';
 
 $paymentMethods = getPaymentMethodOptions();
 
+// Loyalty points (Phase 13): only logged-in customers have an account to
+// hold a balance against - guests never see this section at all.
+$loyaltyAvailablePoints = ($currentUser && isLoyaltyEnabled()) ? getUserLoyaltyPoints((int) $currentUser['id']) : 0;
+$loyaltyPointValue = (float) getSetting('loyalty_point_value', '10');
+$redeemPoints = false;
+
 // A one-time token, separate from the CSRF token, that guards against a
 // double-click on "Place Order" or a browser "resend form data" replay
 // creating two orders from a single checkout: it is generated once per
@@ -94,6 +100,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Please select a valid payment method.';
     }
 
+    $redeemPoints = !empty($_POST['redeem_points']);
+
     // Re-check the bag right before placing the order - it may have
     // changed (or emptied) since the page was first loaded.
     $cart = getCartDetails();
@@ -106,7 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $userId = $currentUser['id'] ?? null;
 
         try {
-            $orderId = dbTransaction(function () use ($userId, $fullName, $normalizedMobile, $email, $address, $city, $notes, $paymentMethod) {
+            $orderId = dbTransaction(function () use ($userId, $fullName, $normalizedMobile, $email, $address, $city, $notes, $paymentMethod, $redeemPoints) {
                 // Re-read the cart from the session and lock each product
                 // row for the duration of this transaction, so a
                 // concurrent admin edit (e.g. marking something out of
@@ -191,6 +199,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     [$orderId]
                 );
 
+                // Loyalty redemption (Phase 13): applied AFTER the order row
+                // exists, so the redemption's ledger entry can reference a
+                // real order_id - then the order's own total/columns are
+                // updated to reflect the discount. The available balance is
+                // always re-read fresh inside redeemLoyaltyPoints() itself,
+                // never trusted from the checkout form - $redeemPoints only
+                // controls whether redemption is attempted at all (the
+                // customer must opt in each time, points are never spent
+                // without them asking).
+                if ($redeemPoints && $userId) {
+                    $loyaltyDiscount = redeemLoyaltyPoints($userId, $orderId, $grandTotal);
+                    if ($loyaltyDiscount > 0) {
+                        $pointsSpent = (int) round($loyaltyDiscount / max(0.01, (float) getSetting('loyalty_point_value', '10')));
+                        dbExecute(
+                            'UPDATE orders SET total = total - ?, loyalty_points_redeemed = ?, loyalty_discount_amount = ? WHERE id = ?',
+                            [$loyaltyDiscount, $pointsSpent, $loyaltyDiscount, $orderId]
+                        );
+                    }
+                }
+
                 return $orderId;
             });
 
@@ -247,7 +275,7 @@ require __DIR__ . '/includes/header.php';
         <div class="checkout-layout">
             <div class="admin-panel checkout-form-panel">
                 <h3>Delivery Information</h3>
-                <form method="post" action="">
+                <form method="post" action="" id="checkout-form">
                     <?= csrfField() ?>
                     <input type="hidden" name="checkout_token" value="<?= e($checkoutToken) ?>">
                     <div class="form-row">
@@ -307,6 +335,15 @@ require __DIR__ . '/includes/header.php';
                     <div class="cart-summary-line"><span>Discount</span><span>&minus; <?= formatPrice($cart['discount']) ?></span></div>
                     <div class="cart-summary-total"><span>Total</span><strong><?= formatPrice($cart['total']) ?></strong></div>
                     <p class="product-price-disclaimer"><?= e($goldPriceNotice) ?></p>
+
+                    <?php if ($loyaltyAvailablePoints > 0): ?>
+                        <div class="form-section-title" style="margin-top:16px;">Loyalty Points</div>
+                        <label class="checkbox-row">
+                            <input type="checkbox" name="redeem_points" value="1" form="checkout-form" <?= $redeemPoints ? 'checked' : '' ?>>
+                            Redeem my <?= $loyaltyAvailablePoints ?> points for up to <?= formatPrice($loyaltyAvailablePoints * $loyaltyPointValue) ?> off this order
+                        </label>
+                        <p class="form-help">Applied automatically at checkout - never more than your order total.</p>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

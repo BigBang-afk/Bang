@@ -37,6 +37,7 @@ $footerCategories = array_slice(getActiveCategories(), 0, 5);
 
         <div class="footer-col">
             <h4>Help</h4>
+            <a href="<?= SITE_URL ?>/gold-calculator.php">Gold Calculators</a>
             <a href="<?= SITE_URL ?>/faq.php">FAQ</a>
             <a href="<?= SITE_URL ?>/shipping-returns.php">Shipping &amp; Returns</a>
             <a href="<?= SITE_URL ?>/privacy-policy.php">Privacy Policy</a>

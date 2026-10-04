@@ -1616,3 +1616,126 @@ function sendOrderStatusChangeEmail(int $orderId, string $newStatus): void
         . 'Thank you for shopping with ' . getSetting('shop_name', SITE_NAME) . '.';
     sendEmail($order['email'], $order['customer_name'], 'Order Update - ' . $order['order_number'], $body);
 }
+
+// ---------------------------------------------------------------
+// Loyalty points (Phase 13)
+// A customer's balance is always SUM(points) from loyalty_points_log -
+// an append-only ledger, never a separate mutable counter - the same
+// "insert-only history" pattern gold_rates and admin_activity_logs
+// already use elsewhere in this project, so the balance can never drift
+// out of sync with its own history.
+// ---------------------------------------------------------------
+
+function isLoyaltyEnabled(): bool
+{
+    return getSetting('loyalty_enabled', '0') === '1';
+}
+
+function getUserLoyaltyPoints(int $userId): int
+{
+    // Clamped at 0: a completed order's points can be spent elsewhere and
+    // then reversed if that order is later cancelled, which can sum the
+    // ledger negative. The ledger rows themselves keep that true history;
+    // only the customer-facing/spendable balance is floored at 0.
+    $sum = (int) dbFetchColumn('SELECT COALESCE(SUM(points), 0) FROM loyalty_points_log WHERE user_id = ?', [$userId]);
+    return max(0, $sum);
+}
+
+/**
+ * Awards points for a completed order (1 point per `loyalty_points_per_rupees`
+ * of the order total, rounded down). Safe to call more than once for the
+ * same order - it checks for an existing "earned" entry first, so an
+ * admin toggling an order's status away from and back to "completed"
+ * never double-awards.
+ */
+function awardLoyaltyPoints(int $userId, int $orderId, float $orderTotal): void
+{
+    if (!isLoyaltyEnabled() || $userId <= 0) {
+        return;
+    }
+
+    $already = dbFetchColumn(
+        'SELECT COUNT(*) FROM loyalty_points_log WHERE order_id = ? AND type = "earned"',
+        [$orderId]
+    );
+    if ($already) {
+        return;
+    }
+
+    $perRupees = max(1, (int) getSetting('loyalty_points_per_rupees', '1000'));
+    $points = (int) floor($orderTotal / $perRupees);
+    if ($points <= 0) {
+        return;
+    }
+
+    dbExecute(
+        'INSERT INTO loyalty_points_log (user_id, order_id, points, type, description) VALUES (?, ?, ?, "earned", ?)',
+        [$userId, $orderId, $points, "Earned from order #$orderId"]
+    );
+}
+
+/**
+ * Reverses previously earned points if a completed order is later
+ * cancelled - called from admin/order-view.php's status-change action.
+ * Inserts an offsetting negative "reversed" entry rather than deleting
+ * the original "earned" row, so the ledger's full history stays intact.
+ */
+function reverseLoyaltyPoints(int $orderId): void
+{
+    $earned = dbFetchOne(
+        'SELECT user_id, points FROM loyalty_points_log WHERE order_id = ? AND type = "earned" LIMIT 1',
+        [$orderId]
+    );
+    if (!$earned) {
+        return;
+    }
+
+    $alreadyReversed = dbFetchColumn(
+        'SELECT COUNT(*) FROM loyalty_points_log WHERE order_id = ? AND type = "reversed"',
+        [$orderId]
+    );
+    if ($alreadyReversed) {
+        return;
+    }
+
+    dbExecute(
+        'INSERT INTO loyalty_points_log (user_id, order_id, points, type, description) VALUES (?, ?, ?, "reversed", ?)',
+        [$earned['user_id'], $orderId, -$earned['points'], "Reversed - order #$orderId was cancelled"]
+    );
+}
+
+/**
+ * Redeems up to all of $userId's available points toward a new order,
+ * returning the discount amount (never more than $maxDiscount, so a
+ * redemption can never make an order total negative). The available
+ * balance is always re-read fresh here - a redemption request never
+ * trusts a point count submitted from the browser. Call this inside the
+ * same dbTransaction() as the order insert, after $orderId is known.
+ */
+function redeemLoyaltyPoints(int $userId, int $orderId, float $maxDiscount): float
+{
+    if (!isLoyaltyEnabled() || $userId <= 0 || $maxDiscount <= 0) {
+        return 0.0;
+    }
+
+    $available = getUserLoyaltyPoints($userId);
+    if ($available <= 0) {
+        return 0.0;
+    }
+
+    $pointValue = max(0.01, (float) getSetting('loyalty_point_value', '10'));
+    $maxPointsByValue = (int) floor($maxDiscount / $pointValue);
+    $pointsToRedeem = min($available, $maxPointsByValue);
+    if ($pointsToRedeem <= 0) {
+        return 0.0;
+    }
+
+    $discount = round($pointsToRedeem * $pointValue, 2);
+
+    dbExecute(
+        'INSERT INTO loyalty_points_log (user_id, order_id, points, type, description) VALUES (?, ?, ?, "redeemed", ?)',
+        [$userId, $orderId, -$pointsToRedeem, "Redeemed on order #$orderId"]
+    );
+
+    return $discount;
+}
